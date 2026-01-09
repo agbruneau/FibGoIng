@@ -1,0 +1,70 @@
+{
+  "type": "record",
+  "name": "LoanApplication",
+  "namespace": "com.agentmesh.finance",
+  "doc": "Événement représentant une demande de prêt soumise - Topic: finance.loan.application.v1",
+  "fields": [
+    {
+      "name": "application_id",
+      "type": "string",
+      "doc": "UUID unique de la demande de prêt"
+    },
+    {
+      "name": "timestamp",
+      "type": "long",
+      "logicalType": "timestamp-millis",
+      "doc": "Horodatage de la soumission (epoch milliseconds)"
+    },
+    {
+      "name": "applicant_id",
+      "type": "string",
+      "doc": "Identifiant unique du demandeur"
+    },
+    {
+      "name": "amount_requested",
+      "type": "double",
+      "doc": "Montant du prêt demandé"
+    },
+    {
+      "name": "currency",
+      "type": "string",
+      "default": "USD",
+      "doc": "Devise du montant (ISO 4217)"
+    },
+    {
+      "name": "declared_monthly_income",
+      "type": "double",
+      "doc": "Revenu mensuel déclaré par le demandeur"
+    },
+    {
+      "name": "employment_status",
+      "type": {
+        "type": "enum",
+        "name": "EmploymentStatus",
+        "symbols": ["FULL_TIME", "PART_TIME", "SELF_EMPLOYED", "UNEMPLOYED"],
+        "doc": "Statut d'emploi du demandeur"
+      }
+    },
+    {
+      "name": "existing_debts",
+      "type": "double",
+      "default": 0.0,
+      "doc": "Montant total des dettes existantes"
+    },
+    {
+      "name": "loan_purpose",
+      "type": ["null", "string"],
+      "default": null,
+      "doc": "Motif du prêt (optionnel)"
+    },
+    {
+      "name": "metadata",
+      "type": {
+        "type": "map",
+        "values": "string"
+      },
+      "default": {},
+      "doc": "Métadonnées additionnelles (trace_id, source, etc.)"
+    }
+  ]
+}

@@ -1,0 +1,80 @@
+{
+  "type": "record",
+  "name": "RiskAssessment",
+  "namespace": "com.agentmesh.risk",
+  "doc": "Événement représentant l'évaluation de risque complétée - Topic: risk.scoring.result.v1",
+  "fields": [
+    {
+      "name": "application_id",
+      "type": "string",
+      "doc": "UUID de la demande de prêt analysée"
+    },
+    {
+      "name": "assessment_id",
+      "type": "string",
+      "doc": "UUID unique de cette évaluation"
+    },
+    {
+      "name": "timestamp",
+      "type": "long",
+      "logicalType": "timestamp-millis",
+      "doc": "Horodatage de l'évaluation"
+    },
+    {
+      "name": "risk_score",
+      "type": "int",
+      "doc": "Score de risque de 0 (Sûr) à 100 (Très Risqué)"
+    },
+    {
+      "name": "risk_category",
+      "type": {
+        "type": "enum",
+        "name": "RiskLevel",
+        "symbols": ["LOW", "MEDIUM", "HIGH", "CRITICAL"],
+        "doc": "Catégorie de risque basée sur le score"
+      }
+    },
+    {
+      "name": "debt_to_income_ratio",
+      "type": "double",
+      "doc": "Ratio dette/revenu calculé (DTI)"
+    },
+    {
+      "name": "rationale",
+      "type": "string",
+      "doc": "Explication en langage naturel générée par le LLM justifiant le score"
+    },
+    {
+      "name": "checked_policies",
+      "type": {
+        "type": "array",
+        "items": "string"
+      },
+      "doc": "Liste des documents de politique de crédit consultés (RAG)"
+    },
+    {
+      "name": "confidence_score",
+      "type": "double",
+      "default": 0.0,
+      "doc": "Score de confiance de l'agent (0.0 à 1.0)"
+    },
+    {
+      "name": "chain_of_thought",
+      "type": ["null", "string"],
+      "default": null,
+      "doc": "Trace complète du raisonnement ReAct (pour audit)"
+    },
+    {
+      "name": "processing_time_ms",
+      "type": "long",
+      "default": 0,
+      "doc": "Temps de traitement en millisecondes"
+    },
+    {
+      "name": "model_used",
+      "type": "string",
+      "default": "claude-opus-4.5",
+      "doc": "Identifiant du modèle LLM utilisé"
+    }
+  ]
+}

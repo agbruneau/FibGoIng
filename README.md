@@ -47,27 +47,44 @@ Les agents sont des entités autonomes utilisant le pattern **ReAct** (Reason + 
 
 ```
 AgentMeshKafka/
-├── docs/                   # Documentation (ADRs, Specs, Threat Model)
-│   ├── 00-Readme.md        # Vision et Thèse du projet
-│   ├── 01-ArchitectureDecisions.md  # ADRs (Kafka, Vector DB, LangChain/LangGraph)
-│   ├── 02-DataContracts.md # Définition des schémas (Avro) et Topologie Kafka
-│   ├── 03-AgentSpecs.md    # Personas, Outils et Constitutions
-│   ├── 04-EvaluationStrategie.md  # Le "Diamant de l'évaluation" (Test Plan)
-│   ├── 05-ThreatModel.md   # AgentSec et analyse des risques
-│   ├── 06-Plan.md          # Feuille de route et plan d'implémentation
-│   └── 07-Constitution.md  # Code de conduite et standards d'ingénierie
-├── schemas/                # Contrats de données (fichiers .avsc Avro)
-├── src/
-│   ├── agents/             # Code source des agents (Python)
-│   │   ├── intake_agent/
-│   │   ├── risk_agent/
-│   │   └── decision_agent/
-│   └── shared/             # Utilitaires partagés (Kafka wrapper, Prompts)
-├── tests/
-│   ├── unit/               # Tests déterministes
-│   └── evaluation/         # Tests cognitifs (LLM-as-a-judge)
-├── docker-compose.yml      # Infrastructure locale (Zookeeper, Kafka, Schema Registry)
-└── README.md
+├── .gitignore              # Exclusion des venv, .env, __pycache__
+├── docker-compose.yml      # Infrastructure Kafka/Zookeeper/Schema Registry/ChromaDB
+├── requirements.txt        # Dépendances Python (LangChain, Anthropic, Kafka)
+├── pytest.ini              # Configuration des tests
+├── README.md               # Ce fichier
+│
+├── docs/                   # Documentation Architecture (DocAsCode)
+│   ├── 00-Readme.md        # Index et Vision du projet
+│   ├── 01-ArchitectureDecisions.md  # ADRs (5 décisions structurantes)
+│   ├── 02-DataContracts.md # Schémas Avro et Topologie Kafka
+│   ├── 03-AgentSpecs.md    # Personas, Outils et System Prompts
+│   ├── 04-EvaluationStrategie.md  # Le "Diamant de l'Évaluation"
+│   ├── 05-ThreatModel.md   # AgentSec et OWASP LLM Top 10
+│   ├── 06-Plan.md          # Feuille de route (4 phases)
+│   └── 07-Constitution.md  # Loi Fondamentale et Standards
+│
+├── schemas/                # Contrats de données Avro (.avsc)
+│   ├── loan_application.avsc    # Demande de prêt
+│   ├── risk_assessment.avsc     # Évaluation de risque
+│   └── loan_decision.avsc       # Décision finale
+│
+├── scripts/                # Scripts utilitaires
+│   ├── init_kafka.py       # Création des topics Kafka
+│   └── register_schemas.py # Enregistrement dans Schema Registry
+│
+├── src/                    # Code source Python
+│   ├── agents/             # Les 3 agents cognitifs
+│   │   ├── intake_agent/   # Agent Intake (Claude 3.5 Haiku)
+│   │   ├── risk_agent/     # Agent Risk (Claude Opus 4.5)
+│   │   └── decision_agent/ # Agent Decision (Claude 3.5 Sonnet)
+│   └── shared/             # Utilitaires partagés
+│       ├── kafka_client.py # Wrappers Producer/Consumer
+│       ├── models.py       # Modèles Pydantic (depuis Avro)
+│       └── prompts.py      # System Prompts et Constitution
+│
+└── tests/                  # Suite de tests (Diamant de l'Évaluation)
+    ├── unit/               # Niveau 1: Tests déterministes
+    └── evaluation/         # Niveaux 2-4: Tests cognitifs
 ```
 
 ---
@@ -106,9 +123,13 @@ cp .env.example .env
 # Configurez votre ANTHROPIC_API_KEY dans le fichier .env
 ```
 
-### 3. Enregistrer les schémas
+### 3. Initialiser Kafka et enregistrer les schémas
 
 ```bash
+# Créer les topics Kafka
+python scripts/init_kafka.py
+
+# Enregistrer les schémas Avro
 python scripts/register_schemas.py
 ```
 
