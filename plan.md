@@ -1,183 +1,182 @@
-<img src="https://r2cdn.perplexity.ai/pplx-full-logo-primary-dark%402x.png" style="height:64px;margin-right:32px"/>
+Voici le fichier `PLAN.md`. Il sert de feuille de route d'ingénierie, découpant la complexité architecturale en modules gérables et en phases séquentielles.
 
-# SpecKit.plan.md - Plan Technique AgentMesh-Kafka
+Ce plan privilégie une approche **"Infrastructure-First"** : on ne code pas d'agents tant que le système nerveux (Kafka + Schémas) n'est pas opérationnel.
 
-**Version**: 0.1.0
-**Auteur**: agbruneau
-**Date**: 2026-01-07
-**Stack Choisie**: Go (core/performance) + Rust (agents parallèles) + Kafka 3.7 (KRaft) + AsyncAPI/CloudEvents
-**Durée Estimée**: 4 semaines MVP (iteratif spec-driven).
+---
 
-## 🎯 Constitution Projet (Alignée speckit.specify.md)
+# PLAN.md - Plan d'Implémentation & Architecture Technique
 
-- **Principes** : Specs-first (AsyncAPI générée → code), interop CloudEvents v1.0, zéro-downtime (DLQ/retry).
-- **Contraintes** : MIT License, Docker-native, <100ms latence mesh, 10k TPS.
+> **Projet :** Agent Mesh Kafka (Transformation `habit-tracker`)
+> **Stratégie :** Incremental Strangler Fig Pattern
 
+## 1. Architecture de Référence
 
-## 🏗️ Architecture Haute-Niveau
+Le système est conçu comme un pipeline de données réactif en boucle fermée.
 
-```
-graph TB
-  CLI[SpecKit CLI] --> SPEC[AsyncAPI YAML]
-  SPEC --> STUBS[Stubs Go/Rust]
-  STUBS --> DOCKER[Docker Compose]
-  Agents[Agents Mesh] <--> Kafka[Kafka Topics]
-```
+```mermaid
+graph TD
+    subgraph "Legacy Zone"
+        UI[React Frontend] --> API[FastAPI Backend]
+        API --> DB[(SQLite/Postgres)]
+        API -.->|Async Producer| K_RAW
+    end
 
-- **Couche Specs** : AsyncAPI + Protobuf schemas.
-- **Couche Runtime** : Kafka broker + agents (producer/consumer/discovery).
-- **Observabilité** : Prometheus + TUI (Bubble Tea).
+    subgraph "Cognitive Mesh (Kafka)"
+        K_RAW(Topic: habit.telemetry.raw)
+        K_PAT(Topic: habit.analysis.patterns)
+        K_CMD(Topic: agent.output.commands)
+    end
 
+    subgraph "Agentic Layer (Python)"
+        Obs[Observer Agent] -- Consumer --> K_RAW
+        Obs -- Producer --> K_PAT
+        
+        Coach[Coach Agent (LLM)] -- Consumer --> K_PAT
+        Coach -- Producer --> K_CMD
+    end
 
-## 📦 Stack Technique Détaillée
-
-| Composant | Tech | Rationale |
-| :-- | :-- | :-- |
-| CLI Generator | Go (cobra) | Facile CLI, intégration Buf/AsyncAPI |
-| Agents Producer | Go (confluent-kafka-go) | Perf streaming, zéro-alloc |
-| Agents Consumer | Rust (rdkafka) | Parallélisme Rayon, safety |
-| Schemas | Protobuf + AsyncAPI CLI | Interop machine-readable |
-| Infra | Docker Compose + KRaft | No ZK, local/prod |
-| Test | GoTest/Rust cargo-test + k6 | 95% coverage, load 10k TPS |
-| CI/CD | GitHub Actions | Lint, generate, deploy demo |
-
-## 📅 Phases \& Milestones (Gantt Inspiré)
-
-| Phase | Durée | Livrables | Dépendances | Risques |
-| :-- | :-- | :-- | :-- | :-- |
-| **0.1 Specs** (Sem1) | 3j | AsyncAPI YAML validé, schemas proto | speckit.specify.md | Schema compat (M) |
-| **0.2 CLI** (Sem1) | 4j | `spec-kit generate` stubs | Phase 0.1 | Tooling Buf (L) |
-| **0.3 MVP Agents** (Sem2) | 1s | Producer/consumer Docker, mesh E2E | Phase 0.2 | Kafka perf (M) |
-| **0.4 Observabilité** (Sem3) | 3j | TUI dashboard, Prometheus | Phase 0.3 | UI Rust (L) |
-| **0.5 Polish/Release** (Sem4) | 1s | README, CI, benchmarks, tags v1.0 | All | - |
-
-**Total** : 4 semaines ; **MVP testable Sem2** (git tag v0.3).
-
-## 🔧 Détails Implémentation
-
-### 1. CLI Generator (`cmd/spec-kit`)
-
-```go
-// Exemple sortie
-spec-kit generate --input speckit.specify.md --output ./generated/
-# → asyncapi/agentmesh.yaml
-# → proto/order.pb.go
-# → docker-compose.yml
-```
-
-
-### 2. Agents Structure
+    subgraph "Actuator Layer"
+        Notifier[Notification Service] -- Consumer --> K_CMD
+        Notifier --> User(Mobile/Email)
+    end
 
 ```
-agents/
-├── producer/  # Go: publish CloudEvents
-├── consumer/  # Rust: subscribe, Claude reasoning
-└── discovery/ # Poll AsyncAPI changes
+
+---
+
+## 2. Modules & Responsabilités
+
+| Module | Stack Technique | Responsabilité | Type |
+| --- | --- | --- | --- |
+| **`infra-core`** | Docker, Kafka, Schema Registry | L'infrastructure runtime. Contient les `docker-compose.yml` et scripts d'init. | Infra |
+| **`schema-registry`** | Avro (`.avsc`) | La Source de Vérité. Contient les contrats d'interface. | Data |
+| **`habit-tracker-api`** | Python (FastAPI), `confluent-kafka` | Le système Legacy instrumenté. Agit comme "Capteur". | Source |
+| **`agent-observer`** | Python, Faust ou Vanilla Consumer | Analyse déterministe (Statistiques, Streaks). | Processor |
+| **`agent-coach`** | Python, LangChain/LangGraph | Analyse probabiliste (LLM) et prise de décision. | Processor |
+| **`service-notifier`** | Python, SMTP/Firebase | Exécuteur des commandes ("Side effects"). | Sink |
+
+---
+
+## 3. Contrats d'Interface (Schema Definition)
+
+L'interopérabilité repose sur ces définitions Avro strictes.
+
+### A. Télémétrie (`habit.telemetry.raw`)
+
+*Event : L'utilisateur a fait (ou défait) quelque chose.*
+
+```json
+// events/habit_log_recorded.avsc
+{
+  "type": "record",
+  "name": "HabitLogRecorded",
+  "fields": [
+    {"name": "event_id", "type": "string"},
+    {"name": "timestamp_utc", "type": "long"},
+    {"name": "user_id", "type": "string"},
+    {"name": "habit_id", "type": "string"},
+    {"name": "action_type", "type": {"type": "enum", "symbols": ["LOG", "UNLOG"]}},
+    {"name": "metadata", "type": ["null", "map"], "values": "string"}
+  ]
+}
+
 ```
 
+### B. Insights (`habit.analysis.patterns`)
 
-### 3. Test Plan
+*Event : L'Agent Observateur a remarqué quelque chose.*
 
-- Unit: Schemas validation (Buf).
-- Intégration: Docker Kafka full mesh.
-- Load: k6 → 10k TPS, 99% success.
+```json
+// events/pattern_detected.avsc
+{
+  "type": "record",
+  "name": "PatternDetected",
+  "fields": [
+    {"name": "analysis_id", "type": "string"},
+    {"name": "target_user_id", "type": "string"},
+    {"name": "pattern_type", "type": {"type": "enum", "symbols": ["STREAK_BROKEN", "INCONSISTENT_TIME", "MILESTONE_REACHED"]}},
+    {"name": "confidence_score", "type": "float"},
+    {"name": "supporting_data", "type": "string"} // JSON dump des preuves
+  ]
+}
 
-
-### 4. Quickstart Généré
-
-```bash
-# Auto-généré depuis spec
-make up  # Kafka + agents
-curl -X POST /order  # Trigger mesh
 ```
 
+### C. Commandes (`agent.output.commands`)
 
-## ⚠️ Risques \& Mitigations
+*Command : L'Agent Coach demande une action.*
 
-| Risque | Prob | Impact | Mitigation |
-| :-- | :-- | :-- | :-- |
-| Kafka ops | M | H | Docker KRaft only |
-| Schema drift | H | H | Buf breaking-change check |
-| Agent reasoning fail | M | M | Fallback retry + logs |
+```json
+// commands/send_notification.avsc
+{
+  "type": "record",
+  "name": "SendNotificationCommand",
+  "fields": [
+    {"name": "command_id", "type": "string"},
+    {"name": "recipient_id", "type": "string"},
+    {"name": "channel", "type": {"type": "enum", "symbols": ["PUSH", "EMAIL", "IN_APP"]}},
+    {"name": "content_body", "type": "string"},
+    {"name": "tone", "type": "string", "default": "neutral"}
+  ]
+}
 
-**Prochain** : Exécutez `/speckit.tasks` pour tasks granulaire ; implémentez Phase 0.1 via Cursor/Claude. ![^1][^2][^3]
-<span style="display:none">[^10][^11][^12][^13][^14][^15][^16][^17][^18][^19][^20][^21][^22][^23][^24][^25][^26][^27][^28][^29][^30][^31][^32][^33][^34][^35][^36][^37][^38][^4][^5][^6][^7][^8][^9]</span>
+```
 
-<div align="center">⁂</div>
+---
 
-[^1]: http://www.scitepress.org/DigitalLibrary/Link.aspx?doi=10.5220/0003504300440053
+## 4. Ordre d'Implémentation (Phasing)
 
-[^2]: https://www.redpanda.com/guides/kafka-use-cases-event-driven-architecture
+### Phase 1 : Les Fondations (Jours 1-2)
 
-[^3]: https://github.com/github/spec-kit
+*Objectif : Pipeline de données fonctionnel (Hello World).*
 
-[^4]: https://www.semanticscholar.org/paper/d0d6addd07c4caaace12c95d9f3c662678b0a50e
+1. **Setup Docker :** Monter Kafka, Zookeeper, Schema Registry et Kafka UI.
+2. **Schema Registration :** Script Python pour pousser les fichiers `.avsc` vers le Schema Registry au démarrage.
+3. **Test Plumbing :** Vérifier qu'on peut publier un message Avro manuellement et le lire via Kafka UI.
 
-[^5]: https://www.semanticscholar.org/paper/5e94b3e3229995df495e65a65c4b697aafbd802d
+### Phase 2 : Instrumentation du Legacy (Jours 3-4)
 
-[^6]: http://link.springer.com/10.1007/978-3-642-36177-7_8
+*Objectif : Le `habit-tracker` parle.*
 
-[^7]: http://aircconline.com/vlsics/V9N3/9318vlsi04.pdf
+1. **Refactor FastAPI :** Créer un singleton `KafkaProducerWrapper`.
+2. **Intercept Writes :** Dans `main.py` (ou service layer), après `db.add(log)`, appeler `producer.send()`.
+3. **Validation :** Utiliser l'app React, créer une habitude, vérifier l'apparition du message dans le topic `habit.telemetry.raw`.
 
-[^8]: https://www.semanticscholar.org/paper/3e07b381b0a373560fc0431d276fca3629edce8f
+### Phase 3 : L'Agent Observateur (Jours 5-6)
 
-[^9]: https://www.semanticscholar.org/paper/167e30fbdfabeb41e7250b9ca7f33d66a81db85b
+*Objectif : Traitement déterministe.*
 
-[^10]: https://www.taylorfrancis.com/books/9781439897553
+1. **Skeleton :** Créer un service Python simple qui boucle sur `consumer.poll()`.
+2. **Logic :** Implémenter une détection simple (ex: si `timestamp` est entre 2h et 5h du matin -> flag "Insomnie").
+3. **Produce :** Publier le résultat dans `habit.analysis.patterns`.
 
-[^11]: http://ij-healthgeographics.biomedcentral.com/articles/10.1186/1476-072X-4-2
+### Phase 4 : L'Agent Coach & LLM (Jours 7-9)
 
-[^12]: https://www.semanticscholar.org/paper/262ab31f7a7f7a63c96caec494f458c3eeee2463
+*Objectif : Intelligence Artificielle.*
 
-[^13]: https://arxiv.org/pdf/2410.10762.pdf
+1. **Integration LLM :** Setup de l'API Key (Claude/Gemini).
+2. **Prompt Engineering :** Créer le System Prompt : *"Tu es un coach comportemental. Analyse ce pattern JSON..."*
+3. **Cycle complet :** Consumer (Pattern) -> LLM -> Producer (Command).
 
-[^14]: https://arxiv.org/html/2412.17029v1
+### Phase 5 : Fermeture de la boucle (Jour 10+)
 
-[^15]: https://arxiv.org/pdf/2501.17167.pdf
+*Objectif : Impact utilisateur.*
 
-[^16]: https://arxiv.org/pdf/2408.08435.pdf
+1. **Notifier Service :** Un consommateur simple qui print les commandes dans la console (Mock) ou envoie un vrai email.
+2. **AgentOps :** Ajouter des logs structurés pour tracer le `trace_id` à travers les 4 étapes.
 
-[^17]: https://arxiv.org/html/2501.07834
+---
 
-[^18]: https://arxiv.org/pdf/2412.04093.pdf
+## 5. Standards de Développement
 
-[^19]: https://arxiv.org/html/2410.08164
+* **Gestion des Erreurs :**
+* Si un agent échoue à traiter un message (ex: format invalide), envoyer vers un topic `dead-letter-queue` (DLQ). Ne jamais crasher la boucle de consommation.
 
-[^20]: https://arxiv.org/pdf/2404.17017.pdf
 
-[^21]: https://www.confluent.io/learn/event-driven-architecture/
+* **Idempotence :**
+* Les consommateurs doivent assumer qu'un message peut arriver deux fois (`at-least-once delivery`). Utiliser `event_id` pour dédoublonner si critique.
 
-[^22]: https://www.gravitee.io/blog/event-driven-architecture-patterns
 
-[^23]: https://www.kai-waehner.de/blog/2025/04/14/how-apache-kafka-and-flink-power-event-driven-agentic-ai-in-real-time/
-
-[^24]: https://www.linkedin.com/pulse/event-driven-architecture-kafka-step-by-step-poc-guide-rajesh-paleru-pf0we
-
-[^25]: https://arxiv.org/html/2505.02279v1
-
-[^26]: https://developers.redhat.com/articles/2025/06/16/how-kafka-improves-agentic-ai
-
-[^27]: https://developer.microsoft.com/blog/spec-driven-development-spec-kit
-
-[^28]: https://doc.milestonesys.com/latest/en-US/wp_xpr_aws/target_customers_and_deployment.htm
-
-[^29]: https://dzone.com/articles/agentic-ai-using-apache-kafka-as-event-broker-with-agent2agent-protocol
-
-[^30]: https://github.com/github/spec-kit/blob/main/spec-driven.md
-
-[^31]: https://www.sei.cmu.edu/documents/2122/2006_004_001_14735.pdf
-
-[^32]: https://covalensedigital.com/resources/blogs/event-driven-architecture
-
-[^33]: https://github.blog/ai-and-ml/generative-ai/spec-driven-development-with-ai-get-started-with-a-new-open-source-toolkit/
-
-[^34]: https://www.ibm.com/docs/SSHEB3_3.8/pdfs_wiki/Gantt_Milestones_and_Planned_Tasks.pdf
-
-[^35]: https://cndi.dev/templates/kafka
-
-[^36]: https://martinfowler.com/articles/exploring-gen-ai/sdd-3-tools.html
-
-[^37]: https://ehealthontario.on.ca/files/public/support/Architecture/EHR_Interoperability_Plan.pdf
-
-[^38]: https://www.epam.com/insights/ai/blogs/inside-spec-driven-development-what-githubspec-kit-makes-possible-for-ai-engineering
-
+* **Sécurité :**
+* Pas de clés API dans le code. Utiliser `.env`.
+* Le `Producer` doit utiliser une authentification SASL/Plain (même en local, pour simuler la prod).
