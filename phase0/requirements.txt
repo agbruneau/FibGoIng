@@ -1,0 +1,11 @@
+# Phase 0 - Dépendances Minimales
+# Installation: pip install -r requirements.txt
+
+# LLM Framework
+anthropic>=0.40.0
+
+# Data Validation
+pydantic>=2.5.0
+
+# Environment
+python-dotenv>=1.0.0

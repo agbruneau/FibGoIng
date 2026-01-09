@@ -1,0 +1,81 @@
+{
+  "type": "record",
+  "name": "LoanDecision",
+  "namespace": "com.agentmesh.finance",
+  "doc": "Événement représentant la décision finale de prêt - Topic: finance.loan.decision.v1",
+  "fields": [
+    {
+      "name": "application_id",
+      "type": "string",
+      "doc": "UUID de la demande de prêt"
+    },
+    {
+      "name": "decision_id",
+      "type": "string",
+      "doc": "UUID unique de cette décision"
+    },
+    {
+      "name": "assessment_id",
+      "type": "string",
+      "doc": "UUID de l'évaluation de risque associée"
+    },
+    {
+      "name": "decision_timestamp",
+      "type": "long",
+      "logicalType": "timestamp-millis",
+      "doc": "Horodatage de la décision"
+    },
+    {
+      "name": "status",
+      "type": {
+        "type": "enum",
+        "name": "DecisionStatus",
+        "symbols": ["APPROVED", "REJECTED", "MANUAL_REVIEW_REQUIRED"],
+        "doc": "Statut de la décision finale"
+      }
+    },
+    {
+      "name": "approved_amount",
+      "type": ["null", "double"],
+      "default": null,
+      "doc": "Montant approuvé (null si rejeté)"
+    },
+    {
+      "name": "interest_rate",
+      "type": ["null", "double"],
+      "default": null,
+      "doc": "Taux d'intérêt proposé (null si rejeté)"
+    },
+    {
+      "name": "decision_rationale",
+      "type": "string",
+      "doc": "Explication de la décision pour le client"
+    },
+    {
+      "name": "rejection_reasons",
+      "type": {
+        "type": "array",
+        "items": "string"
+      },
+      "default": [],
+      "doc": "Liste des raisons de rejet (vide si approuvé)"
+    },
+    {
+      "name": "risk_score_at_decision",
+      "type": "int",
+      "doc": "Score de risque au moment de la décision"
+    },
+    {
+      "name": "decided_by",
+      "type": "string",
+      "default": "agent-loan-officer",
+      "doc": "Identifiant de l'agent ou humain ayant pris la décision"
+    },
+    {
+      "name": "requires_human_approval",
+      "type": "boolean",
+      "default": false,
+      "doc": "Indique si une validation humaine est requise"
+    }
+  ]
+}
