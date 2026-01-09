@@ -17,7 +17,9 @@ import structlog
 from dotenv import load_dotenv
 from langchain_anthropic import ChatAnthropic
 from langchain_core.messages import HumanMessage, SystemMessage
-from pydantic import BaseModel, ValidationError
+from langchain_core.output_parsers import PydanticOutputParser
+from langchain_core.exceptions import OutputParserException
+from pydantic import BaseModel, Field, ValidationError
 
 from src.shared.kafka_client import KafkaProducerClient
 from src.shared.models import LoanApplication, EmploymentStatus
@@ -26,6 +28,10 @@ from src.shared.prompts import INTAKE_AGENT_SYSTEM_PROMPT
 load_dotenv()
 logger = structlog.get_logger()
 
+# Modèle pour la validation sémantique
+class ValidationResult(BaseModel):
+    is_valid: bool = Field(description="Indique si la demande est valide")
+    reason: str = Field(description="La raison de la validation ou du rejet")
 
 class IntakeAgent:
     """
@@ -45,6 +51,8 @@ class IntakeAgent:
             temperature=float(os.getenv("INTAKE_AGENT_TEMPERATURE", "0.0")),
             api_key=os.getenv("ANTHROPIC_API_KEY"),
         )
+        self.parser = PydanticOutputParser(pydantic_object=ValidationResult)
+
         self.producer = KafkaProducerClient(
             topic="finance.loan.application.v1",
             schema_subject="finance.loan.application.v1-value",
@@ -82,10 +90,10 @@ class IntakeAgent:
             # Validation sémantique via LLM (vérifications logiques)
             validation_result = self._semantic_validation(application)
             
-            if not validation_result["is_valid"]:
+            if not validation_result.is_valid:
                 logger.warning(
                     "Semantic validation failed",
-                    reason=validation_result["reason"],
+                    reason=validation_result.reason,
                     application_id=application.application_id,
                 )
                 return None
@@ -103,8 +111,11 @@ class IntakeAgent:
             logger.error("Missing required field", field=str(e))
             return None
     
-    def _semantic_validation(self, application: LoanApplication) -> dict:
-        """Validation sémantique via LLM."""
+    def _semantic_validation(self, application: LoanApplication) -> ValidationResult:
+        """Validation sémantique via LLM avec parsing robuste."""
+
+        format_instructions = self.parser.get_format_instructions()
+
         messages = [
             SystemMessage(content=INTAKE_AGENT_SYSTEM_PROMPT),
             HumanMessage(content=f"""
@@ -114,19 +125,21 @@ Valide cette demande de prêt:
 - Statut emploi: {application.employment_status.value}
 - Dettes existantes: {application.existing_debts}
 
-Réponds UNIQUEMENT par JSON: {{"is_valid": true/false, "reason": "..."}}
+{format_instructions}
 """),
         ]
         
-        response = self.model.invoke(messages)
-        
-        # Parse la réponse (simplifié pour le squelette)
-        # En production, utiliser un output parser LangChain
         try:
-            import json
-            return json.loads(response.content)
-        except:
-            return {"is_valid": True, "reason": "Default pass"}
+            response = self.model.invoke(messages)
+            return self.parser.parse(response.content)
+        except OutputParserException as e:
+            logger.error("Failed to parse LLM validation response", error=str(e))
+            # Fail-safe: En cas d'erreur de parsing, on rejette par sécurité
+            # (Contrairement à l'implémentation précédente qui acceptait par défaut)
+            return ValidationResult(is_valid=False, reason="Validation system error: Invalid LLM output")
+        except Exception as e:
+            logger.error("LLM validation error", error=str(e))
+            return ValidationResult(is_valid=False, reason=f"System error: {str(e)}")
     
     def process_and_publish(self, raw_data: dict[str, Any]) -> bool:
         """

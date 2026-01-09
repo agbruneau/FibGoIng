@@ -1,18 +1,29 @@
 """
 AgentMeshKafka - Kafka Client Wrappers
 =======================================
-Wrappers pour Confluent Kafka Producer et Consumer
-avec support Schema Registry (Avro).
+Wrappers pour Confluent Kafka Producer et Consumer.
 
-Voir docs/01-ArchitectureDecisions.md (ADR-001, ADR-002).
+NOTE D'ARCHITECTURE:
+--------------------
+Bien que l'architecture (ADR-002) spécifie l'utilisation d'Avro et du Schema Registry,
+l'implémentation actuelle utilise un fallback JSON pour faciliter le développement local
+et les tests sans infrastructure lourde.
+
+État actuel:
+- Sérialisation: JSON (utf-8)
+- Validation Schema: Partielle (via Pydantic models en amont, pas de Schema Registry)
+
+Cible (TODO):
+- Intégrer `confluent_kafka.schema_registry`
+- Utiliser `AvroSerializer` et `AvroDeserializer`
 """
 
 import os
 from typing import Any, Generator, Optional
+import json
 
 import structlog
 from confluent_kafka import Producer, Consumer, KafkaError, KafkaException
-from confluent_kafka.serialization import SerializationContext, MessageField
 from dotenv import load_dotenv
 
 load_dotenv()
@@ -21,9 +32,10 @@ logger = structlog.get_logger()
 
 class KafkaProducerClient:
     """
-    Client Producer Kafka avec sérialisation Avro.
+    Client Producer Kafka.
     
-    Publie des messages dans un topic avec validation de schéma.
+    Actuellement implémenté avec sérialisation JSON.
+    Doit évoluer vers Avro + Schema Registry.
     """
     
     def __init__(
@@ -32,28 +44,28 @@ class KafkaProducerClient:
         schema_subject: Optional[str] = None,
     ):
         """
+        Initialise le producer Kafka.
+
         Args:
-            topic: Nom du topic Kafka
-            schema_subject: Subject dans le Schema Registry (optionnel)
+            topic: Nom du topic Kafka cible.
+            schema_subject: (Futur) Subject pour le Schema Registry Avro.
         """
         self.topic = topic
         self.schema_subject = schema_subject
         
         bootstrap_servers = os.getenv("KAFKA_BOOTSTRAP_SERVERS", "localhost:9092")
         
+        # Configuration standard du Producer pour la fiabilité
         self.producer = Producer({
             "bootstrap.servers": bootstrap_servers,
             "client.id": f"agentmesh-producer-{topic}",
-            "acks": "all",  # Attendre confirmation de tous les replicas
-            "retries": 3,
+            "acks": "all",  # Strong consistency: attendre tous les replicas
+            "retries": 3,   # Réessayer en cas d'erreur transitoire
             "retry.backoff.ms": 1000,
         })
         
-        # TODO: Configurer AvroSerializer avec Schema Registry
-        # self.serializer = AvroSerializer(schema_registry_client, schema_str)
-        
         logger.info(
-            "KafkaProducerClient initialized",
+            "KafkaProducerClient initialized (JSON Mode)",
             topic=topic,
             bootstrap_servers=bootstrap_servers,
         )
@@ -69,16 +81,15 @@ class KafkaProducerClient:
         
         Args:
             key: Clé de partitionnement (ex: application_id)
-            value: Payload du message (dict)
-            headers: Headers optionnels
+            value: Payload du message (dict qui sera converti en JSON)
+            headers: Headers optionnels pour le traçage (OpenTelemetry, etc.)
             
         Returns:
-            True si production réussie
+            bool: True si le message a été mis dans le buffer d'envoi avec succès.
+                  Note: La confirmation réelle est asynchrone via _delivery_callback.
         """
         try:
-            # TODO: Utiliser AvroSerializer pour la sérialisation
-            # Pour le squelette, on utilise JSON
-            import json
+            # Sérialisation JSON (Fallback temporaire au lieu d'Avro)
             serialized_value = json.dumps(value).encode("utf-8")
             
             kafka_headers = []
@@ -93,17 +104,25 @@ class KafkaProducerClient:
                 callback=self._delivery_callback,
             )
             
-            # Flush pour garantir l'envoi
-            self.producer.flush(timeout=10)
+            # Flush pour s'assurer que les messages partent immédiatement (pour ce POC)
+            # En production haute performance, on ferait moins de flush.
+            messages_in_queue = self.producer.flush(timeout=10)
             
+            if messages_in_queue > 0:
+                logger.warning("Producer flush timeout, some messages might not be delivered")
+                return False
+
             return True
             
         except KafkaException as e:
             logger.error("Kafka produce error", error=str(e), topic=self.topic)
             return False
+        except Exception as e:
+            logger.error("Unexpected error during produce", error=str(e), topic=self.topic)
+            return False
     
     def _delivery_callback(self, err, msg):
-        """Callback appelé après delivery."""
+        """Callback appelé par librdkafka après tentative d'envoi."""
         if err is not None:
             logger.error(
                 "Message delivery failed",
@@ -119,16 +138,17 @@ class KafkaProducerClient:
             )
     
     def close(self):
-        """Ferme le producer."""
+        """Ferme proprement le producer."""
         self.producer.flush()
         logger.info("KafkaProducerClient closed", topic=self.topic)
 
 
 class KafkaConsumerClient:
     """
-    Client Consumer Kafka avec désérialisation Avro.
+    Client Consumer Kafka.
     
-    Consomme des messages depuis un topic avec validation de schéma.
+    Actuellement implémenté avec désérialisation JSON.
+    Doit évoluer vers Avro + Schema Registry.
     """
     
     def __init__(
@@ -138,10 +158,12 @@ class KafkaConsumerClient:
         auto_offset_reset: str = "earliest",
     ):
         """
+        Initialise le consumer Kafka.
+
         Args:
-            topic: Nom du topic Kafka
-            group_id: ID du consumer group
-            auto_offset_reset: "earliest" ou "latest"
+            topic: Nom du topic à écouter.
+            group_id: ID du groupe de consommateurs (pour le load balancing).
+            auto_offset_reset: Comportement si pas d'offset ('earliest' ou 'latest').
         """
         self.topic = topic
         self.group_id = group_id
@@ -159,10 +181,8 @@ class KafkaConsumerClient:
         
         self.consumer.subscribe([topic])
         
-        # TODO: Configurer AvroDeserializer avec Schema Registry
-        
         logger.info(
-            "KafkaConsumerClient initialized",
+            "KafkaConsumerClient initialized (JSON Mode)",
             topic=topic,
             group_id=group_id,
             bootstrap_servers=bootstrap_servers,
@@ -173,36 +193,36 @@ class KafkaConsumerClient:
         timeout: float = 1.0,
     ) -> Generator[Any, None, None]:
         """
-        Générateur qui yield les messages du topic.
+        Générateur infini qui yield les messages du topic.
         
         Args:
-            timeout: Timeout de poll en secondes
+            timeout: Temps d'attente (polling) en secondes.
             
         Yields:
-            Messages désérialisés
+            MessageWrapper: Objet contenant value, key, topic, etc.
         """
         while True:
             msg = self.consumer.poll(timeout=timeout)
             
             if msg is None:
+                # Pas de message reçu pendant le timeout
                 yield None
                 continue
             
             if msg.error():
                 if msg.error().code() == KafkaError._PARTITION_EOF:
-                    logger.debug("End of partition reached")
+                    logger.debug("End of partition reached", topic=msg.topic())
                     continue
                 else:
                     logger.error("Consumer error", error=msg.error())
+                    # On lève l'exception pour que l'agent puisse décider d'arrêter ou de restart
                     raise KafkaException(msg.error())
             
-            # Désérialiser le message
-            # TODO: Utiliser AvroDeserializer
             try:
-                import json
+                # Désérialisation JSON (Fallback)
                 value = json.loads(msg.value().decode("utf-8"))
                 
-                # Créer un wrapper avec les métadonnées
+                # Wrapper simple pour imiter l'interface objet du message Kafka
                 class MessageWrapper:
                     def __init__(self, value, key, topic, partition, offset):
                         self._value = value
@@ -211,20 +231,11 @@ class KafkaConsumerClient:
                         self._partition = partition
                         self._offset = offset
                     
-                    def value(self):
-                        return self._value
-                    
-                    def key(self):
-                        return self._key
-                    
-                    def topic(self):
-                        return self._topic
-                    
-                    def partition(self):
-                        return self._partition
-                    
-                    def offset(self):
-                        return self._offset
+                    def value(self): return self._value
+                    def key(self): return self._key
+                    def topic(self): return self._topic
+                    def partition(self): return self._partition
+                    def offset(self): return self._offset
                 
                 wrapper = MessageWrapper(
                     value=value,
@@ -243,12 +254,15 @@ class KafkaConsumerClient:
                 
                 yield wrapper
                 
+            except json.JSONDecodeError as e:
+                logger.error("JSON Deserialization error", error=str(e), payload=msg.value())
+                # En prod, il faudrait envoyer ce message vers une Dead Letter Queue (DLQ)
+                continue
             except Exception as e:
-                logger.error("Deserialization error", error=str(e))
-                # TODO: Publier dans Dead Letter Queue
+                logger.error("Unexpected error during consumption", error=str(e))
                 continue
     
     def close(self):
-        """Ferme le consumer."""
+        """Ferme proprement le consumer."""
         self.consumer.close()
         logger.info("KafkaConsumerClient closed", topic=self.topic)
