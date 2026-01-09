@@ -95,9 +95,27 @@ from langchain_core.messages import HumanMessage, SystemMessage
 from src.shared.kafka_client import KafkaConsumerClient, KafkaProducerClient
 from src.shared.models import RiskAssessment, LoanDecision, DecisionStatus
 from src.shared.prompts import DECISION_AGENT_SYSTEM_PROMPT
+from src.shared.logging_config import (
+    configure_logging,
+    get_logger,
+    set_correlation_id,
+    set_application_id,
+    LoggingContext,
+)
+from src.shared.metrics import (
+    start_metrics_server,
+    record_decision,
+    record_kafka_message,
+    record_processing_time,
+    set_agent_info,
+    TimingContext,
+)
 
 load_dotenv()
-logger = structlog.get_logger()
+
+# Configurer le logging structuré
+configure_logging(agent_id="agent-loan-officer")
+logger = get_logger()
 
 
 class DecisionAgent:
@@ -167,6 +185,7 @@ class DecisionAgent:
     THRESHOLD_HIGH_VALUE = 100000  # Montant nécessitant revue humaine
     
     def __init__(self):
+        """Initialise le DecisionAgent avec LLM, Kafka, et observabilité."""
         self.model = ChatAnthropic(
             model=os.getenv("DECISION_AGENT_MODEL", "claude-3-5-sonnet-20241022"),
             temperature=float(os.getenv("DECISION_AGENT_TEMPERATURE", "0.1")),
@@ -184,6 +203,18 @@ class DecisionAgent:
         )
         
         self.agent_id = "agent-loan-officer"
+        
+        # Démarrer le serveur de métriques Prometheus (port différent du RiskAgent)
+        metrics_port = int(os.getenv("METRICS_PORT", "9092"))
+        start_metrics_server(port=metrics_port)
+        
+        # Enregistrer les infos de l'agent
+        set_agent_info(
+            agent_id=self.agent_id,
+            version="1.0.0",
+            model=os.getenv("DECISION_AGENT_MODEL", "claude-3-5-sonnet-20241022"),
+        )
+        
         logger.info("DecisionAgent initialized", agent_id=self.agent_id)
     
     # -------------------------------------------------------------------------
@@ -383,20 +414,47 @@ Réponds en JSON:
                     continue
                 
                 try:
+                    # Extraire le correlation_id des headers
+                    correlation_id = self.consumer.extract_correlation_id(message)
+                    
                     # Désérialiser l'évaluation
                     assessment = RiskAssessment(**message.value())
                     
-                    # Prendre la décision
-                    decision = self.make_decision(assessment)
-                    
-                    # Publier la décision
-                    self.producer.produce(
-                        key=decision.application_id,
-                        value=decision.model_dump(),
-                    )
+                    # Configurer le contexte de logging
+                    with LoggingContext(
+                        correlation_id=correlation_id,
+                        application_id=assessment.application_id,
+                    ):
+                        # Prendre la décision
+                        with TimingContext(self.agent_id, "decide"):
+                            decision = self.make_decision(assessment)
+                        
+                        # Enregistrer la métrique de décision
+                        record_decision(
+                            status=decision.status.value,
+                            agent_id=self.agent_id,
+                        )
+                        
+                        # Publier la décision
+                        self.producer.produce(
+                            key=decision.application_id,
+                            value=decision.model_dump(),
+                        )
+                        
+                        # Enregistrer le message traité
+                        record_kafka_message(
+                            topic="risk.scoring.result.v1",
+                            agent_id=self.agent_id,
+                            status="success",
+                        )
                     
                 except Exception as e:
                     logger.error("Error processing message", error=str(e))
+                    record_kafka_message(
+                        topic="risk.scoring.result.v1",
+                        agent_id=self.agent_id,
+                        status="error",
+                    )
                     # TODO: Publier dans Dead Letter Queue
                     
         except KeyboardInterrupt:

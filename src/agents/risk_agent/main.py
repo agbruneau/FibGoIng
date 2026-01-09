@@ -95,9 +95,27 @@ from langgraph.graph import StateGraph, END
 from src.shared.kafka_client import KafkaConsumerClient, KafkaProducerClient
 from src.shared.models import LoanApplication, RiskAssessment, RiskLevel
 from src.shared.prompts import RISK_AGENT_SYSTEM_PROMPT
+from src.shared.logging_config import (
+    configure_logging,
+    get_logger,
+    set_correlation_id,
+    set_application_id,
+    LoggingContext,
+)
+from src.shared.metrics import (
+    start_metrics_server,
+    record_risk_score,
+    record_kafka_message,
+    record_processing_time,
+    set_agent_info,
+    TimingContext,
+)
 
 load_dotenv()
-logger = structlog.get_logger()
+
+# Configurer le logging structuré
+configure_logging(agent_id="agent-risk-analyst")
+logger = get_logger()
 
 
 class RiskAgent:
@@ -153,6 +171,7 @@ class RiskAgent:
     """
     
     def __init__(self):
+        """Initialise le RiskAgent avec LLM, Kafka, et observabilité."""
         self.model = ChatAnthropic(
             model=os.getenv("RISK_AGENT_MODEL", "claude-sonnet-4-20250514"),
             temperature=float(os.getenv("RISK_AGENT_TEMPERATURE", "0.2")),
@@ -170,6 +189,18 @@ class RiskAgent:
         )
         
         self.agent_id = "agent-risk-analyst"
+        
+        # Démarrer le serveur de métriques Prometheus
+        metrics_port = int(os.getenv("METRICS_PORT", "9091"))
+        start_metrics_server(port=metrics_port)
+        
+        # Enregistrer les infos de l'agent
+        set_agent_info(
+            agent_id=self.agent_id,
+            version="1.0.0",
+            model=os.getenv("RISK_AGENT_MODEL", "claude-sonnet-4-20250514"),
+        )
+        
         logger.info("RiskAgent initialized", agent_id=self.agent_id)
     
     # -------------------------------------------------------------------------
@@ -312,6 +343,14 @@ class RiskAgent:
             model_used=os.getenv("RISK_AGENT_MODEL", "claude-opus-4.5"),
         )
         
+        # Enregistrer les métriques
+        record_risk_score(risk_score, self.agent_id)
+        record_processing_time(
+            duration_seconds=processing_time / 1000.0,
+            agent_id=self.agent_id,
+            operation="analyze",
+        )
+        
         logger.info(
             "Risk assessment completed",
             application_id=application.application_id,
@@ -406,20 +445,41 @@ Cite les politiques utilisées.
                     continue
                 
                 try:
+                    # Extraire le correlation_id des headers
+                    correlation_id = self.consumer.extract_correlation_id(message)
+                    
                     # Désérialiser l'application
                     application = LoanApplication(**message.value())
                     
-                    # Analyser et scorer
-                    assessment = self.analyze_application(application)
-                    
-                    # Publier le résultat
-                    self.producer.produce(
-                        key=assessment.application_id,
-                        value=assessment.model_dump(),
-                    )
+                    # Configurer le contexte de logging
+                    with LoggingContext(
+                        correlation_id=correlation_id,
+                        application_id=application.application_id,
+                    ):
+                        # Analyser et scorer
+                        with TimingContext(self.agent_id, "analyze"):
+                            assessment = self.analyze_application(application)
+                        
+                        # Publier le résultat
+                        self.producer.produce(
+                            key=assessment.application_id,
+                            value=assessment.model_dump(),
+                        )
+                        
+                        # Enregistrer le message traité
+                        record_kafka_message(
+                            topic="finance.loan.application.v1",
+                            agent_id=self.agent_id,
+                            status="success",
+                        )
                     
                 except Exception as e:
                     logger.error("Error processing message", error=str(e))
+                    record_kafka_message(
+                        topic="finance.loan.application.v1",
+                        agent_id=self.agent_id,
+                        status="error",
+                    )
                     # TODO: Publier dans Dead Letter Queue
                     
         except KeyboardInterrupt:
