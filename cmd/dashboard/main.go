@@ -123,20 +123,20 @@ func NewDashboard(eventBus *EventBus, consumer *kafka.Consumer) (*Dashboard, err
 // RegisterRoutes enregistre les routes HTTP
 func (d *Dashboard) RegisterRoutes(mux *http.ServeMux) {
 	// Pages
-	mux.HandleFunc("GET /", d.handleIndex)
-	mux.HandleFunc("GET /events", d.handleEvents)
-	mux.HandleFunc("GET /stats", d.handleStats)
-	mux.HandleFunc("GET /docs", d.handleDocs)
-	mux.HandleFunc("GET /docs/{pattern...}", d.handleDocs)
+	mux.HandleFunc("/", d.handleIndex)
+	mux.HandleFunc("/events", d.handleEvents)
+	mux.HandleFunc("/stats", d.handleStats)
+	mux.HandleFunc("/docs", d.handleDocs)
+	mux.HandleFunc("/docs/", d.handleDocs)
 
 	// SSE endpoint
-	mux.HandleFunc("GET /api/sse", d.handleSSE)
+	mux.HandleFunc("/api/sse", d.handleSSE)
 
 	// API stats
-	mux.HandleFunc("GET /api/stats", d.handleAPIStats)
+	mux.HandleFunc("/api/stats", d.handleAPIStats)
 
 	// Fichiers statiques
-	mux.Handle("GET /static/", http.FileServer(http.FS(staticFS)))
+	mux.Handle("/static/", http.FileServer(http.FS(staticFS)))
 }
 
 // handleIndex affiche la page d'accueil
@@ -339,7 +339,7 @@ func main() {
 	dashboard.RegisterRoutes(mux)
 
 	// Ajouter l'endpoint des métriques Prometheus
-	mux.Handle("GET /metrics", promhttp.Handler())
+	mux.Handle("/metrics", promhttp.Handler())
 
 	// Créer le serveur HTTP
 	server := &http.Server{

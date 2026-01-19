@@ -1,0 +1,142 @@
+# =============================================================================
+# kafka-eda-lab - Docker Compose Services
+# Services applicatifs (à utiliser avec docker-compose.yml)
+# Usage: docker compose -f docker-compose.yml -f docker-compose.services.yml up -d
+# =============================================================================
+
+version: '3.8'
+
+services:
+  # ===========================================================================
+  # SERVICE QUOTATION
+  # ===========================================================================
+  quotation:
+    build:
+      context: .
+      dockerfile: Dockerfile.services
+      target: quotation
+    container_name: kafka-eda-quotation
+    depends_on:
+      kafka:
+        condition: service_healthy
+    ports:
+      - "8084:8081"
+    environment:
+      HTTP_PORT: "8081"
+      DB_PATH: "/data/quotation.db"
+      KAFKA_BROKERS: "kafka:9092"
+      SCHEMA_REGISTRY_URL: "http://schema-registry:8081"
+    volumes:
+      - quotation-data:/data
+    networks:
+      - kafka-eda-network
+    restart: unless-stopped
+
+  # ===========================================================================
+  # SERVICE SOUSCRIPTION
+  # ===========================================================================
+  souscription:
+    build:
+      context: .
+      dockerfile: Dockerfile.services
+      target: souscription
+    container_name: kafka-eda-souscription
+    depends_on:
+      kafka:
+        condition: service_healthy
+      quotation:
+        condition: service_started
+    ports:
+      - "8085:8082"
+    environment:
+      HTTP_PORT: "8082"
+      DB_PATH: "/data/souscription.db"
+      KAFKA_BROKERS: "kafka:9092"
+      SCHEMA_REGISTRY_URL: "http://schema-registry:8081"
+    volumes:
+      - souscription-data:/data
+    networks:
+      - kafka-eda-network
+    restart: unless-stopped
+
+  # ===========================================================================
+  # SERVICE RECLAMATION
+  # ===========================================================================
+  reclamation:
+    build:
+      context: .
+      dockerfile: Dockerfile.services
+      target: reclamation
+    container_name: kafka-eda-reclamation
+    depends_on:
+      kafka:
+        condition: service_healthy
+      souscription:
+        condition: service_started
+    ports:
+      - "8086:8083"
+    environment:
+      HTTP_PORT: "8083"
+      DB_PATH: "/data/reclamation.db"
+      KAFKA_BROKERS: "kafka:9092"
+      SCHEMA_REGISTRY_URL: "http://schema-registry:8081"
+    volumes:
+      - reclamation-data:/data
+    networks:
+      - kafka-eda-network
+    restart: unless-stopped
+
+  # ===========================================================================
+  # DASHBOARD
+  # ===========================================================================
+  dashboard:
+    build:
+      context: .
+      dockerfile: Dockerfile.services
+      target: dashboard
+    container_name: kafka-eda-dashboard
+    depends_on:
+      kafka:
+        condition: service_healthy
+    ports:
+      - "8080:8080"
+    environment:
+      HTTP_PORT: "8080"
+      KAFKA_BROKERS: "kafka:9092"
+    networks:
+      - kafka-eda-network
+    restart: unless-stopped
+
+  # ===========================================================================
+  # SIMULATOR (optionnel, démarrer manuellement)
+  # ===========================================================================
+  simulator:
+    build:
+      context: .
+      dockerfile: Dockerfile.services
+      target: simulator
+    container_name: kafka-eda-simulator
+    depends_on:
+      quotation:
+        condition: service_started
+      souscription:
+        condition: service_started
+      reclamation:
+        condition: service_started
+    environment:
+      SIMULATION_RATE: "1.0"
+    networks:
+      - kafka-eda-network
+    profiles:
+      - simulation
+
+# =============================================================================
+# VOLUMES
+# =============================================================================
+volumes:
+  quotation-data:
+    name: kafka-eda-quotation-data
+  souscription-data:
+    name: kafka-eda-souscription-data
+  reclamation-data:
+    name: kafka-eda-reclamation-data
