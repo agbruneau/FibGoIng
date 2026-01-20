@@ -2,45 +2,63 @@
 
 ## Vue d'ensemble
 
-Ce document définit le plan d'implémentation détaillé du projet **EDA-Lab** selon une approche **Test Driven Development (TDD)** avec progression incrémentale.
+Ce document définit le plan d'implémentation du projet **EDA-Lab** selon une approche **Test Driven Development (TDD)** avec progression incrémentale.
 
 **Principes directeurs :**
-
 - Chaque étape produit du code fonctionnel et testé
-- Tests avec données réelles et vrais appels API (testcontainers-go)
+- Tests avec données réelles (testcontainers-go)
 - Aucun code orphelin - intégration continue
 - Progression sans sauts de complexité
 
 ---
 
-## Terminologie et correspondance
+## Relation avec PRD.MD
 
-> **Relation avec PRD.MD:**
->
-> - Ce document détaille les **Phases techniques (0-8)** pour construire le MVP
-> - Le MVP correspond à l'**Itération 1 (Pub/Sub)** du PRD.MD
-> - Les itérations 2-8 du PRD.MD (Event Sourcing, CQRS, etc.) seront documentées dans des plans séparés
+| Document | Contenu |
+|----------|---------|
+| **PRD.MD** | QUOI construire (événements, domaines, architecture) |
+| **PLAN.MD** | COMMENT construire (phases techniques, prompts Claude Code) |
+
+> L'**Itération 1 (MVP Pub/Sub)** du PRD.MD est construite via les **Phases 0-8** de ce document.
+
+---
+
+## Structure des phases
+
+| Phase | Nom | Objectif |
+|-------|-----|----------|
+| 0 | Infrastructure | Docker Compose, Kafka, PostgreSQL, Schema Registry |
+| 1 | Fondations Go | Structure monorepo, bibliothèques partagées |
+| 2 | Schémas Avro | Définition et enregistrement des schémas |
+| 3 | Producteur | Service Simulator - génération d'événements |
+| 4 | Consommateur | Service Bancaire - consommation et traitement |
+| 5 | Gateway | API REST + WebSocket |
+| 6 | Observabilité | Prometheus, Grafana, métriques |
+| 7 | Web UI | Interface React + React Flow |
+| 8 | Intégration | Tests E2E, scénarios complets |
+
+---
+
+## Convention TDD
+
+Chaque sous-étape suit le cycle :
 
 ```
-PRD.MD: Itération 1 (MVP Pub/Sub) = Ce document: Phases 0-8
-PRD.MD: Itération 2+ = Plans futurs (PLAN-PHASE2.MD, etc.)
+1. RED    : Écrire le test qui échoue
+2. GREEN  : Implémenter le minimum pour passer
+3. REFACTOR : Améliorer sans changer le comportement
 ```
 
 ---
 
-## Structure des phases techniques
+## Convention CHECKPOINT
 
-| Phase | Nom            | Objectif                                           |
-| ----- | -------------- | -------------------------------------------------- |
-| 0     | Infrastructure | Docker Compose, Kafka, PostgreSQL, Schema Registry |
-| 1     | Fondations Go  | Structure monorepo, bibliothèques partagées        |
-| 2     | Schémas Avro   | Définition et enregistrement des schémas           |
-| 3     | Producteur     | Service Simulator - génération d'événements        |
-| 4     | Consommateur   | Service Bancaire - consommation et traitement      |
-| 5     | Gateway        | API REST + WebSocket                               |
-| 6     | Observabilité  | Prometheus, Grafana, métriques                     |
-| 7     | Web UI         | Interface React + React Flow                       |
-| 8     | Intégration    | Tests E2E, scénarios complets                      |
+Chaque phase se termine par un checkpoint avec :
+- Commandes de validation à exécuter
+- Checklist des critères
+- Procédure en cas d'échec
+
+**Ne jamais passer à la phase suivante sans valider le checkpoint.**
 
 ---
 
@@ -48,279 +66,154 @@ PRD.MD: Itération 2+ = Plans futurs (PLAN-PHASE2.MD, etc.)
 
 ## Objectif
 
-Mettre en place l'infrastructure Docker Compose avec Kafka (KRaft), Schema Registry et PostgreSQL fonctionnels et testables.
+Mettre en place l'infrastructure Docker Compose avec Kafka (KRaft), Schema Registry et PostgreSQL.
 
 ---
 
-### Étape 0.1 : Structure du projet et Docker Compose minimal
+### Étape 0.1 : Structure du projet
 
-#### Sous-étape 0.1.1 : Création de la structure de répertoires
-
-**Contexte :** Créer la structure de base du monorepo selon le PRD.MD.
-
-````text
-PROMPT CLAUDE CODE - Étape 0.1.1
-
-Crée la structure de répertoires suivante pour le projet EDA-Lab :
-
-eda-lab/
-├── services/
-│   ├── bancaire/
-│   ├── simulator/
-│   └── gateway/
-├── schemas/
-│   └── bancaire/
-├── web-ui/
-├── infra/
-│   ├── kafka/
-│   ├── grafana/
-│   └── prometheus/
-├── scenarios/
-├── scripts/
-├── tests/
-│   ├── integration/
-│   └── e2e/
-├── .gitignore
-├── Makefile
-└── README.md
-
-Crée également un fichier .gitignore approprié pour Go, Node.js et Docker.
-Le README.md doit contenir une brève description du projet et les prérequis (Docker Desktop, Go 1.21+, Node.js 20 LTS).
-
-Ne crée pas de code source Go ou React pour l'instant - uniquement la structure et les fichiers de configuration de base.
-
-Crée également un fichier `go.work` à la racine pour le workspace Go monorepo :
-```go
-go 1.21
-
-use (
-    ./pkg/config
-    ./pkg/kafka
-    ./pkg/database
-    ./pkg/events
-    ./pkg/observability
-    ./services/simulator
-    ./services/bancaire
-    ./services/gateway
-    ./tests/integration
-)
-````
-
-````
-
----
-
-#### Sous-étape 0.1.2 : Docker Compose - Kafka KRaft
-
-**Contexte :** Configurer Kafka en mode KRaft (sans ZooKeeper) avec Confluent Platform Community.
+#### 0.1.1 : Création de la structure de répertoires
 
 ```text
-PROMPT CLAUDE CODE - Étape 0.1.2
+PROMPT CLAUDE CODE
 
-Dans le répertoire infra/, crée un fichier docker-compose.yml avec un broker Kafka en mode KRaft.
+Crée la structure de répertoires pour EDA-Lab selon PRD.MD section 10.
+
+Inclure :
+- services/ (bancaire, simulator, gateway)
+- schemas/bancaire/
+- pkg/ (config, kafka, database, events, observability)
+- infra/, scripts/, tests/, web-ui/, scenarios/
+- .gitignore (Go, Node.js, Docker)
+- go.work avec tous les modules
+- README.md minimal
+
+Ne pas créer de code source - uniquement la structure.
+```
+
+---
+
+#### 0.1.2 : Docker Compose - Kafka KRaft
+
+```text
+PROMPT CLAUDE CODE
+
+Crée infra/docker-compose.yml avec Kafka en mode KRaft.
 
 Spécifications :
 - Image : confluentinc/cp-kafka:7.5.0
-- Mode KRaft (sans ZooKeeper) - utilise KAFKA_KRAFT_CLUSTER_ID
-- Port externe : 9092 (PLAINTEXT)
-- Port interne : 29092 (pour communication inter-conteneurs)
-- Configuration des listeners appropriée pour Windows/WSL2
-- Volume persistant pour les données Kafka
+- Mode KRaft (KAFKA_KRAFT_CLUSTER_ID)
+- Ports : 9092 (externe), 29092 (interne)
+- Volume persistant
+- Healthcheck
 
-Ajoute un healthcheck pour vérifier que Kafka est prêt.
-
-Crée également un script scripts/wait-for-kafka.sh qui attend que Kafka soit disponible avant de continuer.
-
-Teste la configuration en démarrant le conteneur et en vérifiant qu'il est healthy.
-````
+Crée scripts/wait-for-kafka.sh pour attendre la disponibilité.
+Teste que le conteneur démarre en healthy.
+```
 
 ---
 
-#### Sous-étape 0.1.3 : Docker Compose - Schema Registry
-
-**Contexte :** Ajouter Confluent Schema Registry connecté à Kafka.
+#### 0.1.3 : Docker Compose - Schema Registry
 
 ```text
-PROMPT CLAUDE CODE - Étape 0.1.3
+PROMPT CLAUDE CODE
 
-Modifie infra/docker-compose.yml pour ajouter Schema Registry.
+Ajoute Schema Registry à docker-compose.yml.
 
 Spécifications :
 - Image : confluentinc/cp-schema-registry:7.5.0
 - Port : 8081
-- Connecté au broker Kafka de l'étape précédente
-- Healthcheck approprié
+- Connecté à Kafka
+- Healthcheck
 
-Crée un script scripts/test-schema-registry.sh qui :
-1. Attend que Schema Registry soit prêt
-2. Enregistre un schéma Avro de test via curl
-3. Récupère le schéma enregistré
-4. Vérifie que le schéma est correct
+Crée scripts/test-schema-registry.sh qui :
+1. Attend Schema Registry
+2. Enregistre un schéma de test
+3. Vérifie l'enregistrement
 
-Le schéma de test doit être simple :
-{
-  "type": "record",
-  "name": "TestEvent",
-  "namespace": "com.edalab.test",
-  "fields": [
-    {"name": "id", "type": "string"},
-    {"name": "timestamp", "type": "long"}
-  ]
-}
-
-Exécute le script pour valider que l'infrastructure fonctionne.
+Schéma de test : voir PRD.MD section 5.2 pour le namespace.
 ```
 
 ---
 
-#### Sous-étape 0.1.4 : Docker Compose - PostgreSQL
-
-**Contexte :** Ajouter PostgreSQL pour la persistance des services.
+#### 0.1.4 : Docker Compose - PostgreSQL
 
 ```text
-PROMPT CLAUDE CODE - Étape 0.1.4
+PROMPT CLAUDE CODE
 
-Modifie infra/docker-compose.yml pour ajouter PostgreSQL.
+Ajoute PostgreSQL à docker-compose.yml.
 
 Spécifications :
 - Image : postgres:16-alpine
 - Port : 5432
-- Base de données : edalab
-- Utilisateur : edalab / edalab_password
-- Volume persistant pour les données
-- Healthcheck approprié
+- Database : edalab
+- User : edalab / edalab_password
+- Volume persistant
+- Healthcheck
 
-Crée un fichier infra/postgres/init.sql qui :
-1. Crée le schéma 'bancaire'
-2. Crée une table de test 'bancaire.health_check' avec une colonne 'status'
-3. Insère une ligne de test
+Crée infra/postgres/init.sql :
+- Schéma 'bancaire'
+- Table health_check
 
-Crée un script scripts/test-postgres.sh qui :
-1. Attend que PostgreSQL soit prêt
-2. Exécute une requête SELECT sur la table health_check
-3. Affiche le résultat
-
-Exécute le script pour valider que PostgreSQL fonctionne.
+Crée scripts/test-postgres.sh pour valider.
 ```
 
 ---
 
-#### Sous-étape 0.1.5 : Makefile et scripts utilitaires
-
-**Contexte :** Créer les commandes make pour simplifier les opérations courantes.
+#### 0.1.5 : Makefile
 
 ```text
-PROMPT CLAUDE CODE - Étape 0.1.5
+PROMPT CLAUDE CODE
 
-Crée un Makefile à la racine du projet avec les targets suivantes :
+Crée un Makefile avec les targets :
 
 # Infrastructure
-make infra-up        : Démarre tous les conteneurs d'infrastructure
-make infra-down      : Arrête tous les conteneurs
-make infra-logs      : Affiche les logs de tous les conteneurs
-make infra-clean     : Supprime les volumes et repart de zéro
+infra-up, infra-down, infra-logs, infra-clean
 
-# Tests infrastructure
-make test-infra      : Exécute tous les scripts de test d'infrastructure
+# Tests
+test-infra, test-unit, test-integration, test-e2e
 
 # Kafka
-make kafka-topics    : Liste les topics Kafka
-make kafka-create-topic TOPIC=<name> : Crée un topic
+kafka-topics, kafka-create-topic TOPIC=<name>
 
 # Utilitaires
-make clean           : Nettoie les artefacts de build
-make help            : Affiche l'aide
+clean, help
 
-Crée également scripts/create-topics.sh qui crée les topics Kafka initiaux :
-- bancaire.compte.ouvert
-- bancaire.compte.ferme
-- bancaire.depot.effectue
-- bancaire.retrait.effectue
-- bancaire.virement.emis
-- bancaire.virement.recu
-- bancaire.paiement-prime.effectue
-- system.dlq
-
-Teste toutes les commandes make pour vérifier qu'elles fonctionnent correctement.
+Crée scripts/create-topics.sh avec les topics du PRD.MD section 4.
 ```
 
 ---
 
-### Étape 0.2 : Validation de l'infrastructure
+### Étape 0.2 : Validation infrastructure
 
-#### Sous-étape 0.2.1 : Test d'intégration infrastructure
+#### 0.2.1 : Test d'intégration Go
 
-**Contexte :** Créer un test Go qui valide toute l'infrastructure.
+```text
+PROMPT CLAUDE CODE
+
+Crée tests/integration/infrastructure_test.go
+
+Tests (avec infra Docker Compose réelle) :
+1. TestKafkaConnection : produce/consume un message
+2. TestSchemaRegistryConnection : register/get schema
+3. TestPostgreSQLConnection : query simple
+
+Module : github.com/edalab/tests/integration
+Dépendances : kafka-go, srclient, pgx/v5, testify
+```
 
 ---
 
 ## CHECKPOINT PHASE 0
 
-> **ARRÊT OBLIGATOIRE** : Ne pas passer à la Phase 1 tant que ce checkpoint n'est pas validé.
-
-### Critères de validation Phase 0
-
 ```bash
-# Exécuter ces commandes dans l'ordre:
-make infra-up                    # Doit démarrer sans erreur
-make test-infra                  # Tous les tests doivent passer
+make infra-up && make test-infra
 ```
 
-### Checklist Phase 0
-
-- [ ] `docker-compose up -d` démarre Kafka, Schema Registry, PostgreSQL
-- [ ] Kafka healthcheck passe (`docker-compose ps` montre "healthy")
-- [ ] Schema Registry accessible sur `http://localhost:8081`
-- [ ] PostgreSQL accessible avec psql ou client
-- [ ] Topics Kafka créés (`make kafka-topics` liste les topics)
-- [ ] Script `test-schema-registry.sh` passe
-- [ ] Script `test-postgres.sh` passe
-- [ ] Test Go `infrastructure_test.go` passe
-
-### En cas d'échec
-
-1. `make infra-logs` pour voir les erreurs
-2. `make infra-clean` pour nettoyer
-3. Vérifier les prérequis (Docker Desktop, WSL2, ressources)
-4. `make infra-up` pour redémarrer
-
----
-
-```text
-PROMPT CLAUDE CODE - Étape 0.2.1
-
-Crée un module Go dans tests/integration/ pour tester l'infrastructure.
-
-Fichier : tests/integration/go.mod
-- Module : github.com/edalab/tests/integration
-- Dépendances : testcontainers-go, confluent-kafka-go, pgx/v5, testify
-
-Fichier : tests/integration/infrastructure_test.go
-Crée des tests qui utilisent l'infrastructure Docker Compose existante (pas testcontainers pour cette étape) :
-
-1. TestKafkaConnection :
-   - Se connecte à Kafka sur localhost:9092
-   - Crée un topic de test
-   - Produit un message
-   - Consomme le message
-   - Vérifie le contenu
-
-2. TestSchemaRegistryConnection :
-   - Se connecte à Schema Registry sur localhost:8081
-   - Enregistre un schéma Avro
-   - Récupère le schéma par ID
-   - Vérifie la compatibilité
-
-3. TestPostgreSQLConnection :
-   - Se connecte à PostgreSQL
-   - Exécute une requête
-   - Vérifie le résultat
-
-Ajoute une target Makefile :
-make test-integration : Exécute les tests d'intégration (nécessite infra-up)
-
-Les tests doivent passer avec l'infrastructure démarrée via make infra-up.
-```
+**Checklist :**
+- [ ] Kafka, Schema Registry, PostgreSQL healthy
+- [ ] Topics créés (make kafka-topics)
+- [ ] Tests Go passent
 
 ---
 
@@ -328,453 +221,206 @@ Les tests doivent passer avec l'infrastructure démarrée via make infra-up.
 
 ## Objectif
 
-Créer les bibliothèques partagées Go pour Kafka, Avro et la configuration.
+Créer les bibliothèques partagées Go (pkg/*).
 
 ---
 
-### Étape 1.1 : Module partagé - Configuration
+### Étape 1.1 : pkg/config
 
-#### Sous-étape 1.1.1 : Structure du package pkg/config (TDD)
-
-**1. Définition du Test (RED)**
+#### 1.1.1 : Configuration (TDD)
 
 ```text
-PROMPT CLAUDE CODE - Étape 1.1.1 (Test)
+PROMPT CLAUDE CODE - RED
 
-Crée SEULEMENT le fichier de test pour la configuration.
-Fichier : pkg/config/go.mod
-- Module : github.com/edalab/pkg/config
+Crée pkg/config/config_test.go avec tests :
+1. TestLoadFromEnv_Success
+2. TestLoadFromEnv_MissingRequired
+3. TestValidate_ValidConfig
+4. TestValidate_InvalidConfig
 
-Fichier : pkg/config/config_test.go
-Défini les tests suivants qui DOIVENT échouer (fonctionnalités non implémentées) :
-
-1. TestLoadFromEnv_Success : Définit des variables d'environnement (KAFKA_BOOTSTRAP_SERVERS, etc.) et vérifie que LoadFromEnv() retourne la config correcte.
-2. TestLoadFromEnv_MissingRequired : Vérifie que LoadFromEnv() retourne une erreur si une variable obligatoire manque.
-3. TestValidate_ValidConfig : Construit une struct Config valide et vérifie que Validate() ne retourne pas d'erreur.
-4. TestValidate_InvalidConfig : Construit une struct Config invalide (ex: port 0) et vérifie que Validate() retourne une erreur.
-
-L'implémentation `config.go` ne doit contenir que les structs et des fonctions vides (panic ou return nil) pour permettre la compilation du test.
-Vérifie que `go test ./pkg/config/...` échoue (mais compile).
+Crée pkg/config/config.go avec structs vides.
+Les tests DOIVENT échouer.
 ```
 
-**2. Implémentation (GREEN)**
-
 ```text
-PROMPT CLAUDE CODE - Étape 1.1.1 (Impl)
+PROMPT CLAUDE CODE - GREEN
 
-Maintenant, implémente la logique de configuration pour faire passer les tests.
+Implémente pkg/config/config.go :
+- Structs : KafkaConfig, SchemaConfig, PostgresConfig, ServiceConfig
+- LoadFromEnv() avec os.Getenv
+- Validate() pour champs obligatoires
 
-Fichier : pkg/config/config.go
-Implémente :
-- Les structs (KafkaConfig, SchemaConfig, PostgresConfig, ServiceConfig)
-- LoadFromEnv() : Utilise `os.Getenv`
-- Validate() : Vérifie les champs obligatoires
-
-Vérifie que `go test ./pkg/config/...` passe avec succès.
+Tous les tests doivent passer.
 ```
 
 ---
 
-#### Sous-étape 1.1.2 : Fichiers de configuration par environnement (TDD)
-
-**1. Définition du Test (RED)**
+#### 1.1.2 : Fichiers YAML
 
 ```text
-PROMPT CLAUDE CODE - Étape 1.1.2 (Test)
+PROMPT CLAUDE CODE
 
-Crée un test d'intégration pour valider la présence des configurations.
+Crée config/local.yaml et config/docker.yaml.
+Valeurs selon PRD.MD section 5 (ports, hosts).
 
-Fichier : pkg/config/integration_test.go
-(Ajouter build tag //go:build integration)
-
-Tests :
-1. TestLoadLocalConfig : Tente de charger "config/local.yaml" et vérifie que :
-   - Kafka.BootstrapServers == "localhost:9092"
-   - Schema.URL == "http://localhost:8081"
-   - Postgres.Host == "localhost"
-
-2. TestLoadDockerConfig : Tente de charger "config/docker.yaml" et vérifie les valeurs Docker.
-
-Vérifie que ce test échoue (fichiers absents).
-```
-
-**2. Implémentation (GREEN)**
-
-```text
-PROMPT CLAUDE CODE - Étape 1.1.2 (Impl)
-
-Crée maintenant les fichiers de configuration pour faire passer les tests.
-
-Fichier : config/local.yaml
-kafka:
-  bootstrap_servers: "localhost:9092"
-  auto_offset_reset: "earliest"
-schema:
-  url: "http://localhost:8081"
-postgres:
-  host: "localhost"
-  port: 5432
-  database: "edalab"
-  user: "edalab"
-  password: "edalab_password"
-
-Fichier : config/docker.yaml
-kafka:
-  bootstrap_servers: "kafka:29092"
-  auto_offset_reset: "earliest"
-schema:
-  url: "http://schema-registry:8081"
-postgres:
-  host: "postgres"
-  port: 5432
-  database: "edalab"
-  user: "edalab"
-  password: "edalab_password"
-
-Assure-toi que `config.go` charge bien le YAML via `gopkg.in/yaml.v3` (ajoute la dépendance).
-Lance `go test ./pkg/config/... -tags=integration` pour valider.
+Ajoute LoadFromFile() à config.go avec gopkg.in/yaml.v3.
 ```
 
 ---
 
-### Étape 1.2 : Module partagé - Client Kafka
+### Étape 1.2 : pkg/kafka
 
-#### Sous-étape 1.2.1 : Producer Kafka avec Avro (TDD)
-
-**1. Définition du Test (RED)**
+#### 1.2.1 : Producer Avro (TDD)
 
 ```text
-PROMPT CLAUDE CODE - Étape 1.2.1 (Test)
+PROMPT CLAUDE CODE - RED
 
-Crée le module et les tests pour le Producer Kafka.
+Crée pkg/kafka/producer_test.go :
+1. TestNewAvroProducer_InvalidConfig
+2. TestProduce_Interface
 
-Fichier : pkg/kafka/go.mod
-- Module : github.com/edalab/pkg/kafka
-- Dépendances : confluent-kafka-go, srclient
-
-Fichier : pkg/kafka/producer_test.go
-Tests :
-1. TestNewAvroProducer_InvalidConfig : Checking validation.
-2. TestProduce_Interface : Vérifier que l'interface Producer existe (même si implémentation vide).
-3. TestProduce_Mock : Utiliser un mock pour vérifier que Produce appelle bien le Producer sous-jacent (si possible sans infra).
-
-Pour cette étape RED, crée définir l'interface et les structs dans `producer.go` mais LAISSE l'implémentation de `Produce` vide (return nil ou panic) et `NewAvroProducer` retourner nil.
-
-Le test doit échouer ou paniquer.
+Crée pkg/kafka/producer.go avec interface et structs vides.
 ```
 
-**2. Implémentation (GREEN)**
-
 ```text
-PROMPT CLAUDE CODE - Étape 1.2.1 (Impl)
+PROMPT CLAUDE CODE - GREEN
 
-Implémente le Producer Avro.
+Implémente Producer Avro :
+- NewAvroProducer : connexion Kafka + Schema Registry
+- Produce : serialize Avro, produce, flush
 
-Fichier : pkg/kafka/producer.go
-Implémente :
-- NewAvroProducer : Connexion Kafka + Schema Registry Client
-- Produce :
-  1. Récupération ID schéma (avec cache)
-  2. Sérialisation Avro
-  3. Production via confluent-kafka-go
-  4. Flush (synchrone pour le MVP)
-
-Fais passer les tests unitaires.
-(Les tests d'intégration avec infra réelle viendront à l'étape 1.2.3)
+Dépendances : kafka-go, srclient, hamba/avro/v2
 ```
 
 ---
 
-#### Sous-étape 1.2.2 : Consumer Kafka avec Avro (TDD)
-
-**1. Définition du Test (RED)**
+#### 1.2.2 : Consumer Avro (TDD)
 
 ```text
-PROMPT CLAUDE CODE - Étape 1.2.2 (Test)
+PROMPT CLAUDE CODE - RED
 
-Crée les tests pour le Consumer Kafka.
-
-Fichier : pkg/kafka/consumer_test.go
-Tests :
+Crée pkg/kafka/consumer_test.go :
 1. TestNewAvroConsumer_InvalidConfig
-2. TestConsume_Interface : Vérifier la signature du Handler.
+2. TestConsume_Interface
 
-Crée les interfaces et structs dans `consumer.go` mais SANS implémentation logique.
-Vérifie que les tests échouent.
+Structs et interfaces vides dans consumer.go.
 ```
 
-**2. Implémentation (GREEN)**
-
 ```text
-PROMPT CLAUDE CODE - Étape 1.2.2 (Impl)
+PROMPT CLAUDE CODE - GREEN
 
-Implémente le Consumer Avro.
-
-Fichier : pkg/kafka/consumer.go
-Implémente :
-- Subscribe (topics)
-- Consume (loop) :
-  - Poll messages
-  - Extract Schema ID (Wire format: Magic byte + 4 bytes ID)
-  - Deserialize
-  - Call Handler
-  - Commit offset
-
-Fais passer les tests de structure.
+Implémente Consumer Avro :
+- Subscribe(topics)
+- Consume(ctx, handler) : poll, deserialize, call handler, commit
 ```
 
 ---
 
-#### Sous-étape 1.2.3 : Tests d'intégration Producer-Consumer
-
-**Contexte :** Valider le flux complet production-consommation.
-
-````text
-#### Sous-étape 1.2.3 : Tests d'intégration Producer-Consumer (TDD - Verification)
-
-**1. Écriture du Test (RED/GREEN)**
+#### 1.2.3 : Test d'intégration Producer-Consumer
 
 ```text
-PROMPT CLAUDE CODE - Étape 1.2.3
+PROMPT CLAUDE CODE
 
-Fichier : pkg/kafka/integration_test.go
+Crée pkg/kafka/integration_test.go (build tag: integration)
 
-Crée un test d'intégration complet qui :
+TestProducerConsumerRoundTrip :
+- Producer envoie 10 messages
+- Consumer reçoit 10 messages
+- Vérifier contenu identique
 
-1. TestProducerConsumerRoundTrip :
-   - Crée un producteur
-   - Crée un consommateur avec un groupe unique
-   - Enregistre un schéma Avro de test
-   - Produit 10 messages
-   - Consomme les 10 messages
-   - Vérifie que tous les messages sont reçus correctement
-   - Vérifie les headers, timestamps, etc.
-
- Ces tests utilisent l'infrastructure Docker Compose réelle.
- Ajoute un build tag //go:build integration pour ces tests.
-
- Lance les tests : `go test ./pkg/kafka/... -tags=integration`
- Si ça échoue, DEBUG et CORRIGE le code existant (Refactor).
-````
-
----
-
-### Étape 1.3 : Module partagé - Client PostgreSQL
-
-#### Sous-étape 1.3.1 : Repository pattern avec pgx
-
-**Contexte :** Créer une abstraction pour l'accès à PostgreSQL.
-
-````text
-#### Sous-étape 1.3.1 : Repository pattern avec pgx (TDD)
-
-**1. Définition du Test (RED)**
-
-```text
-PROMPT CLAUDE CODE - Étape 1.3.1 (Test)
-
-Crée le module et les tests pour PostgreSQL.
-
-Fichier : pkg/database/go.mod
-- Module : github.com/edalab/pkg/database
-- Dépendances : pgx/v5, pgxpool
-
-Fichier : pkg/database/pool_test.go
-Tests :
-1. TestNewDBPool_InvalidConfig : Vérifie la validation.
-2. TestHealthCheck_Fail : Vérifie le comportement sans DB (mock ou mauvaise config).
-
-Fichier : pkg/database/pool.go
-Défini les structs et interfaces vides.
-
-Vérifie que les tests échouent.
-````
-
-**2. Implémentation (GREEN)**
-
-```text
-PROMPT CLAUDE CODE - Étape 1.3.1 (Impl)
-
-Implémente le client PostgreSQL.
-
-Fichier : pkg/database/pool.go
-Implémente :
-- NewDBPool : Connexion pgxpool
-- HealthCheck : Ping
-- WithTransaction : Helper pour transactions atomic
-
-Fichier : pkg/database/pool_test.go
-Ajoute les tests d'intégration (avec vraie DB) :
-1. TestNewDBPool_Success
-2. TestWithTransaction_Commit
-3. TestWithTransaction_Rollback
-
-Lance les tests.
+Utilise infrastructure Docker Compose.
 ```
 
 ---
 
-### Étape 1.4 : Module partagé - Observabilité
+### Étape 1.3 : pkg/database
 
-#### Sous-étape 1.4.1 : Métriques Prometheus
-
-**Contexte :** Créer les métriques communes pour tous les services.
-
-````text
-#### Sous-étape 1.4.1 : Métriques Prometheus (TDD)
-
-**1. Définition du Test (RED)**
+#### 1.3.1 : Pool PostgreSQL (TDD)
 
 ```text
-PROMPT CLAUDE CODE - Étape 1.4.1 (Test)
+PROMPT CLAUDE CODE - RED
 
-Crée le module d'observabilité et les tests de métriques.
+Crée pkg/database/pool_test.go :
+1. TestNewDBPool_InvalidConfig
+2. TestHealthCheck_Fail
 
-Fichier : pkg/observability/go.mod
-- Module : github.com/edalab/pkg/observability
-- Dépendances : prometheus/client_golang
-
-Fichier : pkg/observability/metrics_test.go
-Tests :
-1. TestRegisterMetrics_Success : Vérifie que l'appel ne panic pas.
-2. TestMetricsServer_Endpoint : Vérifie que le endpoint HTTP existe (return 404 pour l'instant).
-
-Fichier : pkg/observability/metrics.go
-- Déclare les variables globales (MessagesProduced...) mais sans initialisation correcte ou vides.
-- Fonctions vides.
-
-Vérifie que les tests échouent.
-````
-
-**2. Implémentation (GREEN)**
+Structs vides dans pool.go.
+```
 
 ```text
-PROMPT CLAUDE CODE - Étape 1.4.1 (Impl)
+PROMPT CLAUDE CODE - GREEN
 
-Implémente les métriques Prometheus.
+Implémente avec pgxpool :
+- NewDBPool : connexion pool
+- HealthCheck : ping
+- WithTransaction : helper transactions
 
-Fichier : pkg/observability/metrics.go
-- Initialise les vecteurs Prometheus (CounterVec, HistogramVec).
-- Implémente RegisterMetrics() pour enregistrer auprès de Prometheus.
-- Implémente NewMetricsServer() qui retourne un http.Server exposant /metrics.
-
-Vérifie que les tests passent et que /metrics retourne des données.
+Tests d'intégration avec vraie DB.
 ```
 
 ---
 
-#### Sous-étape 1.4.2 : Tracing OpenTelemetry
+### Étape 1.4 : pkg/observability
 
-**Contexte :** Ajouter le tracing distribué.
-
-````text
-#### Sous-étape 1.4.2 : Tracing OpenTelemetry (TDD)
-
-**1. Définition du Test (RED)**
+#### 1.4.1 : Métriques Prometheus (TDD)
 
 ```text
-PROMPT CLAUDE CODE - Étape 1.4.2 (Test)
+PROMPT CLAUDE CODE
 
-Crée les tests pour le module de tracing.
+Crée pkg/observability/metrics.go :
+- Vecteurs Prometheus (CounterVec, HistogramVec)
+- RegisterMetrics()
+- NewMetricsServer() exposant /metrics
 
-Fichier : pkg/observability/tracing_test.go
-Tests :
-1. TestStartSpan_CreatesSpan : Vérifie que l'appel génère un span non-nil.
-2. TestInjectExtractTraceContext_RoundTrip : Injecte un contexte dans un map, l'extrait, et vérifie la persistance du TraceID.
+Tests : vérifier que /metrics retourne des données.
+```
 
-Fichier : pkg/observability/tracing.go
-Défini les fonctions vides ou qui panic.
+---
 
-Vérifie que les tests échouent.
-````
-
-**2. Implémentation (GREEN)**
+#### 1.4.2 : Tracing OpenTelemetry (TDD)
 
 ```text
-PROMPT CLAUDE CODE - Étape 1.4.2 (Impl)
+PROMPT CLAUDE CODE
 
-Implémente le tracing avec OpenTelemetry.
-
-Fichier : pkg/observability/tracing.go
-Implémente :
-- InitTracer (avec Jaeger exporter)
+Crée pkg/observability/tracing.go :
+- InitTracer (Jaeger exporter)
 - StartSpan
-- InjectTraceContext / ExtractTraceContext (Propagators)
+- InjectTraceContext / ExtractTraceContext
 
-Ajoute les dépendances : go.opentelemetry.io/otel, otel/exporters/jaeger.
+Tests : round-trip du TraceID.
 ```
 
 ---
 
-#### Sous-étape 1.4.3 : Logging structuré
-
-**Contexte :** Configurer le logging structuré JSON.
-
-````text
-#### Sous-étape 1.4.3 : Logging structuré (TDD)
-
-**1. Définition du Test (RED)**
+#### 1.4.3 : Logging structuré (TDD)
 
 ```text
-PROMPT CLAUDE CODE - Étape 1.4.3 (Test)
+PROMPT CLAUDE CODE
 
-Crée les tests pour le logging structuré.
+Crée pkg/observability/logging.go :
+- InitLogger avec slog.NewJSONHandler
+- WithTraceID : enrichir logs avec trace context
 
-Fichier : pkg/observability/logging_test.go
-Tests :
-1. TestLogOutput_JSONFormat : Capture la sortie standard et vérifie que c'est du JSON valide.
-2. TestWithTraceID_IncludesTraceID : Vérifie que le logger enrichi ajoute bien le champ "trace_id".
-
-Fichier : pkg/observability/logging.go
-Fonctions vides.
-
-Vérifie que les tests échouent.
-````
-
-**2. Implémentation (GREEN)**
-
-```text
-PROMPT CLAUDE CODE - Étape 1.4.3 (Impl)
-
-Implémente le logging structuré avec slog.
-
-Fichier : pkg/observability/logging.go
-Implémente :
-- InitLogger : configurer `slog.NewJSONHandler`
-- WithTraceID : extraire le TraceID du context (si présent via OTel) et l'ajouter aux champs du logger.
-
-Vérifie que les tests passent.
-Lancer `go test ./pkg/observability/...` pour tout valider.
+Tests : vérifier format JSON et présence trace_id.
 ```
-
----
 
 ---
 
 ## CHECKPOINT PHASE 1
 
-> **ARRÊT OBLIGATOIRE** : Ne pas passer à la Phase 2 tant que ce checkpoint n'est pas validé.
-
-### Critères de validation Phase 1
-
 ```bash
-# Tous les packages doivent compiler et passer leurs tests:
 go test ./pkg/config/...
 go test ./pkg/kafka/...
 go test ./pkg/database/...
 go test ./pkg/observability/...
-go test ./pkg/kafka/... -tags=integration  # Avec infra-up
+go test ./pkg/kafka/... -tags=integration
 ```
 
-### Checklist Phase 1
-
-- [ ] pkg/config: LoadFromEnv et Validate fonctionnent
-- [ ] pkg/kafka: Producer et Consumer compilent
-- [ ] pkg/database: DBPool se connecte à PostgreSQL
-- [ ] pkg/observability: Métriques exposées sur /metrics
-- [ ] Tests unitaires passent (`go test ./pkg/...`)
+**Checklist :**
+- [ ] Tous les packages compilent
+- [ ] Tests unitaires passent
 - [ ] Tests d'intégration Kafka passent
-- [ ] go.work configure le workspace correctement
+- [ ] go.work configure le workspace
 
 ---
 
@@ -788,191 +434,74 @@ Définir et enregistrer les schémas Avro pour le domaine Bancaire.
 
 ### Étape 2.1 : Schémas du domaine Bancaire
 
-#### Sous-étape 2.1.1 : Schéma CompteOuvert
-
-**Contexte :** Créer le premier schéma Avro avec tous les champs métier.
+#### 2.1.1 : Schéma CompteOuvert
 
 ```text
-PROMPT CLAUDE CODE - Étape 2.1.1
+PROMPT CLAUDE CODE
 
-Crée le schéma Avro pour l'événement CompteOuvert.
+Crée schemas/bancaire/compte-ouvert.avsc
 
-Fichier : schemas/bancaire/compte-ouvert.avsc
-{
-  "type": "record",
-  "name": "CompteOuvert",
-  "namespace": "com.edalab.bancaire.events",
-  "doc": "Événement émis lors de l'ouverture d'un compte bancaire",
-  "fields": [
-    {
-      "name": "event_id",
-      "type": "string",
-      "doc": "Identifiant unique de l'événement (UUID)"
-    },
-    {
-      "name": "timestamp",
-      "type": {
-        "type": "long",
-        "logicalType": "timestamp-millis"
-      },
-      "doc": "Horodatage de l'événement"
-    },
-    {
-      "name": "compte_id",
-      "type": "string",
-      "doc": "Identifiant unique du compte"
-    },
-    {
-      "name": "client_id",
-      "type": "string",
-      "doc": "Identifiant du client titulaire"
-    },
-    {
-      "name": "type_compte",
-      "type": {
-        "type": "enum",
-        "name": "TypeCompte",
-        "symbols": ["COURANT", "EPARGNE", "JOINT"]
-      }
-    },
-    {
-      "name": "devise",
-      "type": "string",
-      "default": "EUR"
-    },
-    {
-      "name": "solde_initial",
-      "type": {
-        "type": "bytes",
-        "logicalType": "decimal",
-        "precision": 18,
-        "scale": 2
-      }
-    },
-    {
-      "name": "metadata",
-      "type": ["null", {
-        "type": "map",
-        "values": "string"
-      }],
-      "default": null
-    }
-  ]
-}
-
-Crée un script scripts/register-schemas.sh qui enregistre ce schéma dans Schema Registry.
-Vérifie l'enregistrement en récupérant le schéma via l'API.
-```
-
----
-
-#### Sous-étape 2.1.2 : Schémas DepotEffectue et VirementEmis
-
-**Contexte :** Compléter les schémas pour le MVP.
-
-```text
-PROMPT CLAUDE CODE - Étape 2.1.2
-
-Crée les schémas Avro supplémentaires.
-
-Fichier : schemas/bancaire/depot-effectue.avsc
-Champs :
-- event_id (string, UUID)
+Champs (voir PRD.MD section 4.1) :
+- event_id (string UUID)
 - timestamp (timestamp-millis)
-- compte_id (string)
-- montant (decimal 18,2)
+- compte_id, client_id (string)
+- type_compte (enum: COURANT, EPARGNE, JOINT)
 - devise (string, default EUR)
-- reference (string, référence de l'opération)
-- canal (enum: GUICHET, VIREMENT, CHEQUE, CARTE)
+- solde_initial (decimal 18,2)
 - metadata (optional map)
 
-Fichier : schemas/bancaire/virement-emis.avsc
-Champs :
-- event_id (string, UUID)
-- timestamp (timestamp-millis)
-- compte_source_id (string)
-- compte_destination_id (string)
-- montant (decimal 18,2)
-- devise (string)
-- motif (string)
-- reference (string)
-- statut (enum: INITIE, EN_COURS, COMPLETE, REJETE)
-- metadata (optional map)
+Namespace : com.edalab.bancaire.events
 
-Modifie scripts/register-schemas.sh pour enregistrer tous les schémas.
-Ajoute une validation qui vérifie que les schémas sont valides avant enregistrement.
+Crée scripts/register-schemas.sh pour l'enregistrement.
 ```
 
 ---
 
-#### Sous-étape 2.1.3 : Génération de code Go depuis Avro
-
-**Contexte :** Générer les structs Go depuis les schémas Avro.
+#### 2.1.2 : Schémas DepotEffectue et VirementEmis
 
 ```text
-PROMPT CLAUDE CODE - Étape 2.1.3
+PROMPT CLAUDE CODE
 
-Crée un module pour les types générés depuis Avro.
+Crée schemas/bancaire/depot-effectue.avsc et virement-emis.avsc
 
-Fichier : pkg/events/go.mod
-- Module : github.com/edalab/pkg/events
+Champs selon PRD.MD section 4.1.
+Mêmes conventions (namespace, types logiques).
 
-Utilise github.com/hamba/avro/v2 pour la génération.
-
-Crée un script scripts/generate-avro.sh qui :
-1. Parcourt tous les fichiers .avsc dans schemas/
-2. Génère les structs Go correspondants dans pkg/events/
-3. Ajoute les tags JSON et Avro
-
-Fichier attendu : pkg/events/bancaire.go
-package events
-
-type CompteOuvert struct {
-    EventID      string            `avro:"event_id" json:"event_id"`
-    Timestamp    time.Time         `avro:"timestamp" json:"timestamp"`
-    CompteID     string            `avro:"compte_id" json:"compte_id"`
-    ClientID     string            `avro:"client_id" json:"client_id"`
-    TypeCompte   TypeCompte        `avro:"type_compte" json:"type_compte"`
-    Devise       string            `avro:"devise" json:"devise"`
-    SoldeInitial decimal.Decimal   `avro:"solde_initial" json:"solde_initial"`
-    Metadata     map[string]string `avro:"metadata" json:"metadata,omitempty"`
-}
-
-// ... autres types
-
-Fichier : pkg/events/bancaire_test.go
-Tests TDD :
-1. TestCompteOuvert_Serialization_Avro
-2. TestCompteOuvert_Deserialization_Avro
-3. TestDepotEffectue_RoundTrip
-4. TestVirementEmis_RoundTrip
-
-Les tests doivent sérialiser/désérialiser avec de vraies valeurs.
+Modifie register-schemas.sh pour tous les schémas.
 ```
 
 ---
+
+#### 2.1.3 : Génération code Go
+
+```text
+PROMPT CLAUDE CODE
+
+Crée pkg/events/bancaire.go avec structs Go générées depuis Avro.
+
+Utilise github.com/hamba/avro/v2.
+Tags : avro et json.
+Types : time.Time, decimal.Decimal.
+
+Tests TDD :
+- Sérialisation/désérialisation round-trip
+- Tous les types d'événements
+```
 
 ---
 
 ## CHECKPOINT PHASE 2
 
-> **ARRÊT OBLIGATOIRE** : Ne pas passer à la Phase 3 tant que ce checkpoint n'est pas validé.
-
-### Critères de validation Phase 2
-
 ```bash
-./scripts/register-schemas.sh    # Enregistre tous les schémas
-./scripts/validate-schemas.sh    # Vérifie l'enregistrement
-go test ./pkg/events/...         # Tests de sérialisation
+./scripts/register-schemas.sh
+go test ./pkg/events/...
 ```
 
-### Checklist Phase 2
-
-- [ ] Schémas .avsc créés dans schemas/bancaire/
-- [ ] Tous les schémas enregistrés dans Schema Registry
-- [ ] Types Go générés dans pkg/events/
-- [ ] Tests de sérialisation/désérialisation passent
-- [ ] Namespace = `com.edalab.bancaire.events`
+**Checklist :**
+- [ ] Schémas .avsc créés
+- [ ] Schémas enregistrés dans Schema Registry
+- [ ] Types Go générés
+- [ ] Tests sérialisation passent
 
 ---
 
@@ -980,315 +509,135 @@ go test ./pkg/events/...         # Tests de sérialisation
 
 ## Objectif
 
-Créer le service qui génère des événements fictifs automatiquement.
+Créer le service qui génère des événements fictifs.
 
 ---
 
-### Étape 3.1 : Structure du service Simulator
+### Étape 3.1 : Structure Simulator
 
-#### Sous-étape 3.1.1 : Scaffolding du service
-
-**Contexte :** Créer la structure de base du service Simulator.
+#### 3.1.1 : Scaffolding
 
 ```text
-PROMPT CLAUDE CODE - Étape 3.1.1
+PROMPT CLAUDE CODE
 
-Crée la structure du service Simulator.
+Crée services/simulator/ :
+- cmd/simulator/main.go (bootstrap complet)
+- internal/generator/ (génération données)
+- internal/api/ (handlers REST)
+- Dockerfile (multi-stage)
+- go.mod
 
-Fichier : services/simulator/go.mod
-- Module : github.com/edalab/services/simulator
-- Dépendances : imports des packages pkg/*
-
-Structure :
-services/simulator/
-├── cmd/
-│   └── simulator/
-│       └── main.go
-├── internal/
-│   ├── generator/
-│   │   └── generator.go
-│   ├── scenario/
-│   │   └── loader.go
-│   └── api/
-│       └── handler.go
-├── Dockerfile
-└── go.mod
-
-Fichier : services/simulator/cmd/simulator/main.go
-func main() qui :
-1. Charge la configuration
-2. Initialise le logger
-3. Initialise le tracer
-4. Crée le producteur Kafka
-5. Démarre le serveur HTTP pour l'API de contrôle
-6. Démarre le serveur de métriques
-7. Gère le graceful shutdown
-
-Le service ne génère pas encore d'événements - juste le scaffolding.
-
-Fichier : services/simulator/Dockerfile
-Multi-stage build :
-- Stage 1 : golang:1.21-alpine pour build
-- Stage 2 : alpine:3.19 pour runtime
-- Expose ports 8080 (API) et 9090 (métriques)
-
-Teste que le service démarre sans erreur.
+Main : config, logger, tracer, producer, HTTP server, graceful shutdown.
 ```
 
 ---
 
-#### Sous-étape 3.1.2 : Générateur de données fictives
-
-**Contexte :** Créer le générateur de données réalistes pour les événements.
+#### 3.1.2 : Générateur données fictives
 
 ```text
-PROMPT CLAUDE CODE - Étape 3.1.2
+PROMPT CLAUDE CODE
 
-Fichier : services/simulator/internal/generator/fake_data.go
+Crée internal/generator/fake_data.go :
+- GenerateClientID, GenerateCompteID
+- GenerateNom, GeneratePrenom (noms français)
+- GenerateMontant(min, max)
+- GenerateIBAN (format FR valide)
+- GenerateReference
 
-Crée un générateur de données fictives réalistes :
-
-type FakeDataGenerator struct {
-    rng *rand.Rand
-}
-
-func NewFakeDataGenerator(seed int64) *FakeDataGenerator
-
-func (g *FakeDataGenerator) GenerateClientID() string
-func (g *FakeDataGenerator) GenerateCompteID() string
-func (g *FakeDataGenerator) GenerateNom() string
-func (g *FakeDataGenerator) GeneratePrenom() string
-func (g *FakeDataGenerator) GenerateMontant(min, max float64) decimal.Decimal
-func (g *FakeDataGenerator) GenerateIBAN() string
-func (g *FakeDataGenerator) GenerateReference() string
-
-Les données doivent être réalistes :
-- IBAN français valide (format FR + clé de contrôle)
-- Noms/prénoms français courants
-- Montants avec distribution réaliste
-
-Fichier : services/simulator/internal/generator/fake_data_test.go
-Tests TDD :
-1. TestGenerateIBAN_ValidFormat
-2. TestGenerateIBAN_ValidChecksum
-3. TestGenerateMontant_InRange
-4. TestGenerateClientID_UniqueFormat
-5. TestDeterministicWithSameSeed
-
-Les tests vérifient que les données générées sont valides.
+Tests TDD : format valide, déterminisme avec seed.
 ```
 
 ---
 
-#### Sous-étape 3.1.3 : Générateur d'événements CompteOuvert
-
-**Contexte :** Créer le générateur spécifique pour l'événement CompteOuvert.
+#### 3.1.3 : Générateur CompteOuvert
 
 ```text
-PROMPT CLAUDE CODE - Étape 3.1.3
+PROMPT CLAUDE CODE
 
-Fichier : services/simulator/internal/generator/compte_ouvert.go
+Crée internal/generator/compte_ouvert.go :
+- Generate(ctx) : génère et produit un événement
+- GenerateBatch(ctx, count, interval)
 
-type CompteOuvertGenerator struct {
-    fakeData *FakeDataGenerator
-    producer kafka.Producer
-    topic    string
-}
-
-func NewCompteOuvertGenerator(fakeData *FakeDataGenerator, producer kafka.Producer) *CompteOuvertGenerator
-
-func (g *CompteOuvertGenerator) Generate(ctx context.Context) (*events.CompteOuvert, error)
-- Génère un événement CompteOuvert avec données fictives
-- Produit l'événement dans Kafka
-- Retourne l'événement produit
-
-func (g *CompteOuvertGenerator) GenerateBatch(ctx context.Context, count int, interval time.Duration) error
-- Génère count événements avec interval entre chaque
-- Respecte le contexte pour annulation
-- Log chaque événement produit
-
-Fichier : services/simulator/internal/generator/compte_ouvert_test.go
 Tests TDD avec Kafka réel :
-1. TestGenerate_ProducesValidEvent
-2. TestGenerate_EventInKafka (vérifie que l'événement est dans le topic)
-3. TestGenerateBatch_ProducesAllEvents
-4. TestGenerateBatch_RespectsInterval
-5. TestGenerateBatch_CancellableViaContext
+- Événement valide produit
+- Batch respecte interval
+- Annulable via context
 ```
 
 ---
 
-### Étape 3.2 : API de contrôle du Simulator
+### Étape 3.2 : API Simulator
 
-#### Sous-étape 3.2.1 : Endpoints REST
-
-**Contexte :** Créer l'API REST pour contrôler la simulation.
+#### 3.2.1 : Endpoints REST
 
 ```text
-PROMPT CLAUDE CODE - Étape 3.2.1
+PROMPT CLAUDE CODE
 
-Fichier : services/simulator/internal/api/handler.go
-
-Implémente les endpoints REST :
+Crée internal/api/handler.go :
 
 POST /api/v1/simulation/start
-Body: {
-  "scenario": "default",
-  "rate": 10,  // événements par seconde
-  "duration": 300  // secondes, 0 = infini
-}
-Response: { "simulation_id": "uuid", "status": "running" }
+  Body: { scenario, rate, duration }
+  Response: { simulation_id, status }
 
 POST /api/v1/simulation/stop
-Response: { "status": "stopped", "events_produced": 1234 }
+  Response: { status, events_produced }
 
 GET /api/v1/simulation/status
-Response: {
-  "status": "running|stopped",
-  "simulation_id": "uuid",
-  "events_produced": 1234,
-  "started_at": "2024-01-01T00:00:00Z",
-  "rate_actual": 9.8
-}
+  Response: { status, events_produced, rate_actual, started_at }
 
 POST /api/v1/events/produce
-Body: {
-  "event_type": "CompteOuvert",
-  "count": 1
-}
-Response: { "events_produced": 1, "event_ids": ["uuid"] }
+  Body: { event_type, count }
+  Response: { events_produced, event_ids }
 
-Utilise chi ou gorilla/mux comme router.
-
-Fichier : services/simulator/internal/api/handler_test.go
-Tests TDD :
-1. TestStartSimulation_Success
-2. TestStartSimulation_AlreadyRunning
-3. TestStopSimulation_Success
-4. TestStopSimulation_NotRunning
-5. TestGetStatus_Running
-6. TestGetStatus_Stopped
-7. TestProduceEvents_Success
+Tests TDD pour chaque endpoint.
 ```
 
 ---
 
-#### Sous-étape 3.2.2 : Gestionnaire de simulation
-
-**Contexte :** Créer le composant qui orchestre la génération d'événements.
+#### 3.2.2 : Gestionnaire simulation
 
 ```text
-PROMPT CLAUDE CODE - Étape 3.2.2
+PROMPT CLAUDE CODE
 
-Fichier : services/simulator/internal/simulation/manager.go
+Crée internal/simulation/manager.go :
+- SimulationManager avec status atomic
+- Start(ctx, config) : goroutine de génération
+- Stop() : arrêt propre
+- Status() : état courant
 
-type SimulationManager struct {
-    generators map[string]Generator
-    producer   kafka.Producer
-    status     atomic.Value  // *SimulationStatus
-    cancel     context.CancelFunc
-    wg         sync.WaitGroup
-}
-
-type SimulationStatus struct {
-    ID             string
-    Status         string  // "running", "stopped"
-    EventsProduced int64
-    StartedAt      time.Time
-    Rate           float64
-}
-
-type SimulationConfig struct {
-    Scenario string
-    Rate     int
-    Duration time.Duration
-}
-
-func NewSimulationManager(producer kafka.Producer) *SimulationManager
-func (m *SimulationManager) Start(ctx context.Context, config SimulationConfig) error
-func (m *SimulationManager) Stop() (*SimulationStatus, error)
-func (m *SimulationManager) Status() *SimulationStatus
-
-La méthode Start doit :
-1. Vérifier qu'aucune simulation n'est en cours
-2. Créer un contexte avec cancel
-3. Démarrer une goroutine qui génère des événements au rate spécifié
-4. Arrêter automatiquement après duration (si > 0)
-
-Fichier : services/simulator/internal/simulation/manager_test.go
-Tests TDD :
-1. TestStart_Success
-2. TestStart_AlreadyRunning
-3. TestStop_Success
-4. TestStop_NotRunning
-5. TestAutoStopAfterDuration
-6. TestRateControl
+Tests TDD : start/stop, auto-stop duration, rate control.
 ```
 
 ---
 
-#### Sous-étape 3.2.3 : Test d'intégration Simulator complet
-
-**Contexte :** Valider le service Simulator de bout en bout.
+#### 3.2.3 : Test d'intégration
 
 ```text
-PROMPT CLAUDE CODE - Étape 3.2.3
+PROMPT CLAUDE CODE
 
-Fichier : services/simulator/integration_test.go
-Build tag : //go:build integration
+Crée integration_test.go (build tag: integration)
 
-Test d'intégration complet :
-
-1. TestSimulatorE2E :
-   - Démarre le service Simulator (ou utilise l'instance Docker)
-   - Appelle POST /simulation/start avec rate=5, duration=10
-   - Attend 10 secondes
-   - Vérifie GET /simulation/status
-   - Vérifie que ~50 événements ont été produits
-   - Consomme les événements depuis Kafka
-   - Vérifie que les événements sont valides (schéma Avro)
-
-2. TestSimulatorManualStop :
-   - Démarre une simulation avec duration=0
-   - Attend 5 secondes
-   - Appelle POST /simulation/stop
-   - Vérifie que la simulation s'arrête
-   - Vérifie le compte d'événements
-
-3. TestSimulatorProduceSingle :
-   - Appelle POST /events/produce avec count=1
-   - Consomme l'événement depuis Kafka
-   - Vérifie le contenu
-
-Ajoute le service Simulator au docker-compose.yml dans un profil "services".
+Tests E2E :
+- Démarrer simulation, vérifier événements dans Kafka
+- Stop manuel, vérifier arrêt
+- Produire événement unique
 ```
-
----
 
 ---
 
 ## CHECKPOINT PHASE 3
 
-> **ARRÊT OBLIGATOIRE** : Ne pas passer à la Phase 4 tant que ce checkpoint n'est pas validé.
-
-### Critères de validation Phase 3
-
 ```bash
-go test ./services/simulator/...                    # Tests unitaires
-go test ./services/simulator/... -tags=integration  # Tests intégration
-curl http://localhost:8080/api/v1/simulation/status # API répond
+go test ./services/simulator/...
+go test ./services/simulator/... -tags=integration
+curl http://localhost:8080/api/v1/simulation/status
 ```
 
-### Checklist Phase 3
-
-- [ ] Service Simulator compile et démarre
-- [ ] API REST `/simulation/start` fonctionne
-- [ ] API REST `/simulation/stop` fonctionne
-- [ ] Événements produits dans Kafka (visible via consumer)
-- [ ] FakeDataGenerator génère des données réalistes
-- [ ] Dockerfile construit l'image
-- [ ] Tests unitaires passent
-- [ ] Tests d'intégration passent
+**Checklist :**
+- [ ] Service compile et démarre
+- [ ] API /simulation/* fonctionne
+- [ ] Événements dans Kafka
+- [ ] Dockerfile build réussit
 
 ---
 
@@ -1296,368 +645,132 @@ curl http://localhost:8080/api/v1/simulation/status # API répond
 
 ## Objectif
 
-Créer le service qui consomme et traite les événements bancaires.
+Créer le service qui consomme et persiste les événements.
 
 ---
 
-### Étape 4.1 : Structure du service Bancaire
+### Étape 4.1 : Structure Bancaire
 
-#### Sous-étape 4.1.1 : Scaffolding et modèle de données
-
-**Contexte :** Créer la structure du service Bancaire avec son modèle de données.
+#### 4.1.1 : Scaffolding et modèle
 
 ```text
-PROMPT CLAUDE CODE - Étape 4.1.1
+PROMPT CLAUDE CODE
 
-Crée la structure du service Bancaire.
+Crée services/bancaire/ :
+- cmd/bancaire/main.go
+- internal/domain/compte.go (Compte, Transaction)
+- internal/repository/
+- internal/handler/
+- migrations/001_create_comptes.sql
+- Dockerfile, go.mod
 
-Structure :
-services/bancaire/
-├── cmd/
-│   └── bancaire/
-│       └── main.go
-├── internal/
-│   ├── domain/
-│   │   └── compte.go
-│   ├── repository/
-│   │   └── compte_repository.go
-│   ├── handler/
-│   │   └── event_handler.go
-│   └── api/
-│       └── handler.go
-├── migrations/
-│   └── 001_create_comptes.sql
-├── Dockerfile
-└── go.mod
-
-Fichier : services/bancaire/internal/domain/compte.go
-type Compte struct {
-    ID           string
-    ClientID     string
-    TypeCompte   string
-    Devise       string
-    Solde        decimal.Decimal
-    Statut       string  // ACTIF, FERME, BLOQUE
-    CreatedAt    time.Time
-    UpdatedAt    time.Time
-}
-
-type Transaction struct {
-    ID          string
-    CompteID    string
-    Type        string  // DEPOT, RETRAIT, VIREMENT_ENTRANT, VIREMENT_SORTANT
-    Montant     decimal.Decimal
-    Reference   string
-    CreatedAt   time.Time
-}
-
-Fichier : services/bancaire/migrations/001_create_comptes.sql
-CREATE TABLE bancaire.comptes (
-    id VARCHAR(36) PRIMARY KEY,
-    client_id VARCHAR(36) NOT NULL,
-    type_compte VARCHAR(20) NOT NULL,
-    devise VARCHAR(3) NOT NULL DEFAULT 'EUR',
-    solde DECIMAL(18,2) NOT NULL DEFAULT 0,
-    statut VARCHAR(20) NOT NULL DEFAULT 'ACTIF',
-    created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
-);
-
-CREATE TABLE bancaire.transactions (
-    id VARCHAR(36) PRIMARY KEY,
-    compte_id VARCHAR(36) NOT NULL REFERENCES bancaire.comptes(id),
-    type VARCHAR(30) NOT NULL,
-    montant DECIMAL(18,2) NOT NULL,
-    reference VARCHAR(100),
-    created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
-);
-
-CREATE INDEX idx_comptes_client ON bancaire.comptes(client_id);
-CREATE INDEX idx_transactions_compte ON bancaire.transactions(compte_id);
+Tables : bancaire.comptes, bancaire.transactions
+Index sur client_id et compte_id.
 ```
 
 ---
 
-#### Sous-étape 4.1.2 : Repository Pattern
-
-**Contexte :** Implémenter le repository pour la persistance des comptes.
+#### 4.1.2 : Repository Pattern
 
 ```text
-PROMPT CLAUDE CODE - Étape 4.1.2
+PROMPT CLAUDE CODE
 
-Fichier : services/bancaire/internal/repository/compte_repository.go
+Crée internal/repository/compte_repository.go :
 
-type CompteRepository interface {
-    Create(ctx context.Context, compte *domain.Compte) error
-    GetByID(ctx context.Context, id string) (*domain.Compte, error)
-    GetByClientID(ctx context.Context, clientID string) ([]*domain.Compte, error)
-    UpdateSolde(ctx context.Context, id string, nouveauSolde decimal.Decimal) error
-    AddTransaction(ctx context.Context, tx *domain.Transaction) error
-    GetTransactions(ctx context.Context, compteID string, limit int) ([]*domain.Transaction, error)
-}
+Interface CompteRepository :
+- Create, GetByID, GetByClientID
+- UpdateSolde, AddTransaction, GetTransactions
 
-type PostgresCompteRepository struct {
-    pool *database.DBPool
-}
-
-func NewPostgresCompteRepository(pool *database.DBPool) *PostgresCompteRepository
-
-Implémente toutes les méthodes avec des requêtes SQL paramétrées.
-Utilise les transactions pour les opérations qui modifient plusieurs tables.
-
-Fichier : services/bancaire/internal/repository/compte_repository_test.go
-Tests TDD avec PostgreSQL réel :
-1. TestCreate_Success
-2. TestCreate_DuplicateID
-3. TestGetByID_Found
-4. TestGetByID_NotFound
-5. TestUpdateSolde_Success
-6. TestAddTransaction_Success
-7. TestAddTransaction_CompteNotFound
-8. TestGetTransactions_WithLimit
-
-Chaque test doit nettoyer ses données après exécution.
+Implémentation PostgresCompteRepository.
+Tests TDD avec vraie DB.
 ```
 
 ---
 
-#### Sous-étape 4.1.3 : Handler d'événements Kafka
-
-**Contexte :** Créer le handler qui traite les événements Kafka.
+#### 4.1.3 : Handler événements Kafka
 
 ```text
-PROMPT CLAUDE CODE - Étape 4.1.3
+PROMPT CLAUDE CODE
 
-Fichier : services/bancaire/internal/handler/event_handler.go
+Crée internal/handler/event_handler.go :
+- HandleCompteOuvert : créer compte (idempotent)
+- HandleDepotEffectue : update solde + transaction
+- HandleVirementEmis : vérifier solde, débiter
+- Route(ctx, msg) : router par topic
 
-type EventHandler struct {
-    repo   repository.CompteRepository
-    logger *slog.Logger
-}
-
-func NewEventHandler(repo repository.CompteRepository, logger *slog.Logger) *EventHandler
-
-func (h *EventHandler) HandleCompteOuvert(ctx context.Context, event *events.CompteOuvert) error
-- Crée un nouveau compte dans la base de données
-- Ajoute une transaction initiale si solde > 0
-- Log l'opération
-- Retourne une erreur si le compte existe déjà (idempotence)
-
-func (h *EventHandler) HandleDepotEffectue(ctx context.Context, event *events.DepotEffectue) error
-- Récupère le compte
-- Met à jour le solde
-- Ajoute une transaction
-- Log l'opération
-- Retourne une erreur si compte non trouvé
-
-func (h *EventHandler) HandleVirementEmis(ctx context.Context, event *events.VirementEmis) error
-- Vérifie que le compte source existe
-- Vérifie le solde suffisant
-- Débite le compte
-- Ajoute une transaction
-- Log l'opération
-
-func (h *EventHandler) Route(ctx context.Context, msg *kafka.Message) error
-- Détermine le type d'événement depuis le topic ou les headers
-- Appelle le handler approprié
-
-Fichier : services/bancaire/internal/handler/event_handler_test.go
-Tests TDD :
-1. TestHandleCompteOuvert_Success
-2. TestHandleCompteOuvert_Idempotent
-3. TestHandleDepotEffectue_Success
-4. TestHandleDepotEffectue_CompteNotFound
-5. TestHandleVirementEmis_Success
-6. TestHandleVirementEmis_SoldeInsuffisant
-7. TestRoute_CompteOuvert
-8. TestRoute_UnknownEvent
+Tests TDD : succès, idempotence, erreurs.
 ```
 
 ---
 
-### Étape 4.2 : Intégration du service Bancaire
+### Étape 4.2 : Intégration Bancaire
 
-#### Sous-étape 4.2.1 : Main et bootstrap
-
-**Contexte :** Assembler tous les composants dans le main.
+#### 4.2.1 : Main et bootstrap
 
 ```text
-PROMPT CLAUDE CODE - Étape 4.2.1
+PROMPT CLAUDE CODE
 
-Fichier : services/bancaire/cmd/bancaire/main.go
+Complète cmd/bancaire/main.go :
+- Config, logger, tracer, metrics
+- DB pool, repository
+- Kafka consumer, subscribe topics
+- HTTP server (health + queries)
+- Graceful shutdown
 
-func main() {
-    // 1. Configuration
-    cfg := config.LoadFromEnv()
-
-    // 2. Observabilité
-    logger := observability.InitLogger("bancaire", cfg.LogLevel)
-    tracer := observability.InitTracer("bancaire", cfg.JaegerEndpoint)
-    observability.RegisterMetrics()
-
-    // 3. Database
-    pool := database.NewDBPool(cfg.Postgres)
-    repo := repository.NewPostgresCompteRepository(pool)
-
-    // 4. Kafka Consumer
-    consumer := kafka.NewAvroConsumer(cfg.Kafka, cfg.Schema, "bancaire-group")
-    consumer.Subscribe([]string{
-        "bancaire.compte.ouvert",
-        "bancaire.depot.effectue",
-        "bancaire.virement.emis",
-    })
-
-    // 5. Event Handler
-    handler := handler.NewEventHandler(repo, logger)
-
-    // 6. API REST (pour health check et queries)
-    apiHandler := api.NewHandler(repo)
-    httpServer := &http.Server{Addr: ":8080", Handler: apiHandler.Router()}
-
-    // 7. Metrics server
-    metricsServer := observability.NewMetricsServer(9090)
-
-    // 8. Start consumers
-    go consumer.Consume(ctx, handler.Route)
-
-    // 9. Start HTTP servers
-    go httpServer.ListenAndServe()
-    go metricsServer.ListenAndServe()
-
-    // 10. Graceful shutdown
-    // ...
-}
-
-Fichier : services/bancaire/Dockerfile
-Multi-stage build similaire au Simulator.
-
-Ajoute le service au docker-compose.yml.
+Ajoute au docker-compose.yml.
 ```
 
 ---
 
-#### Sous-étape 4.2.2 : API REST pour queries
-
-**Contexte :** Créer l'API REST pour interroger les données.
+#### 4.2.2 : API REST queries
 
 ```text
-PROMPT CLAUDE CODE - Étape 4.2.2
+PROMPT CLAUDE CODE
 
-Fichier : services/bancaire/internal/api/handler.go
-
-Endpoints :
+Crée internal/api/handler.go :
 
 GET /api/v1/health
-Response: { "status": "healthy", "kafka": "connected", "postgres": "connected" }
-
 GET /api/v1/comptes/:id
-Response: {
-  "id": "uuid",
-  "client_id": "uuid",
-  "type_compte": "COURANT",
-  "devise": "EUR",
-  "solde": "1234.56",
-  "statut": "ACTIF",
-  "created_at": "..."
-}
-
 GET /api/v1/comptes/:id/transactions
-Query: ?limit=10
-Response: {
-  "transactions": [
-    {
-      "id": "uuid",
-      "type": "DEPOT",
-      "montant": "100.00",
-      "reference": "REF123",
-      "created_at": "..."
-    }
-  ]
-}
-
 GET /api/v1/clients/:client_id/comptes
-Response: { "comptes": [...] }
 
-Fichier : services/bancaire/internal/api/handler_test.go
-Tests TDD :
-1. TestHealthCheck_AllHealthy
-2. TestGetCompte_Found
-3. TestGetCompte_NotFound
-4. TestGetTransactions_Success
-5. TestGetTransactions_EmptyList
-6. TestGetComptesByClient_Success
+Tests TDD pour chaque endpoint.
 ```
 
 ---
 
-#### Sous-étape 4.2.3 : Test d'intégration Simulator → Bancaire
-
-**Contexte :** Valider le flux complet de bout en bout.
+#### 4.2.3 : Test E2E Simulator → Bancaire
 
 ```text
-PROMPT CLAUDE CODE - Étape 4.2.3
+PROMPT CLAUDE CODE
 
-Fichier : tests/integration/simulator_bancaire_test.go
-Build tag : //go:build integration
+Crée tests/integration/simulator_bancaire_test.go
 
-Test d'intégration E2E :
+Tests E2E :
+- Produire CompteOuvert via Simulator, vérifier dans Bancaire
+- Flux dépôt : compte + dépôt, vérifier solde
+- Multiple events : simulation 10s, vérifier cohérence
+- Idempotence : même event 2x, un seul compte
 
-1. TestFluxCompteOuvert_E2E :
-   - Démarre Simulator et Bancaire (via docker-compose)
-   - Appelle Simulator POST /events/produce avec event_type=CompteOuvert
-   - Attend quelques secondes pour le traitement
-   - Appelle Bancaire GET /comptes/:id avec l'ID généré
-   - Vérifie que le compte existe avec les bonnes données
-
-2. TestFluxDepot_E2E :
-   - Crée un compte via Simulator
-   - Attend le traitement
-   - Produit un événement DepotEffectue pour ce compte
-   - Attend le traitement
-   - Vérifie que le solde a été mis à jour
-   - Vérifie que la transaction existe
-
-3. TestFluxMultipleEvents_E2E :
-   - Lance une simulation de 10 secondes à 5 events/s
-   - Attend 15 secondes
-   - Vérifie que tous les comptes ont été créés
-   - Vérifie la cohérence des données
-
-4. TestIdempotence_E2E :
-   - Produit le même événement deux fois (même event_id)
-   - Vérifie qu'un seul compte est créé
-
-Ces tests utilisent l'infrastructure Docker Compose complète.
-Ajoute une target Makefile : make test-e2e
+Target Makefile : make test-e2e
 ```
-
----
 
 ---
 
 ## CHECKPOINT PHASE 4
 
-> **ARRÊT OBLIGATOIRE** : Ne pas passer à la Phase 5 tant que ce checkpoint n'est pas validé.
-
-### Critères de validation Phase 4
-
 ```bash
-go test ./services/bancaire/...                    # Tests unitaires
-go test ./services/bancaire/... -tags=integration  # Tests intégration
-go test ./tests/integration/... -tags=integration  # Test E2E Simulator→Bancaire
+go test ./services/bancaire/...
+go test ./services/bancaire/... -tags=integration
+go test ./tests/integration/... -tags=integration
 ```
 
-### Checklist Phase 4
-
-- [ ] Service Bancaire compile et démarre
-- [ ] Migrations PostgreSQL exécutées
-- [ ] Consumer Kafka consomme les événements
-- [ ] Comptes persistés en base de données
-- [ ] Transactions persistées en base de données
-- [ ] API REST `/comptes/:id` fonctionne
-- [ ] Tests unitaires passent
-- [ ] Tests d'intégration passent
-- [ ] **Test E2E**: Simulator produit → Bancaire consomme → Données en base
+**Checklist :**
+- [ ] Service compile et démarre
+- [ ] Consumer Kafka fonctionne
+- [ ] Données persistées en PostgreSQL
+- [ ] API REST /comptes/* fonctionne
+- [ ] Test E2E Simulator→Bancaire passe
 
 ---
 
@@ -1665,201 +778,77 @@ go test ./tests/integration/... -tags=integration  # Test E2E Simulator→Bancai
 
 ## Objectif
 
-Créer l'API Gateway avec WebSocket pour le temps réel.
+Créer l'API Gateway avec WebSocket temps réel.
 
 ---
 
-### Étape 5.1 : Gateway REST
+### Étape 5.1 : Gateway REST et WebSocket
 
-#### Sous-étape 5.1.1 : Structure et routing
-
-**Contexte :** Créer le service Gateway qui unifie les API.
+#### 5.1.1 : Structure et proxy
 
 ```text
-PROMPT CLAUDE CODE - Étape 5.1.1
+PROMPT CLAUDE CODE
 
-Structure :
-services/gateway/
-├── cmd/
-│   └── gateway/
-│       └── main.go
-├── internal/
-│   ├── proxy/
-│   │   └── service_proxy.go
-│   ├── websocket/
-│   │   └── hub.go
-│   └── api/
-│       └── router.go
-├── Dockerfile
-└── go.mod
+Crée services/gateway/ :
+- cmd/gateway/main.go
+- internal/proxy/service_proxy.go
+- internal/websocket/hub.go
+- internal/api/router.go
+- Dockerfile, go.mod
 
-Fichier : services/gateway/internal/proxy/service_proxy.go
+Proxy routes :
+- /api/v1/simulation/* → Simulator
+- /api/v1/bancaire/* → Bancaire
+- /ws → WebSocket
 
-type ServiceProxy struct {
-    simulatorURL string
-    bancaireURL  string
-    client       *http.Client
-}
-
-func NewServiceProxy(simulatorURL, bancaireURL string) *ServiceProxy
-
-func (p *ServiceProxy) ForwardToSimulator(w http.ResponseWriter, r *http.Request)
-func (p *ServiceProxy) ForwardToBancaire(w http.ResponseWriter, r *http.Request)
-
-Le proxy doit :
-- Transférer les headers (sauf Host)
-- Propager le trace context
-- Gérer les timeouts
-- Logger les requêtes
-
-Fichier : services/gateway/internal/api/router.go
-
-Routes :
-- /api/v1/simulation/*  → Simulator
-- /api/v1/bancaire/*    → Bancaire
-- /api/v1/health        → Health check agrégé
-- /ws                   → WebSocket
-
-Middleware CORS à configurer pour autoriser les requêtes depuis web-ui (localhost:5173 en dev, configurable pour prod).
-
-Fichier : services/gateway/internal/proxy/service_proxy_test.go
-Tests TDD :
-1. TestForwardToSimulator_Success
-2. TestForwardToBancaire_Success
-3. TestForward_ServiceUnavailable
-4. TestForward_PropagatesHeaders
+Middleware CORS configuré.
 ```
 
 ---
 
-#### Sous-étape 5.1.2 : WebSocket Hub
-
-**Contexte :** Créer le hub WebSocket pour les événements temps réel.
+#### 5.1.2 : WebSocket Hub
 
 ```text
-PROMPT CLAUDE CODE - Étape 5.1.2
+PROMPT CLAUDE CODE
 
-Fichier : services/gateway/internal/websocket/hub.go
+Crée internal/websocket/hub.go :
+- Hub : clients, broadcast, register/unregister
+- Client : conn, send channel, topics map
+- Messages : subscribe/unsubscribe par topic
 
-type Client struct {
-    conn   *websocket.Conn
-    send   chan []byte
-    topics map[string]bool  // topics souscrits
-}
-
-type Hub struct {
-    clients    map[*Client]bool
-    broadcast  chan *Message
-    register   chan *Client
-    unregister chan *Client
-    mu         sync.RWMutex
-}
-
-type Message struct {
-    Type      string      `json:"type"`      // "event", "status", "error"
-    Topic     string      `json:"topic"`
-    Payload   interface{} `json:"payload"`
-    Timestamp time.Time   `json:"timestamp"`
-}
-
-func NewHub() *Hub
-func (h *Hub) Run()
-func (h *Hub) Broadcast(msg *Message)
-func (h *Hub) BroadcastToTopic(topic string, msg *Message)
-
-Fichier : services/gateway/internal/websocket/client.go
-func (c *Client) ReadPump(hub *Hub)   // Lit les messages du client (subscribe/unsubscribe)
-func (c *Client) WritePump()          // Écrit les messages vers le client
-
-Messages client → serveur :
-{ "action": "subscribe", "topics": ["bancaire.compte.ouvert"] }
-{ "action": "unsubscribe", "topics": ["bancaire.compte.ouvert"] }
-
-Fichier : services/gateway/internal/websocket/hub_test.go
-Tests TDD :
-1. TestHub_RegisterClient
-2. TestHub_UnregisterClient
-3. TestHub_Broadcast
-4. TestHub_BroadcastToTopic
-5. TestClient_Subscribe
-6. TestClient_Unsubscribe
+Tests TDD : register, broadcast, topic filtering.
 ```
 
 ---
 
-#### Sous-étape 5.1.3 : Consommateur Kafka pour WebSocket
-
-**Contexte :** Connecter Kafka au WebSocket pour le streaming temps réel.
+#### 5.1.3 : Kafka → WebSocket streamer
 
 ```text
-PROMPT CLAUDE CODE - Étape 5.1.3
+PROMPT CLAUDE CODE
 
-Fichier : services/gateway/internal/streaming/kafka_streamer.go
+Crée internal/streaming/kafka_streamer.go :
+- Consomme tous les topics bancaire.*
+- Broadcast aux clients WebSocket abonnés
 
-type KafkaStreamer struct {
-    consumer *kafka.AvroConsumer
-    hub      *websocket.Hub
-    topics   []string
-}
-
-func NewKafkaStreamer(consumer *kafka.AvroConsumer, hub *websocket.Hub, topics []string) *KafkaStreamer
-
-func (s *KafkaStreamer) Start(ctx context.Context) error
-- Souscrit aux topics configurés
-- Pour chaque message reçu :
-  1. Désérialise l'événement
-  2. Crée un Message WebSocket
-  3. Broadcast au hub vers les clients abonnés
-
-func (s *KafkaStreamer) Stop()
-
-Fichier : services/gateway/cmd/gateway/main.go
-Intègre :
-- ServiceProxy
-- WebSocket Hub
-- KafkaStreamer
-- Serveur HTTP
-
-Fichier : services/gateway/integration_test.go
 Tests d'intégration :
-1. TestWebSocket_ReceivesKafkaEvents
-   - Connecte un client WebSocket
-   - Subscribe au topic bancaire.compte.ouvert
-   - Produit un événement via Simulator
-   - Vérifie que le client WebSocket reçoit l'événement
-
-2. TestWebSocket_MultipleClients
-   - Connecte 3 clients
-   - Vérifie que tous reçoivent les broadcasts
+- Client WS reçoit événements Kafka
+- Multiple clients reçoivent broadcast
 ```
-
----
 
 ---
 
 ## CHECKPOINT PHASE 5
 
-> **ARRÊT OBLIGATOIRE** : Ne pas passer à la Phase 6 tant que ce checkpoint n'est pas validé.
-
-### Critères de validation Phase 5
-
 ```bash
-go test ./services/gateway/...                     # Tests unitaires
-go test ./services/gateway/... -tags=integration   # Tests intégration
-# Test WebSocket manuel avec wscat ou script
+go test ./services/gateway/...
+go test ./services/gateway/... -tags=integration
 ```
 
-### Checklist Phase 5
-
-- [ ] Service Gateway compile et démarre
-- [ ] Proxy REST vers Simulator fonctionne
-- [ ] Proxy REST vers Bancaire fonctionne
-- [ ] WebSocket Hub accepte les connexions
-- [ ] Subscribe/Unsubscribe fonctionnent
-- [ ] KafkaStreamer broadcast les événements
-- [ ] Client WebSocket reçoit les événements en temps réel
-- [ ] Tests unitaires passent
-- [ ] Tests d'intégration passent
+**Checklist :**
+- [ ] Proxy REST fonctionne
+- [ ] WebSocket accepte connexions
+- [ ] Subscribe/unsubscribe fonctionnent
+- [ ] Événements Kafka streamés via WebSocket
 
 ---
 
@@ -1867,224 +856,88 @@ go test ./services/gateway/... -tags=integration   # Tests intégration
 
 ## Objectif
 
-Configurer Prometheus et Grafana avec des dashboards.
+Configurer Prometheus et Grafana.
 
 ---
 
-### Étape 6.1 : Configuration Prometheus
+### Étape 6.1 : Prometheus
 
-#### Sous-étape 6.1.1 : Configuration et scraping
-
-**Contexte :** Configurer Prometheus pour collecter les métriques.
+#### 6.1.1 : Configuration
 
 ```text
-PROMPT CLAUDE CODE - Étape 6.1.1
+PROMPT CLAUDE CODE
 
-Fichier : infra/prometheus/prometheus.yml
+Crée infra/prometheus/prometheus.yml :
+- Scrape services : simulator, bancaire, gateway (port 9090)
+- Scrape Kafka JMX exporter
 
-global:
-  scrape_interval: 15s
-  evaluation_interval: 15s
-
-scrape_configs:
-  - job_name: 'prometheus'
-    static_configs:
-      - targets: ['localhost:9090']
-
-  - job_name: 'kafka'
-    static_configs:
-      - targets: ['kafka:9092']
-
-  - job_name: 'simulator'
-    static_configs:
-      - targets: ['simulator:9090']
-
-  - job_name: 'bancaire'
-    static_configs:
-      - targets: ['bancaire:9090']
-
-  - job_name: 'gateway'
-    static_configs:
-      - targets: ['gateway:9090']
-
-Modifie docker-compose.yml pour ajouter Prometheus :
+Ajoute Prometheus à docker-compose.yml :
 - Image : prom/prometheus:v2.47.0
 - Port : 9090
-- Volume : ./prometheus/prometheus.yml:/etc/prometheus/prometheus.yml
-- Healthcheck
 
-Crée un script scripts/test-prometheus.sh qui :
-1. Attend que Prometheus soit prêt
-2. Query l'API pour vérifier les targets
-3. Vérifie que les services sont UP
+Crée scripts/test-prometheus.sh.
 ```
 
 ---
 
-#### Sous-étape 6.1.2 : Métriques Kafka avec JMX Exporter
+### Étape 6.2 : Grafana Dashboards
 
-**Contexte :** Exposer les métriques Kafka pour Prometheus.
-
-```text
-PROMPT CLAUDE CODE - Étape 6.1.2
-
-Modifie la configuration Kafka dans docker-compose.yml pour activer JMX :
-
-Environment variables :
-KAFKA_JMX_PORT: 9999
-KAFKA_JMX_HOSTNAME: kafka
-
-Ajoute un conteneur JMX Exporter :
-- Image : bitnami/jmx-exporter:0.19.0
-- Port : 5556
-- Configuration pour les métriques Kafka
-
-Fichier : infra/kafka/jmx-exporter-config.yml
-Métriques à exposer :
-- kafka.server:type=BrokerTopicMetrics (messages in/out)
-- kafka.server:type=ReplicaManager (partitions)
-- kafka.consumer:type=consumer-fetch-manager-metrics (lag)
-
-Modifie prometheus.yml pour scraper le JMX exporter.
-
-Vérifie que les métriques Kafka apparaissent dans Prometheus.
-```
-
----
-
-### Étape 6.2 : Dashboards Grafana
-
-#### Sous-étape 6.2.1 : Configuration Grafana
-
-**Contexte :** Configurer Grafana avec provisioning automatique.
+#### 6.2.1 : Configuration Grafana
 
 ```text
-PROMPT CLAUDE CODE - Étape 6.2.1
+PROMPT CLAUDE CODE
 
 Ajoute Grafana à docker-compose.yml :
 - Image : grafana/grafana:10.2.0
 - Port : 3000
-- Volumes pour provisioning
+- Provisioning datasource Prometheus
 
-Fichier : infra/grafana/provisioning/datasources/prometheus.yml
-apiVersion: 1
-datasources:
-  - name: Prometheus
-    type: prometheus
-    access: proxy
-    url: http://prometheus:9090
-    isDefault: true
-
-Fichier : infra/grafana/provisioning/dashboards/dashboards.yml
-apiVersion: 1
-providers:
-  - name: 'EDA-Lab'
-    folder: 'EDA-Lab'
-    type: file
-    options:
-      path: /var/lib/grafana/dashboards
-
-Vérifie que Grafana démarre et se connecte à Prometheus.
+Crée infra/grafana/provisioning/datasources/prometheus.yml
 ```
 
 ---
 
-#### Sous-étape 6.2.2 : Dashboard Kafka Overview
-
-**Contexte :** Créer le dashboard pour les métriques Kafka.
+#### 6.2.2 : Dashboard Kafka
 
 ```text
-PROMPT CLAUDE CODE - Étape 6.2.2
+PROMPT CLAUDE CODE
 
-Fichier : infra/grafana/dashboards/kafka-overview.json
+Crée infra/grafana/dashboards/kafka-overview.json :
+- Messages/sec par topic
+- Consumer lag par group
+- Bytes in/out
 
-Crée un dashboard Grafana avec les panels suivants :
-
-Row 1 : Vue d'ensemble
-- Stat : Messages/sec (total)
-- Stat : Topics actifs
-- Stat : Partitions totales
-
-Row 2 : Messages
-- Time series : Messages produits par topic (5 min)
-- Time series : Messages consommés par topic (5 min)
-
-Row 3 : Consumer Lag
-- Time series : Lag par consumer group
-- Table : Top 10 partitions avec lag
-
-Row 4 : Bytes
-- Time series : Bytes in/out par broker
-
-Variables :
-- $topic : Sélection du topic
-- $consumer_group : Sélection du consumer group
-
-Le dashboard doit utiliser les métriques du JMX exporter.
+Variables : $topic, $consumer_group
 ```
 
 ---
 
-#### Sous-étape 6.2.3 : Dashboard Services
-
-**Contexte :** Créer le dashboard pour les métriques applicatives.
+#### 6.2.3 : Dashboard Services
 
 ```text
-PROMPT CLAUDE CODE - Étape 6.2.3
+PROMPT CLAUDE CODE
 
-Fichier : infra/grafana/dashboards/services-overview.json
-
-Dashboard avec panels :
-
-Row 1 : Santé des services
-- Stat : Status Simulator (UP/DOWN)
-- Stat : Status Bancaire (UP/DOWN)
-- Stat : Status Gateway (UP/DOWN)
-
-Row 2 : Événements
-- Time series : edalab_messages_produced_total par service
-- Time series : edalab_messages_consumed_total par service
-
-Row 3 : Latences
-- Heatmap : edalab_message_latency_seconds (Simulator)
-- Heatmap : edalab_processing_latency_seconds (Bancaire)
-
-Row 4 : Erreurs
-- Time series : edalab_processing_errors_total par service
-- Time series : Rate d'erreur (%)
-
-Row 5 : Ressources
-- Time series : go_memstats_alloc_bytes par service
-- Time series : go_goroutines par service
-
-Variables :
-- $service : Sélection du service
+Crée infra/grafana/dashboards/services-overview.json :
+- Status services (UP/DOWN)
+- Messages produced/consumed
+- Latences (heatmap)
+- Erreurs
+- Ressources (memory, goroutines)
 ```
-
----
 
 ---
 
 ## CHECKPOINT PHASE 6
 
-> **ARRÊT OBLIGATOIRE** : Ne pas passer à la Phase 7 tant que ce checkpoint n'est pas validé.
-
-### Critères de validation Phase 6
-
 ```bash
-curl http://localhost:9090/api/v1/targets           # Prometheus targets
-curl http://localhost:3000/api/health               # Grafana health
-./scripts/test-prometheus.sh                        # Script de validation
+curl http://localhost:9090/api/v1/targets
+curl http://localhost:3000/api/health
 ```
 
-### Checklist Phase 6
-
-- [ ] Prometheus démarre et scrape les services
-- [ ] Grafana démarre et se connecte à Prometheus
-- [ ] Dashboard Kafka Overview affiche les métriques
-- [ ] Dashboard Services Overview affiche les métriques
-- [ ] Métriques des services visibles (messages/sec, latence)
-- [ ] Alertes configurées (optionnel MVP)
+**Checklist :**
+- [ ] Prometheus scrape les services
+- [ ] Grafana connecté à Prometheus
+- [ ] Dashboards affichent les métriques
 
 ---
 
@@ -2092,362 +945,144 @@ curl http://localhost:3000/api/health               # Grafana health
 
 ## Objectif
 
-Créer l'interface React avec visualisation des flux.
+Créer l'interface React avec React Flow.
 
 ---
 
 ### Étape 7.1 : Setup React
 
-#### Sous-étape 7.1.1 : Initialisation du projet React
-
-**Contexte :** Créer l'application React avec les dépendances nécessaires.
+#### 7.1.1 : Initialisation
 
 ```text
-PROMPT CLAUDE CODE - Étape 7.1.1
+PROMPT CLAUDE CODE
 
-Dans le répertoire web-ui/, initialise un projet React avec Vite :
+Dans web-ui/, initialise avec Vite + React + TypeScript.
 
-npm create vite@latest . -- --template react-ts
+Dépendances :
+- @xyflow/react (visualisation)
+- @tanstack/react-query (data fetching)
+- zustand (state)
+- tailwindcss
+- axios
 
-Installe les dépendances :
-npm install @xyflow/react           # React Flow pour les graphes
-npm install @tanstack/react-query   # Data fetching
-npm install axios                   # HTTP client
-npm install zustand                 # State management
-npm install tailwindcss postcss autoprefixer  # Styling
-npm install lucide-react            # Icons
-
-Configure Tailwind CSS.
-
-Fichier : web-ui/src/App.tsx
-Structure de base :
-- Header avec titre et status de connexion
-- Sidebar avec navigation
-- Main content area
-- Footer avec métriques
-
-Fichier : web-ui/Dockerfile
-Multi-stage :
-- Stage 1 : node:20-alpine pour build
-- Stage 2 : nginx:alpine pour servir les fichiers
-
-Vérifie que npm run dev démarre correctement.
+Configure Tailwind. Crée structure de base App.tsx.
+Crée Dockerfile (multi-stage avec nginx).
 ```
 
 ---
 
-#### Sous-étape 7.1.2 : Configuration API et WebSocket
-
-**Contexte :** Configurer les clients pour communiquer avec le Gateway.
+#### 7.1.2 : API et WebSocket clients
 
 ```text
-PROMPT CLAUDE CODE - Étape 7.1.2
+PROMPT CLAUDE CODE
 
-Fichier : web-ui/src/lib/api.ts
+Crée src/lib/api.ts :
+- simulationApi : start, stop, status, produceEvent
+- bancaireApi : getCompte, getTransactions
 
-const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:8080';
+Crée src/lib/websocket.ts :
+- EventSocket : connect, subscribe, unsubscribe
 
-export const api = axios.create({
-    baseURL: API_BASE_URL,
-});
-
-// Simulation API
-export const simulationApi = {
-    start: (config: SimulationConfig) => api.post('/api/v1/simulation/start', config),
-    stop: () => api.post('/api/v1/simulation/stop'),
-    status: () => api.get('/api/v1/simulation/status'),
-    produceEvent: (eventType: string, count: number) =>
-        api.post('/api/v1/events/produce', { event_type: eventType, count }),
-};
-
-// Bancaire API
-export const bancaireApi = {
-    getCompte: (id: string) => api.get(`/api/v1/bancaire/comptes/${id}`),
-    getTransactions: (compteId: string) =>
-        api.get(`/api/v1/bancaire/comptes/${compteId}/transactions`),
-};
-
-Fichier : web-ui/src/lib/websocket.ts
-
-export class EventSocket {
-    private ws: WebSocket | null = null;
-    private listeners: Map<string, Set<(event: any) => void>> = new Map();
-
-    connect(url: string): Promise<void>
-    disconnect(): void
-    subscribe(topic: string, callback: (event: any) => void): () => void
-    unsubscribe(topic: string): void
-}
-
-export const eventSocket = new EventSocket();
-
-Fichier : web-ui/src/lib/api.test.ts
-Tests avec MSW (Mock Service Worker) :
-1. TestSimulationApi_Start
-2. TestSimulationApi_Status
-3. TestBancaireApi_GetCompte
+Tests avec MSW.
 ```
 
 ---
 
 ### Étape 7.2 : Composants UI
 
-#### Sous-étape 7.2.1 : Contrôles de simulation
-
-**Contexte :** Créer les composants pour contrôler la simulation.
+#### 7.2.1 : Contrôles simulation
 
 ```text
-PROMPT CLAUDE CODE - Étape 7.2.1
+PROMPT CLAUDE CODE
 
-Fichier : web-ui/src/components/SimulationControls.tsx
+Crée src/components/SimulationControls.tsx :
+- Bouton Start/Stop
+- Slider rate
+- Input durée
+- Status et compteur
 
-Composant avec :
-- Bouton Start/Stop (toggle selon état)
-- Slider pour le rate (événements/seconde)
-- Input pour la durée (0 = infini)
-- Dropdown pour sélection du scénario
-- Affichage du status actuel (running/stopped)
-- Compteur d'événements produits
-
-Props :
-interface SimulationControlsProps {
-    onStart: (config: SimulationConfig) => void;
-    onStop: () => void;
-    status: SimulationStatus | null;
-}
-
-Fichier : web-ui/src/components/EventProducer.tsx
-
-Composant pour produire des événements manuellement :
-- Dropdown pour type d'événement (CompteOuvert, DepotEffectue, etc.)
-- Input pour le nombre d'événements
-- Bouton "Produire"
-- Feedback de succès/erreur
-
-Fichier : web-ui/src/components/__tests__/SimulationControls.test.tsx
-Tests avec Testing Library :
-1. TestRender_Initial
-2. TestStart_CallsOnStart
-3. TestStop_CallsOnStop
-4. TestSlider_UpdatesRate
+Tests avec Testing Library.
 ```
 
 ---
 
-#### Sous-étape 7.2.2 : Visualisation React Flow
-
-**Contexte :** Créer la visualisation des flux d'événements.
+#### 7.2.2 : Visualisation React Flow
 
 ```text
-PROMPT CLAUDE CODE - Étape 7.2.2
+PROMPT CLAUDE CODE
 
-Fichier : web-ui/src/components/FlowVisualization.tsx
+Crée src/components/FlowVisualization.tsx :
+- Nodes : Simulator, Kafka, Bancaire
+- Edges animés selon événements
+- Custom FlowNode avec status indicator
 
-Utilise React Flow pour visualiser :
-
-Nodes :
-- Simulator (source)
-- Kafka (broker central)
-- Bancaire (consumer)
-- Client 360 (consumer) - pour préparation future
-
-Edges :
-- Simulator → Kafka (animé quand événements produits)
-- Kafka → Bancaire (animé quand événements consommés)
-
-Animation :
-- Utilise edgeAnimationDuration pour montrer le flux
-- Change la couleur selon le type d'événement
-- Affiche le compteur d'événements sur chaque edge
-
-Fichier : web-ui/src/components/FlowNode.tsx
-
-Custom node avec :
-- Icône du service
-- Nom du service
-- Status indicator (vert/orange/rouge)
-- Compteur d'événements traités
-- Mini graphique sparkline des dernières 60 secondes
-
-Fichier : web-ui/src/hooks/useFlowData.ts
-
-Hook qui :
-- Se connecte au WebSocket
-- Écoute les événements
-- Met à jour les compteurs
-- Déclenche les animations
-
-Tests :
-1. TestFlowVisualization_RendersNodes
-2. TestFlowVisualization_AnimatesOnEvent
-3. TestFlowNode_ShowsStatus
+Hook useFlowData pour WebSocket → animations.
 ```
 
 ---
 
-#### Sous-étape 7.2.3 : Dashboard de métriques
-
-**Contexte :** Créer un dashboard léger avec les métriques principales.
+#### 7.2.3 : Dashboard métriques
 
 ```text
-PROMPT CLAUDE CODE - Étape 7.2.3
+PROMPT CLAUDE CODE
 
-Fichier : web-ui/src/components/MetricsDashboard.tsx
+Crée src/components/MetricsDashboard.tsx :
+- Cards : events produits, rate, durée
+- Status services
+- Mini sparklines
 
-Dashboard avec :
-
-Section 1 : Simulation
-- Card : Événements produits (total)
-- Card : Rate actuel (events/sec)
-- Card : Durée de simulation
-
-Section 2 : Kafka
-- Card : Messages dans les topics
-- Card : Consumer lag
-- Mini graphique : Messages/sec (30 dernières secondes)
-
-Section 3 : Services
-- Status de chaque service (badge coloré)
-- Latence moyenne de traitement
-- Erreurs récentes
-
-Fichier : web-ui/src/hooks/useMetrics.ts
-
-Hook qui :
-- Poll les métriques via l'API toutes les 5 secondes
-- Ou utilise le WebSocket pour les updates temps réel
-- Calcule les moyennes mobiles
-
-Fichier : web-ui/src/components/MetricCard.tsx
-
-Card réutilisable :
-- Titre
-- Valeur principale (grande)
-- Tendance (↑ ↓ →)
-- Sparkline optionnel
+Hook useMetrics pour polling/WebSocket.
 ```
 
 ---
 
-### Étape 7.3 : Intégration finale UI
+### Étape 7.3 : Intégration UI
 
-#### Sous-étape 7.3.1 : Layout et navigation
-
-**Contexte :** Assembler tous les composants dans le layout final.
+#### 7.3.1 : Layout final
 
 ```text
-PROMPT CLAUDE CODE - Étape 7.3.1
+PROMPT CLAUDE CODE
 
-Fichier : web-ui/src/App.tsx
+Assemble dans App.tsx :
+- Header avec status connexion
+- Sidebar avec contrôles
+- Main : FlowVisualization + MetricsDashboard
+- Footer avec compteurs
 
-Layout final :
-┌─────────────────────────────────────────────────────────────┐
-│  Header : EDA-Lab    |  Status: Connected  |  Settings     │
-├─────────────────────────────────────────────────────────────┤
-│  Sidebar     │  Main Content                                │
-│              │  ┌─────────────────────────────────────────┐ │
-│  Controls    │  │                                         │ │
-│  - Start     │  │     Flow Visualization                  │ │
-│  - Stop      │  │     (React Flow)                        │ │
-│  - Rate      │  │                                         │ │
-│              │  └─────────────────────────────────────────┘ │
-│  Producer    │  ┌─────────────────────────────────────────┐ │
-│  - Type      │  │     Metrics Dashboard                   │ │
-│  - Count     │  │     (Cards + Charts)                    │ │
-│  - Produce   │  │                                         │ │
-│              │  └─────────────────────────────────────────┘ │
-├─────────────────────────────────────────────────────────────┤
-│  Footer : Events: 1234  |  Rate: 10/s  |  Uptime: 00:05:30 │
-└─────────────────────────────────────────────────────────────┘
-
-Fichier : web-ui/src/store/simulationStore.ts (Zustand)
-
-State global :
-- simulationStatus
-- metrics
-- events (derniers 100 événements)
-- connectionStatus
-
-Actions :
-- startSimulation
-- stopSimulation
-- updateMetrics
-- addEvent
+Store Zustand pour état global.
 ```
 
 ---
 
-#### Sous-étape 7.3.2 : Tests E2E UI
-
-**Contexte :** Créer les tests E2E pour l'interface.
+#### 7.3.2 : Tests E2E Playwright
 
 ```text
-PROMPT CLAUDE CODE - Étape 7.3.2
+PROMPT CLAUDE CODE
 
-Installe Playwright :
-npm install -D @playwright/test
+Installe Playwright.
 
-Fichier : web-ui/e2e/simulation.spec.ts
-
-Tests E2E avec vraie infrastructure :
-
-1. test('démarre et arrête une simulation')
-   - Navigue vers la page
-   - Clique sur Start
-   - Vérifie que le status passe à "running"
-   - Attend 5 secondes
-   - Vérifie que les événements sont comptés
-   - Clique sur Stop
-   - Vérifie que le status passe à "stopped"
-
-2. test('produit un événement manuel')
-   - Sélectionne "CompteOuvert"
-   - Entre 1 comme count
-   - Clique sur Produire
-   - Vérifie le toast de succès
-   - Vérifie que le compteur augmente
-
-3. test('visualisation s\'anime avec les événements')
-   - Démarre une simulation
-   - Vérifie que les edges s'animent
-   - Vérifie que les compteurs sur les nodes changent
-
-4. test('WebSocket se reconnecte après déconnexion')
-   - Vérifie la connexion
-   - Simule une déconnexion
-   - Vérifie la reconnexion automatique
-
-Fichier : web-ui/playwright.config.ts
-Configuration pour utiliser l'infrastructure Docker Compose.
+Crée e2e/simulation.spec.ts :
+- Démarre/arrête simulation
+- Produit événement manuel
+- Vérifie animations
+- Vérifie reconnexion WebSocket
 ```
-
----
 
 ---
 
 ## CHECKPOINT PHASE 7
 
-> **ARRÊT OBLIGATOIRE** : Ne pas passer à la Phase 8 tant que ce checkpoint n'est pas validé.
-
-### Critères de validation Phase 7
-
 ```bash
-cd web-ui && npm test                              # Tests React
-cd web-ui && npm run build                         # Build production
-npx playwright test                                # Tests E2E UI
+cd web-ui && npm test && npm run build
+npx playwright test
 ```
 
-### Checklist Phase 7
-
-- [ ] Application React démarre (`npm run dev`)
-- [ ] SimulationControls Start/Stop fonctionnent
-- [ ] FlowVisualization affiche les nodes et edges
-- [ ] Animation temps réel lors de la production d'événements
-- [ ] MetricsDashboard affiche les compteurs
-- [ ] WebSocket se connecte au Gateway
-- [ ] Build production réussit
-- [ ] Tests unitaires React passent
-- [ ] Tests E2E Playwright passent
+**Checklist :**
+- [ ] App React démarre
+- [ ] Contrôles Start/Stop fonctionnent
+- [ ] Flow animé avec événements
+- [ ] WebSocket connecté
+- [ ] Tests passent
 
 ---
 
@@ -2455,423 +1090,159 @@ npx playwright test                                # Tests E2E UI
 
 ## Objectif
 
-Valider le système complet et documenter.
+Valider le système complet.
 
 ---
 
 ### Étape 8.1 : Tests E2E complets
 
-#### Sous-étape 8.1.1 : Scénarios de test E2E
-
-**Contexte :** Créer les tests de bout en bout pour le MVP complet.
+#### 8.1.1 : Scénarios MVP
 
 ```text
-PROMPT CLAUDE CODE - Étape 8.1.1
+PROMPT CLAUDE CODE
 
-Fichier : tests/e2e/mvp_test.go
-Build tag : //go:build e2e
+Crée tests/e2e/mvp_test.go (build tag: e2e)
 
-Tests E2E complets :
-
-1. TestMVP_FullFlow
-   - Démarre toute l'infrastructure (make infra-up)
-   - Démarre tous les services (make services-up)
-   - Via Gateway API :
-     a. Démarre une simulation (rate=10, duration=60)
-     b. Attend 60 secondes
-     c. Vérifie que ~600 événements ont été produits
-     d. Vérifie que tous les comptes existent dans Bancaire
-     e. Vérifie les métriques Prometheus
-     f. Vérifie les traces Jaeger (si configuré)
-   - Arrête proprement
-
-2. TestMVP_ChaosConsumerRestart
-   - Démarre une simulation continue
-   - Arrête le service Bancaire
-   - Attend 10 secondes (événements s'accumulent)
-   - Redémarre Bancaire
-   - Vérifie que tous les événements sont traités (pas de perte)
-
-3. TestMVP_HighThroughput
-   - Démarre une simulation rate=100
-   - Vérifie que le système supporte la charge
-   - Mesure les latences
-   - Vérifie qu'il n'y a pas d'erreurs
-
-Fichier : tests/e2e/docker-compose.e2e.yml
-Configuration spécifique pour les tests E2E.
+Tests :
+1. TestMVP_FullFlow : simulation 60s, vérifier tous comptes créés
+2. TestMVP_ChaosConsumerRestart : arrêt Bancaire, pas de perte
+3. TestMVP_HighThroughput : rate=100, vérifier stabilité
 ```
 
 ---
 
-#### Sous-étape 8.1.2 : Script de validation complète
-
-**Contexte :** Créer un script de validation qui teste tout.
+#### 8.1.2 : Script validation
 
 ```text
-PROMPT CLAUDE CODE - Étape 8.1.2
+PROMPT CLAUDE CODE
 
-Fichier : scripts/validate-mvp.sh
+Crée scripts/validate-mvp.sh :
+1. make infra-up
+2. make test-infra
+3. make services-up
+4. make test-unit
+5. make test-integration
+6. make test-e2e
+7. Vérifier Prometheus targets
+8. Simulation 30s via API
+9. Cleanup
 
-Script qui exécute une validation complète du MVP :
-
-#!/bin/bash
-set -e
-
-echo "=== EDA-Lab MVP Validation ==="
-
-echo "1. Starting infrastructure..."
-make infra-up
-sleep 30  # Attendre que tout soit prêt
-
-echo "2. Running infrastructure tests..."
-make test-infra
-
-echo "3. Starting services..."
-make services-up
-sleep 10
-
-echo "4. Running unit tests..."
-make test-unit
-
-echo "5. Running integration tests..."
-make test-integration
-
-echo "6. Running E2E tests..."
-make test-e2e
-
-echo "7. Checking Prometheus targets..."
-curl -s http://localhost:9090/api/v1/targets | jq '.data.activeTargets[] | {job: .labels.job, health: .health}'
-
-echo "8. Checking Grafana..."
-curl -s http://localhost:3000/api/health | jq .
-
-echo "9. Running simulation test..."
-curl -X POST http://localhost:8080/api/v1/simulation/start \
-  -H "Content-Type: application/json" \
-  -d '{"rate": 10, "duration": 30}'
-sleep 35
-RESULT=$(curl -s http://localhost:8080/api/v1/simulation/status)
-echo "Simulation result: $RESULT"
-
-echo "10. Cleanup..."
-make infra-down
-
-echo "=== MVP Validation Complete ==="
-
-Ajoute la target Makefile : make validate-mvp
+Target : make validate-mvp
 ```
 
 ---
 
-#### Sous-étape 8.1.3 : Tests de performance
-
-**Contexte :** Mesurer les performances et les limites du système.
+#### 8.1.3 : Tests performance
 
 ```text
-PROMPT CLAUDE CODE - Étape 8.1.3
+PROMPT CLAUDE CODE
 
-Crée des tests de performance pour mesurer les limites du système.
+Crée tests/e2e/performance_test.go (build tag: performance)
 
-Fichier : tests/e2e/performance_test.go
-Build tag : //go:build performance
+Tests :
+- Throughput : rate=100, vérifier >= 90%
+- Latency : P50, P95, P99 < 500ms
+- Burst : 1000 events/1s, traitement < 30s
+- Sustained : 5 min stable, pas de memory leak
 
-1. TestPerformance_Throughput :
-   - Démarre une simulation à rate=100 events/s
-   - Mesure le throughput réel atteint
-   - Vérifie que throughput >= 90% du rate demandé
-   - Mesure la latence moyenne de traitement
-   - Durée : 60 secondes
-
-2. TestPerformance_Latency :
-   - Produit 1000 événements
-   - Mesure le temps entre production et persistance en base
-   - Calcule P50, P95, P99 des latences
-   - Vérifie P99 < 500ms
-
-3. TestPerformance_Burst :
-   - Produit 1000 événements en burst (1s)
-   - Vérifie que tous sont traités dans les 30s suivantes
-   - Mesure le temps de récupération
-
-4. TestPerformance_Sustained :
-   - Simulation à rate=50 pendant 5 minutes
-   - Vérifie stabilité mémoire (pas de leak)
-   - Vérifie stabilité latence (pas de dégradation)
-
-Fichier : scripts/run-performance-tests.sh
-- Configure les limites de ressources
-- Exécute les tests de performance
-- Génère un rapport avec les métriques
-
-Fichier : infra/grafana/dashboards/performance.json
-Dashboard dédié aux tests de performance :
-- Throughput en temps réel
-- Latences (histogramme)
-- Utilisation mémoire/CPU
-- Consumer lag
-
-Ajoute les targets Makefile :
-- make test-performance : Exécute les tests de performance
-- make report-performance : Génère le rapport de performance
+Script : scripts/run-performance-tests.sh
+Dashboard : infra/grafana/dashboards/performance.json
 ```
 
 ---
 
-### Étape 8.2 : Documentation finale
+### Étape 8.2 : Documentation
 
-#### Sous-étape 8.2.1 : README et guides
+#### 8.2.1 : README
 
-**Contexte :** Créer la documentation utilisateur.
+```text
+PROMPT CLAUDE CODE
 
-````text
-PROMPT CLAUDE CODE - Étape 8.2.1
-
-Fichier : README.md
-
-# EDA-Lab
-
-Simulateur d'architecture événementielle pour l'apprentissage des patrons EDA.
-
-## Quick Start
-
-### Prérequis
-- Docker Desktop 4.x avec WSL2
-- Go 1.21+
-- Node.js 20 LTS
-
-### Démarrage rapide
-
-```bash
-# Clone
-git clone https://github.com/edalab/eda-lab.git
-cd eda-lab
-
-# Démarrer l'infrastructure
-make infra-up
-
-# Démarrer les services
-make services-up
-
-# Ouvrir l'interface
-open http://localhost:3000
-````
-
-## Architecture
-
-[Diagramme ASCII de l'architecture]
-
-## Utilisation
-
-### Démarrer une simulation
-
-[Instructions avec captures d'écran]
-
-### Visualiser les flux
-
-[Instructions]
-
-### Consulter les métriques
-
-[Instructions Grafana]
-
-## Développement
-
-### Structure du projet
-
-[Description des répertoires]
-
-### Lancer les tests
-
-```bash
-make test-unit
-make test-integration
-make test-e2e
+Crée README.md complet :
+- Quick start (3 commandes)
+- Architecture (diagramme ASCII)
+- Utilisation (simulation, visualisation, métriques)
+- Développement (structure, tests)
 ```
-
-## License
-
-MIT
-
-````
 
 ---
 
-#### Sous-étape 8.2.2 : Documentation technique
-
-**Contexte :** Créer la documentation pour les développeurs.
+#### 8.2.2 : Documentation technique
 
 ```text
-PROMPT CLAUDE CODE - Étape 8.2.2
+PROMPT CLAUDE CODE
 
-Fichier : docs/ARCHITECTURE.md
+Crée docs/ARCHITECTURE.md :
+- Diagrammes C4
+- Flux de données détaillé
+- Liens vers ADRs
 
-# Architecture EDA-Lab
-
-## Vue d'ensemble
-
-[Diagramme C4 - Context]
-[Diagramme C4 - Container]
-[Diagramme C4 - Component]
-
-## Flux de données
-
-### Flux CompteOuvert
-1. Simulator génère un événement CompteOuvert
-2. Sérialisation Avro avec Schema Registry
-3. Production dans topic bancaire.compte.ouvert
-4. Gateway reçoit via consumer et broadcast WebSocket
-5. Bancaire consomme et persiste dans PostgreSQL
-6. UI met à jour la visualisation
-
-## Décisions techniques
-
-Voir dossier adr/ pour les Architecture Decision Records.
-
-Fichier : docs/adr/001-choix-kafka.md
-
-# ADR 001: Choix de Confluent Platform pour Kafka
-
-## Contexte
-[...]
-
-## Décision
-[...]
-
-## Conséquences
-[...]
-
-Créer les ADR pour :
+Crée docs/adr/ :
 - 001-choix-kafka.md
 - 002-choix-avro.md
 - 003-choix-go.md
 - 004-choix-postgresql.md
 - 005-choix-react-flow.md
-````
-
----
-
-#### Sous-étape 8.2.3 : Guide du patron Pub/Sub
-
-**Contexte :** Documenter le premier patron implémenté.
-
-````text
-PROMPT CLAUDE CODE - Étape 8.2.3
-
-Fichier : docs/patterns/01-pub-sub.md
-
-# Patron Producteur/Consommateur (Pub/Sub)
-
-## Concept
-
-Le patron Pub/Sub découple les producteurs des consommateurs via un broker de messages.
-
-[Diagramme]
-
-## Implémentation dans EDA-Lab
-
-### Producteur (Simulator)
-
-```go
-// Exemple de code du Simulator
-producer.Produce(ctx, "bancaire.compte.ouvert", event)
-````
-
-### Broker (Kafka)
-
-- Topic: bancaire.compte.ouvert
-- Partitions: 3
-- Replication factor: 1 (dev)
-
-### Consommateur (Bancaire)
-
-```go
-// Exemple de code du Bancaire
-consumer.Subscribe([]string{"bancaire.compte.ouvert"})
-consumer.Consume(ctx, handler.Route)
 ```
 
-## Expérimentation
+---
 
-### Exercice 1: Observer le découplage
+#### 8.2.3 : Guide Pub/Sub
 
-1. Arrêter le service Bancaire
-2. Produire des événements
-3. Redémarrer Bancaire
-4. Observer que les événements sont traités
+```text
+PROMPT CLAUDE CODE
 
-### Exercice 2: Scaling des consommateurs
-
-1. Démarrer 2 instances de Bancaire
-2. Observer la répartition des partitions
-3. Mesurer le throughput
-
-## Compromis architecturaux
-
-| Avantage    | Inconvénient             |
-| ----------- | ------------------------ |
-| Découplage  | Complexité ajoutée       |
-| Scalabilité | Latence (async)          |
-| Résilience  | Ordering (par partition) |
-
-## Pour aller plus loin
-
-- [Kafka Documentation](...)
-- [Patron suivant: Event Sourcing](./02-event-sourcing.md)
-
-````
+Crée docs/patterns/01-pub-sub.md :
+- Concept et diagramme
+- Implémentation EDA-Lab (code examples)
+- Exercices pratiques
+- Compromis architecturaux
+- Lien vers patron suivant
+```
 
 ---
 
-## Résumé et suivi de progression
-
-### Tableau de progression
-
-| Phase | Nom | Sous-étapes | Code | Tests | Statut |
-|-------|-----|-------------|------|-------|--------|
-| 0 | Infrastructure | 6 | ✓ | ✓ | Complété |
-| 1 | Fondations Go | 9 | ✓ | ✓ | Complété |
-| 2 | Schémas Avro | 3 | ❌ | ❌ | Non commencé |
-| 3 | Simulator | 6 | ❌ | ❌ | Non commencé |
-| 4 | Bancaire | 6 | ❌ | ❌ | Non commencé |
-| 5 | Gateway | 3 | ❌ | ❌ | Non commencé |
-| 6 | Observabilité | 5 | ❌ | ❌ | Non commencé |
-| 7 | Web UI | 7 | ❌ | ❌ | Non commencé |
-| 8 | Intégration | 6 | ❌ | ❌ | Non commencé |
-| **TOTAL** | **MVP** | **51** | **12%** | **12%** | **En cours** |
-
-### Légende
-- ✓ = Complété et validé
-- ⏳ = En cours
-- ❌ = Non commencé
-- 🔄 = En correction (échec validation)
-
-### Checklist de validation MVP
+## CHECKPOINT PHASE 8 (FINAL)
 
 ```bash
-# Exécuter ces commandes pour valider le MVP:
-make infra-up           # 1. Démarrer infrastructure  [ ]
-make test-infra         # 2. Valider infrastructure   [ ]
-make test-unit          # 3. Tests unitaires          [ ]
-make test-integration   # 4. Tests d'intégration      [ ]
-make services-up        # 5. Démarrer services        [ ]
-./scripts/validate-mvp.sh  # 6. Validation complète   [ ]
-````
+make validate-mvp
+```
 
-### Prochaine étape à implémenter
+**Checklist MVP complète :**
+- [ ] Infrastructure : Kafka, Schema Registry, PostgreSQL
+- [ ] Services : Simulator, Bancaire, Gateway
+- [ ] Observabilité : Prometheus, Grafana
+- [ ] Web UI : React Flow, contrôles, métriques
+- [ ] Tests : unit, integration, e2e, performance
+- [ ] Documentation : README, architecture, patterns
 
-> **Phase 1 - Fondations Go** : Compléter les packages partagés (pkg/config, pkg/kafka, pkg/database, pkg/observability)
+---
+
+## Commandes de validation rapide
+
+```bash
+# Démarrer tout
+make infra-up && make services-up
+
+# Tester tout
+make test-unit && make test-integration && make test-e2e
+
+# Validation complète
+make validate-mvp
+
+# Cleanup
+make infra-down
+```
 
 ---
 
 ## Notes d'implémentation
 
 1. **Ordre strict** : Chaque sous-étape dépend des précédentes
-2. **TDD** : Écrire les tests avant l'implémentation
-3. **Données réelles** : Utiliser testcontainers-go et infrastructure Docker
-4. **Pas de mocks** : Sauf pour les tests unitaires isolés
-5. **Intégration continue** : Chaque sous-étape produit du code fonctionnel
-6. **Validation** : Exécuter les tests après chaque sous-étape
+2. **TDD** : Tests avant implémentation
+3. **Données réelles** : testcontainers-go et Docker Compose
+4. **Intégration continue** : Code fonctionnel à chaque étape
+5. **Validation** : Tests après chaque sous-étape
 
 ---
 

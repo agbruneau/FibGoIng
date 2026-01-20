@@ -1,8 +1,8 @@
-# PDR - Product Definition Record
+# PRD - Product Requirements Document
 # EDA-Lab : Simulateur d'Architecture Événementielle
 
-**Version :** 1.0
-**Date :** 2026-01-19
+**Version :** 1.1
+**Date :** 2026-01-20
 **Statut :** Approuvé
 
 ---
@@ -20,7 +20,6 @@
 | **Type** | Outil d'apprentissage personnel |
 | **Utilisateur cible** | Architecte de domaine spécialisé en interopérabilité des systèmes |
 | **Approche** | Itérative et incrémentale |
-| **Génération** | Claude Code + Google Antigravity |
 
 ### 1.3 Objectifs d'apprentissage
 
@@ -29,6 +28,16 @@
 | **1** | Maîtriser l'implémentation technique des patrons EDA avec Apache Kafka |
 | **2** | Comprendre les compromis architecturaux (couplage, latence, résilience) |
 | **3** | Visualiser les flux d'événements en temps réel dans une simulation entièrement automatisée |
+
+### 1.4 Critères de succès
+
+| Critère | Mesure |
+|---------|--------|
+| **Infrastructure opérationnelle** | `make test-infra` passe sans erreur |
+| **Flux Pub/Sub fonctionnel** | Événements produits, consommés et persistés en base |
+| **Visualisation temps réel** | WebSocket diffuse les événements vers React Flow |
+| **Tests E2E** | `make test-e2e` passe pour chaque scénario prédéfini |
+| **Observabilité** | Dashboard Grafana affiche les métriques Kafka |
 
 ---
 
@@ -45,8 +54,6 @@ L'application simule un **écosystème de groupe financier intégré** composé 
 | **Assurance Dommage** | Contrats auto, habitation, sinistres |
 
 ### 2.2 Flux d'interopérabilité
-
-Les trois domaines partagent des événements selon les flux suivants :
 
 ```
 ┌─────────────┐     ┌─────────────────────┐     ┌──────────────────┐
@@ -68,28 +75,41 @@ Les trois domaines partagent des événements selon les flux suivants :
 
 ---
 
-## 3. Catalogue des patrons EDA
+## 3. Roadmap des patrons EDA
 
-### 3.1 Terminologie
-
-> **Note importante**: Ce projet utilise deux systèmes de numérotation:
+> **Note**: Ce projet utilise deux systèmes de numérotation:
 > - **Itérations (1-8)**: Correspondent aux **patrons EDA** à implémenter (ce document)
 > - **Phases techniques (0-8)**: Correspondent aux **étapes de construction** du MVP (voir PLAN.MD)
 >
 > L'**Itération 1 (MVP)** est construite via les **Phases techniques 0-8** du PLAN.MD.
 
-### 3.2 Ordre d'implémentation des patrons
+### 3.1 MVP (Itération 1) - Pub/Sub
 
-| Itération | Patron | Description |
-|-----------|--------|-------------|
-| **1** | **Producteur/Consommateur (Pub/Sub)** | Pattern de base - publication et consommation d'événements |
-| **2** | **Event Sourcing** | Stockage de l'état comme séquence d'événements |
-| **3** | **CQRS** | Séparation des modèles de lecture et d'écriture |
-| **4** | **Saga Choreography** | Transactions distribuées par événements décentralisés |
-| **5** | **Saga Orchestration** | Transactions distribuées par coordinateur central |
-| **6** | **Event Streaming** | Traitement continu de flux avec Kafka Streams |
-| **7** | **Dead Letter Queue** | Gestion des événements en erreur |
-| **8** | **Outbox Pattern** | Garantie de livraison transactionnelle |
+**Objectif**: Infrastructure fonctionnelle avec flux Pub/Sub complet sur le domaine bancaire
+
+| Composant | Scope | Critère de validation |
+|-----------|-------|----------------------|
+| Infrastructure Docker | Kafka KRaft + Schema Registry + PostgreSQL | `make test-infra` passe |
+| Schémas Avro | 4 événements bancaires | Schémas enregistrés dans Registry |
+| Service Simulator | Génère des événements à débit configurable | API `/simulation/start` fonctionne |
+| Service Bancaire | Consomme et persiste les événements | Données visibles en base |
+| Service Gateway | Proxy REST + WebSocket temps réel | WebSocket diffuse les événements |
+| Observabilité | Prometheus + Grafana | Dashboard affiche messages/sec |
+| Web UI | Start/Stop + visualisation React Flow | Interface utilisable |
+
+**Hors scope MVP**: Jaeger, Loki, Domaines Assurance, Event Sourcing, CQRS, Sagas
+
+### 3.2 Itérations suivantes
+
+| Itération | Patron | Description | Domaines ajoutés |
+|-----------|--------|-------------|------------------|
+| **2** | **Event Sourcing** | Stockage de l'état comme séquence d'événements | Assurance Personne, Assurance Dommage |
+| **3** | **CQRS** | Séparation des modèles de lecture et d'écriture | Client 360 |
+| **4** | **Saga Choreography** | Transactions distribuées par événements décentralisés | - |
+| **5** | **Saga Orchestration** | Transactions distribuées par coordinateur central | - |
+| **6** | **Event Streaming** | Traitement continu de flux avec Kafka Streams | - |
+| **7** | **Dead Letter Queue** | Gestion des événements en erreur | - |
+| **8** | **Outbox Pattern** | Garantie de livraison transactionnelle | - |
 
 ---
 
@@ -97,47 +117,54 @@ Les trois domaines partagent des événements selon les flux suivants :
 
 ### 4.1 Domaine Bancaire
 
-| Événement | Description |
-|-----------|-------------|
-| `CompteOuvert` | Ouverture d'un nouveau compte bancaire |
-| `CompteFerme` | Fermeture d'un compte bancaire |
-| `DepotEffectue` | Dépôt d'argent sur un compte |
-| `RetraitEffectue` | Retrait d'argent d'un compte |
-| `VirementEmis` | Émission d'un virement sortant |
-| `VirementRecu` | Réception d'un virement entrant |
-| `PaiementPrimeEffectue` | Paiement d'une prime d'assurance |
+| Événement | Description | Topic Kafka |
+|-----------|-------------|-------------|
+| `CompteOuvert` | Ouverture d'un nouveau compte bancaire | `bancaire.compte.ouvert` |
+| `CompteFerme` | Fermeture d'un compte bancaire | `bancaire.compte.ferme` |
+| `DepotEffectue` | Dépôt d'argent sur un compte | `bancaire.depot.effectue` |
+| `RetraitEffectue` | Retrait d'argent d'un compte | `bancaire.retrait.effectue` |
+| `VirementEmis` | Émission d'un virement sortant | `bancaire.virement.emis` |
+| `VirementRecu` | Réception d'un virement entrant | `bancaire.virement.recu` |
+| `PaiementPrimeEffectue` | Paiement d'une prime d'assurance | `bancaire.paiement-prime.effectue` |
 
 ### 4.2 Domaine Assurance de Personne
 
-| Événement | Description |
-|-----------|-------------|
-| `ContratSouscrit` | Souscription d'un contrat vie/santé/prévoyance |
-| `ContratResilie` | Résiliation d'un contrat |
-| `BeneficiaireModifie` | Modification du bénéficiaire d'un contrat |
-| `PrimeAppelee` | Appel de prime émis |
-| `PrimeEncaissee` | Prime encaissée avec succès |
-| `SinistreVieDepose` | Déclaration d'un sinistre vie |
-| `IndemnisationVieEmise` | Émission d'une indemnisation vie |
+| Événement | Description | Topic Kafka |
+|-----------|-------------|-------------|
+| `ContratSouscrit` | Souscription d'un contrat vie/santé/prévoyance | `assurance-personne.contrat.souscrit` |
+| `ContratResilie` | Résiliation d'un contrat | `assurance-personne.contrat.resilie` |
+| `BeneficiaireModifie` | Modification du bénéficiaire d'un contrat | `assurance-personne.beneficiaire.modifie` |
+| `PrimeAppelee` | Appel de prime émis | `assurance-personne.prime.appelee` |
+| `PrimeEncaissee` | Prime encaissée avec succès | `assurance-personne.prime.encaissee` |
+| `SinistreVieDepose` | Déclaration d'un sinistre vie | `assurance-personne.sinistre.depose` |
+| `IndemnisationVieEmise` | Émission d'une indemnisation vie | `assurance-personne.indemnisation.emise` |
 
 ### 4.3 Domaine Assurance Dommage
 
-| Événement | Description |
-|-----------|-------------|
-| `ContratAutoSouscrit` | Souscription d'un contrat auto |
-| `ContratHabitationSouscrit` | Souscription d'un contrat habitation |
-| `ContratResilie` | Résiliation d'un contrat dommage |
-| `SinistreAutoDepose` | Déclaration d'un sinistre auto |
-| `SinistreHabitationDepose` | Déclaration d'un sinistre habitation |
-| `ExpertisePlanifiee` | Planification d'une expertise |
-| `IndemnisationDommageEmise` | Émission d'une indemnisation dommage |
+| Événement | Description | Topic Kafka |
+|-----------|-------------|-------------|
+| `ContratAutoSouscrit` | Souscription d'un contrat auto | `assurance-dommage.contrat-auto.souscrit` |
+| `ContratHabitationSouscrit` | Souscription d'un contrat habitation | `assurance-dommage.contrat-habitation.souscrit` |
+| `ContratResilie` | Résiliation d'un contrat dommage | `assurance-dommage.contrat.resilie` |
+| `SinistreAutoDepose` | Déclaration d'un sinistre auto | `assurance-dommage.sinistre-auto.depose` |
+| `SinistreHabitationDepose` | Déclaration d'un sinistre habitation | `assurance-dommage.sinistre-habitation.depose` |
+| `ExpertisePlanifiee` | Planification d'une expertise | `assurance-dommage.expertise.planifiee` |
+| `IndemnisationDommageEmise` | Émission d'une indemnisation dommage | `assurance-dommage.indemnisation.emise` |
 
 ### 4.4 Domaine Client 360
 
-| Événement | Description |
-|-----------|-------------|
-| `ProfilClientCree` | Création d'un profil client unifié |
-| `ProfilClientMisAJour` | Mise à jour du profil client |
-| `VueUnifieeGeneree` | Génération de la vue 360° du client |
+| Événement | Description | Topic Kafka |
+|-----------|-------------|-------------|
+| `ProfilClientCree` | Création d'un profil client unifié | `client.profil.cree` |
+| `ProfilClientMisAJour` | Mise à jour du profil client | `client.profil.mis-a-jour` |
+| `VueUnifieeGeneree` | Génération de la vue 360° du client | `client.vue-unifiee.generee` |
+
+### 4.5 Topics système
+
+| Topic | Usage |
+|-------|-------|
+| `system.dlq` | Dead Letter Queue pour événements en erreur |
+| `system.saga.events` | Coordination des transactions distribuées |
 
 ---
 
@@ -154,9 +181,14 @@ Les trois domaines partagent des événements selon les flux suivants :
 | **Frontend** | React + React Flow | Écosystème mature, visualisation de flux interactive |
 | **Conteneurisation** | Docker Compose | Simplicité, environnement local tout-en-un |
 
-### 5.1.1 Convention Avro Namespace
+### 5.2 Convention de nommage
 
-**Format standard**: `com.edalab.<domaine>.events`
+**Topics Kafka** : `<domaine>.<entite>.<action>`
+- Les mots composés dans l'entité utilisent le tiret (`paiement-prime`)
+- L'action est toujours en minuscules (`ouvert`, `effectue`, `emis`)
+- Le domaine correspond au service émetteur
+
+**Avro Namespace** : `com.edalab.<domaine>.events`
 
 | Domaine | Namespace Avro |
 |---------|----------------|
@@ -165,14 +197,6 @@ Les trois domaines partagent des événements selon les flux suivants :
 | Assurance Dommage | `com.edalab.assurance.dommage.events` |
 | Client 360 | `com.edalab.client.events` |
 | Système | `com.edalab.system.events` |
-
-### 5.2 Stack d'observabilité
-
-| Fonction | Outil | Description |
-|----------|-------|-------------|
-| **Métriques** | Prometheus + Grafana | Dashboards personnalisables, métriques Kafka |
-| **Traçage distribué** | Jaeger | Suivi des événements à travers les services (OpenTelemetry) |
-| **Logs centralisés** | Loki + Grafana | Agrégation des logs, intégré à Grafana |
 
 ### 5.3 Architecture des services
 
@@ -213,42 +237,19 @@ Les trois domaines partagent des événements selon les flux suivants :
 | `simulator` | Génération automatique d'événements fictifs |
 | `gateway` | API REST pour le contrôle + WebSocket pour temps réel |
 
----
+### 5.5 Stack d'observabilité
 
-## 6. Convention de nommage Kafka
-
-### 6.1 Format des topics
-
-**Pattern :** `<domaine>.<entite>.<action>`
-
-**Convention de correspondance Événement → Topic :**
-
-| Événement (PascalCase) | Topic (kebab-case) |
-|------------------------|-------------------|
-| `CompteOuvert` | `bancaire.compte.ouvert` |
-| `DepotEffectue` | `bancaire.depot.effectue` |
-| `PaiementPrimeEffectue` | `bancaire.paiement-prime.effectue` |
-
-**Règles :**
-- Les mots composés dans l'entité utilisent le tiret (`paiement-prime`)
-- L'action est toujours en minuscules (`ouvert`, `effectue`, `emis`)
-- Le domaine correspond au service émetteur
-
-### 6.2 Catalogue des topics
-
-| Domaine | Topics |
-|---------|--------|
-| **Bancaire** | `bancaire.compte.ouvert`, `bancaire.compte.ferme`, `bancaire.depot.effectue`, `bancaire.retrait.effectue`, `bancaire.virement.emis`, `bancaire.virement.recu`, `bancaire.paiement-prime.effectue` |
-| **Assurance Personne** | `assurance-personne.contrat.souscrit`, `assurance-personne.contrat.resilie`, `assurance-personne.beneficiaire.modifie`, `assurance-personne.prime.appelee`, `assurance-personne.prime.encaissee`, `assurance-personne.sinistre.depose`, `assurance-personne.indemnisation.emise` |
-| **Assurance Dommage** | `assurance-dommage.contrat-auto.souscrit`, `assurance-dommage.contrat-habitation.souscrit`, `assurance-dommage.contrat.resilie`, `assurance-dommage.sinistre-auto.depose`, `assurance-dommage.sinistre-habitation.depose`, `assurance-dommage.expertise.planifiee`, `assurance-dommage.indemnisation.emise` |
-| **Client 360** | `client.profil.cree`, `client.profil.mis-a-jour`, `client.vue-unifiee.generee` |
-| **Système** | `system.dlq`, `system.saga.events` |
+| Fonction | Outil |
+|----------|-------|
+| **Métriques** | Prometheus + Grafana |
+| **Traçage distribué** | Jaeger (OpenTelemetry) |
+| **Logs centralisés** | Loki + Grafana |
 
 ---
 
-## 7. Interface utilisateur
+## 6. Interface utilisateur
 
-### 7.1 Web UI - Contrôle de simulation
+### 6.1 Web UI - Contrôle de simulation
 
 | Fonctionnalité | Description |
 |----------------|-------------|
@@ -257,7 +258,7 @@ Les trois domaines partagent des événements selon les flux suivants :
 | **Paramètres dynamiques** | Ajustement du débit, durée, etc. à la volée |
 | **Déclenchement chaos** | Boutons pour activer les scénarios de défaillance |
 
-### 7.2 Dashboard de visualisation (React Flow)
+### 6.2 Dashboard de visualisation (React Flow)
 
 | Fonctionnalité | Description |
 |----------------|-------------|
@@ -266,24 +267,19 @@ Les trois domaines partagent des événements selon les flux suivants :
 | **Compteurs live** | Nombre d'événements par topic |
 | **État des services** | Indicateurs de santé (vert/orange/rouge) |
 
-### 7.3 Grafana Dashboards
+### 6.3 Grafana Dashboards
 
 | Dashboard | Métriques |
 |-----------|-----------|
 | **Kafka Overview** | Messages/sec, lag consommateurs, partitions |
 | **Services Health** | CPU, mémoire, latence par service |
-| **Tracing** | Durée des transactions, erreurs |
 | **Business Metrics** | Événements par domaine, flux d'interopérabilité |
 
 ---
 
-## 8. Configuration des scénarios
+## 7. Configuration des scénarios
 
-### 8.1 Format de configuration
-
-Les scénarios sont définis en **YAML** et modifiables via l'interface Web.
-
-### 8.2 Structure d'un scénario
+### 7.1 Structure d'un scénario (YAML)
 
 ```yaml
 scenario:
@@ -314,7 +310,7 @@ scenario:
       action: paiement-prime
 
   assertions:
-    - topic: bancaire.paiement.prime
+    - topic: bancaire.paiement-prime.effectue
       min_count: 100
       max_latency: 500ms
 
@@ -325,7 +321,7 @@ scenario:
       duration: 30s
 ```
 
-### 8.3 Scénarios prédéfinis
+### 7.2 Scénarios prédéfinis
 
 | Scénario | Description | Flux exercé |
 |----------|-------------|-------------|
@@ -337,9 +333,9 @@ scenario:
 
 ---
 
-## 9. Chaos Engineering
+## 8. Chaos Engineering
 
-### 9.1 Scénarios de défaillance
+### 8.1 Scénarios de défaillance
 
 | Type | Description | Apprentissage visé |
 |------|-------------|-------------------|
@@ -349,7 +345,7 @@ scenario:
 | **Duplicate Events** | Produire des événements en double | Valider l'idempotence des consommateurs |
 | **Schema Evolution** | Modifier un schéma Avro en cours de simulation | Tester la compatibilité avant/arrière |
 
-### 9.2 Déclenchement
+### 8.2 Déclenchement
 
 - **Via Interface Web** : Boutons dédiés pour chaque type de chaos
 - **Via YAML** : Configuration dans les scénarios avec `trigger_at` et `duration`
@@ -357,141 +353,19 @@ scenario:
 
 ---
 
-## 10. Structure du repository
+## 9. Gestion des erreurs
 
-### 10.1 Organisation (Monorepo)
+### 9.1 Dead Letter Queue (DLQ)
 
-```
-eda-lab/
-├── services/
-│   ├── bancaire/
-│   │   ├── cmd/
-│   │   ├── internal/
-│   │   ├── Dockerfile
-│   │   └── go.mod
-│   ├── assurance-personne/
-│   ├── assurance-dommage/
-│   ├── client-360/
-│   ├── orchestrator/
-│   ├── simulator/
-│   └── gateway/
-│
-├── schemas/
-│   ├── bancaire/
-│   │   ├── compte-ouvert.avsc
-│   │   ├── virement-emis.avsc
-│   │   └── ...
-│   ├── assurance-personne/
-│   ├── assurance-dommage/
-│   └── client/
-│
-├── web-ui/
-│   ├── src/
-│   │   ├── components/
-│   │   ├── pages/
-│   │   └── hooks/
-│   ├── package.json
-│   └── Dockerfile
-│
-├── infra/
-│   ├── docker-compose.yml
-│   ├── docker-compose.observability.yml
-│   ├── kafka/
-│   ├── grafana/
-│   │   └── dashboards/
-│   ├── prometheus/
-│   │   └── prometheus.yml
-│   ├── jaeger/
-│   └── loki/
-│
-├── scenarios/
-│   ├── flux-client-360.yaml
-│   ├── flux-paiement-prime.yaml
-│   ├── flux-sinistre-auto.yaml
-│   └── ...
-│
-├── docs/
-│   ├── README.md
-│   ├── INSTALLATION.md
-│   ├── ARCHITECTURE.md
-│   ├── patterns/
-│   │   ├── 01-pub-sub.md
-│   │   ├── 02-event-sourcing.md
-│   │   └── ...
-│   ├── adr/
-│   │   ├── 001-choix-kafka.md
-│   │   ├── 002-choix-avro.md
-│   │   └── ...
-│   └── scenarios/
-│
-├── scripts/
-│   ├── start.sh
-│   ├── stop.sh
-│   ├── reset.sh
-│   └── create-topics.sh
-│
-├── tests/
-│   ├── unit/
-│   ├── integration/
-│   └── e2e/
-│
-├── .gitignore
-├── Makefile
-└── README.md
-```
-
----
-
-## 11. Stratégie de tests
-
-### 11.1 Niveaux de tests
-
-| Niveau | Outils | Couverture |
-|--------|--------|------------|
-| **Unitaires** | Go testing, testify | Logique métier, transformations d'événements, validations |
-| **Intégration** | testcontainers-go | Kafka réel, PostgreSQL réel en containers éphémères |
-| **E2E** | Scripts Go + assertions | Scénarios complets de bout en bout |
-
-### 11.2 Couverture cible
-
-| Composant | Couverture minimale |
-|-----------|---------------------|
-| Services métier | 80% |
-| Orchestrator | 90% |
-| Simulator | 70% |
-| Gateway | 75% |
-
----
-
-## 12. Gestion des erreurs et résilience
-
-### 12.1 Stratégie de retry
-
-| Composant | Stratégie | Configuration |
-|-----------|-----------|---------------|
-| **Producer Kafka** | Retry avec backoff exponentiel | max_retries=3, initial_backoff=100ms, max_backoff=10s |
-| **Consumer Kafka** | Retry avant DLQ | max_attempts=3, delay=1s |
-| **Appels HTTP** | Retry avec circuit breaker | max_retries=3, timeout=5s |
-| **Database** | Retry connexion | max_retries=5, backoff=2s |
-
-### 12.2 Dead Letter Queue (DLQ)
-
-| Élément | Configuration |
-|---------|---------------|
-| **Topic DLQ** | `system.dlq` |
-| **Format** | Message original + métadonnées d'erreur |
-| **Rétention** | 7 jours |
-| **Monitoring** | Alerte si > 10 messages/minute |
-
-**Structure message DLQ :**
+**Structure message DLQ** :
 ```json
 {
   "original_topic": "bancaire.compte.ouvert",
-  "original_message": { ... },
+  "original_message": { },
   "error": {
     "type": "DESERIALIZATION_ERROR",
     "message": "Invalid Avro schema",
-    "timestamp": "2024-01-01T00:00:00Z",
+    "timestamp": "2026-01-20T00:00:00Z",
     "attempt_count": 3
   },
   "metadata": {
@@ -501,7 +375,7 @@ eda-lab/
 }
 ```
 
-### 12.3 Idempotence
+### 9.2 Idempotence
 
 | Événement | Clé d'idempotence | Stratégie |
 |-----------|-------------------|-----------|
@@ -509,132 +383,9 @@ eda-lab/
 | DepotEffectue | `event_id` | Table de tracking des événements traités |
 | VirementEmis | `event_id` | Table de tracking des événements traités |
 
-### 12.4 Circuit Breaker
-
-| Service | Seuil ouverture | Timeout demi-ouvert | Seuil fermeture |
-|---------|-----------------|---------------------|-----------------|
-| Gateway → Simulator | 5 erreurs/30s | 30s | 3 succès consécutifs |
-| Gateway → Bancaire | 5 erreurs/30s | 30s | 3 succès consécutifs |
-
 ---
 
-## 13. Documentation
-
-### 13.1 Structure de la documentation
-
-| Document | Contenu |
-|----------|---------|
-| `README.md` | Vue d'ensemble, quickstart, liens |
-| `INSTALLATION.md` | Prérequis, installation pas à pas |
-| `ARCHITECTURE.md` | Diagrammes C4, décisions techniques |
-| `patterns/*.md` | Guide détaillé par patron EDA |
-| `adr/*.md` | Architecture Decision Records |
-| `scenarios/*.md` | Documentation des scénarios |
-
-### 13.2 Architecture Decision Records (ADR)
-
-| ADR | Décision |
-|-----|----------|
-| ADR-001 | Choix de Confluent Platform Community pour Kafka |
-| ADR-002 | Choix d'Avro pour la sérialisation |
-| ADR-003 | Choix de Go comme langage principal |
-| ADR-004 | Choix de PostgreSQL comme base de données |
-| ADR-005 | Choix de React + React Flow pour le frontend |
-| ADR-006 | Architecture monorepo |
-
----
-
-## 14. Environnement d'exécution
-
-### 14.1 Prérequis
-
-| Élément | Version minimale |
-|---------|------------------|
-| **OS** | Windows 11 |
-| **Docker Desktop** | 4.x avec WSL2 |
-| **Docker Compose** | v2.x |
-| **Go** | 1.21+ |
-| **Node.js** | 20 LTS |
-
-### 14.2 Ressources recommandées
-
-| Ressource | Minimum | Recommandé |
-|-----------|---------|------------|
-| **RAM** | 8 Go | 16 Go |
-| **CPU** | 4 cores | 8 cores |
-| **Disque** | 20 Go | 50 Go |
-
----
-
-## 15. Roadmap des itérations
-
-### 15.1 MVP (Itération 1) - Scope détaillé
-
-**Objectif**: Infrastructure fonctionnelle avec flux Pub/Sub complet sur le domaine bancaire
-
-| Composant | Scope MVP | Critère de validation |
-|-----------|-----------|----------------------|
-| Infrastructure Docker | Kafka KRaft + Schema Registry + PostgreSQL | `make test-infra` passe |
-| Schémas Avro | 4 événements bancaires (CompteOuvert, DepotEffectue, RetraitEffectue, VirementEmis) | Schémas enregistrés dans Registry |
-| Service Simulator | Génère des événements à débit configurable | API `/simulation/start` fonctionne |
-| Service Bancaire | Consomme et persiste les événements | Données visibles en base |
-| Service Gateway | Proxy REST + WebSocket temps réel | WebSocket diffuse les événements |
-| Observabilité | Prometheus + Grafana (métriques de base) | Dashboard affiche messages/sec |
-| Web UI | Start/Stop + visualisation React Flow | Interface utilisable |
-| Tests | Unit + Integration + E2E | `make test-e2e` passe |
-
-**Hors scope MVP (Itération 2+)**:
-- Jaeger (traçage distribué)
-- Loki (logs centralisés)
-- Domaines Assurance
-- Event Sourcing, CQRS, Sagas
-
-### 15.2 Itération 2
-
-| Composant | Statut |
-|-----------|--------|
-| Domaines Assurance Personne + Dommage | 🔜 Planifié |
-| Event Sourcing | 🔜 Planifié |
-| Jaeger (traçage distribué) | 🔜 Planifié |
-| Loki (logs centralisés) | 🔜 Planifié |
-
-### 15.3 Itération 3
-
-| Composant | Statut |
-|-----------|--------|
-| CQRS | 🔜 Planifié |
-| Client 360 | 🔜 Planifié |
-| Chaos Engineering | 🔜 Planifié |
-
-### 15.4 Itérations suivantes
-
-| Composant | Statut |
-|-----------|--------|
-| Saga Choreography | 🔜 Planifié |
-| Saga Orchestration | 🔜 Planifié |
-| Event Streaming (Kafka Streams) | 🔜 Planifié |
-| Dead Letter Queue | 🔜 Planifié |
-| Outbox Pattern | 🔜 Planifié |
-
----
-
-## 16. Glossaire
-
-| Terme | Définition |
-|-------|------------|
-| **EDA** | Event Driven Architecture - Architecture pilotée par les événements |
-| **Pub/Sub** | Pattern Publish/Subscribe - Publication et abonnement aux événements |
-| **Event Sourcing** | Pattern où l'état est dérivé d'une séquence d'événements |
-| **CQRS** | Command Query Responsibility Segregation - Séparation lecture/écriture |
-| **Saga** | Pattern de gestion des transactions distribuées |
-| **DLQ** | Dead Letter Queue - File pour les événements en erreur |
-| **Outbox** | Pattern garantissant la livraison transactionnelle des événements |
-| **Schema Registry** | Service de gestion et validation des schémas Avro |
-| **KRaft** | Mode Kafka sans ZooKeeper |
-
----
-
-## 17. Références
+## 10. Références
 
 - [Apache Kafka Documentation](https://kafka.apache.org/documentation/)
 - [Confluent Platform](https://docs.confluent.io/)
@@ -646,5 +397,4 @@ eda-lab/
 
 ---
 
-**Document généré le 2026-01-19**
-**Outil : Claude Code**
+**Document généré le 2026-01-20**
