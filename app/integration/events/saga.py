@@ -193,10 +193,11 @@ class SagaOrchestrator:
             # Échec - lancer la compensation
             execution.status = SagaStatus.FAILED
             execution.error = str(e)
+            failed_step_name = execution.current_step
 
             await self._notify_event("saga_failed", {
                 "saga_id": saga_id,
-                "step": execution.current_step,
+                "step": failed_step_name,
                 "error": str(e)
             })
 
@@ -212,7 +213,7 @@ class SagaOrchestrator:
                 "status": "COMPENSATED" if compensation_result else "COMPENSATION_FAILED",
                 "saga_id": saga_id,
                 "error": str(e),
-                "failed_step": execution.current_step,
+                "failed_step": failed_step_name,
                 "compensated_steps": execution.steps_compensated,
                 "context": ctx
             }

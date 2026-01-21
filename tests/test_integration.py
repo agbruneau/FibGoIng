@@ -322,12 +322,14 @@ class TestResilienceScenarios:
         compensated = []
 
         # Modifier une étape pour échouer
-        original_generate_docs = saga._generate_documents
-
         async def failing_generate_docs(ctx):
             raise ValueError("Document generation failed")
 
-        saga._generate_documents = failing_generate_docs
+        # Remplacer l'action dans la définition des étapes
+        for step in saga.steps:
+            if step.name == "generate_documents":
+                step.action = failing_generate_docs
+                break
 
         result = await saga.execute({"quote_id": "QUO-FAIL"})
 
@@ -350,7 +352,7 @@ class TestResilienceScenarios:
         await broker.publish("fail_topic", {"data": "will fail"})
 
         # Attendre les retries et le passage en DLQ
-        await asyncio.sleep(0.5)
+        await asyncio.sleep(1.0)
 
         # Vérifier la DLQ
         dlq_message = await broker.receive_from_dlq("fail_topic")

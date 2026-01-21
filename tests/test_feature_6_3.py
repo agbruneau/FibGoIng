@@ -114,7 +114,10 @@ async def test_preferences_get(client):
 async def test_preferences_update_font_size(client):
     """Vérifie la mise à jour de la taille de police."""
     async with client:
-        r = await client.patch("/api/preferences/font-size?size=18")
+        r = await client.patch(
+            "/api/preferences/font-size",
+            json={"font_size": 18}
+        )
         assert r.status_code == 200
         data = r.json()
         assert data.get("font_size") == 18 or "success" in str(data).lower()

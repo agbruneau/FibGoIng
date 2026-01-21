@@ -570,7 +570,7 @@ def test_jwt_token_expiration():
 
     # Le token devrait être expiré immédiatement
     import time
-    time.sleep(0.1)
+    time.sleep(1.1)
 
     with pytest.raises(Exception):
         jwt_mgr.decode_token(token, verify=True)

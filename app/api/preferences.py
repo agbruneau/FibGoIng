@@ -59,6 +59,10 @@ async def get_preferences() -> Preferences:
     return load_preferences()
 
 
+class UpdateFontSizeRequest(BaseModel):
+    font_size: int
+
+
 @router.put("")
 async def update_preferences(prefs: Preferences) -> Preferences:
     """
@@ -82,16 +86,17 @@ async def update_preferences(prefs: Preferences) -> Preferences:
 
 
 @router.patch("/font-size")
-async def update_font_size(size: int) -> dict:
+async def update_font_size(request: UpdateFontSizeRequest) -> dict:
     """
     Met à jour uniquement la taille de police.
 
     Args:
-        size: Nouvelle taille de police (12-24)
+        request: Requête contenant la nouvelle taille
 
     Returns:
         Confirmation avec nouvelle taille
     """
+    size = request.font_size
     if not 12 <= size <= 24:
         raise HTTPException(
             status_code=400,

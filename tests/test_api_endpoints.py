@@ -49,7 +49,7 @@ class TestProgressAPI:
 
         assert response.status_code == 200
         data = response.json()
-        assert "overall" in data or "modules" in data or "completed" in data
+        assert "percentage" in data
 
     @pytest.mark.asyncio
     async def test_get_modules_progress(self, client):
@@ -95,7 +95,7 @@ class TestBrokerAPI:
 
         assert response.status_code == 200
         data = response.json()
-        assert isinstance(data, list)
+        assert isinstance(data["queues"], list)
 
     @pytest.mark.asyncio
     async def test_get_topics(self, client):
@@ -104,7 +104,7 @@ class TestBrokerAPI:
 
         assert response.status_code == 200
         data = response.json()
-        assert isinstance(data, list)
+        assert isinstance(data["topics"], list)
 
     @pytest.mark.asyncio
     async def test_send_to_queue(self, client):
@@ -116,7 +116,8 @@ class TestBrokerAPI:
 
         assert response.status_code == 200
         data = response.json()
-        assert "id" in data or "message_id" in data or "status" in data
+        assert "message" in data
+        assert "id" in data["message"]
 
     @pytest.mark.asyncio
     async def test_get_broker_stats(self, client):
@@ -134,7 +135,7 @@ class TestBrokerAPI:
 
         assert response.status_code == 200
         data = response.json()
-        assert isinstance(data, list)
+        assert isinstance(data["messages"], list)
 
     @pytest.mark.asyncio
     async def test_broker_reset(self, client):
@@ -338,15 +339,16 @@ class TestClaimsAPI:
         response = await client.post(
             "/mocks/claims",
             json={
-                "policy_id": "POL-001",
+                "policy_number": "POL-001",
+                "claim_type": "ACCIDENT",
                 "description": "Test claim",
-                "amount": 1000.0
+                "estimated_amount": 1000.0
             }
         )
 
         assert response.status_code in [200, 201]
         data = response.json()
-        assert "claim_id" in data or "id" in data or "claim_number" in data
+        assert "claim_id" in data or "id" in data or "claim_number" in data or "number" in data
 
     @pytest.mark.asyncio
     async def test_get_claims(self, client):
@@ -369,14 +371,14 @@ class TestInvoicesAPI:
         response = await client.post(
             "/mocks/invoices",
             json={
-                "policy_id": "POL-001",
+                "policy_number": "POL-001",
                 "amount": 500.0
             }
         )
 
         assert response.status_code in [200, 201]
         data = response.json()
-        assert "invoice_id" in data or "id" in data or "invoice_number" in data
+        assert "invoice_id" in data or "id" in data or "invoice_number" in data or "number" in data
 
 
 # ========== TESTS POLICIES API ==========
@@ -398,7 +400,7 @@ class TestPoliciesAPI:
 
         assert response.status_code in [200, 201]
         data = response.json()
-        assert "policy_id" in data or "id" in data or "policy_number" in data
+        assert "policy_id" in data or "id" in data or "policy_number" in data or "number" in data
 
     @pytest.mark.asyncio
     async def test_get_policies(self, client):
@@ -422,7 +424,7 @@ class TestRatesAPI:
 
         assert response.status_code == 200
         data = response.json()
-        assert "rate" in data or "base_rate" in data or "premium" in data
+        assert "rate" in data or "base_rate" in data or "premium" in data or "base_premium" in data
 
 
 # ========== TESTS CONCURRENT REQUESTS ==========

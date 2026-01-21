@@ -1,5 +1,6 @@
 """API du Sandbox."""
 from fastapi import APIRouter, HTTPException
+from pydantic import BaseModel
 from datetime import datetime
 from typing import Optional
 import json
@@ -24,9 +25,14 @@ async def get_scenario_details(scenario_id: str):
     return scenario
 
 
+class CreateSessionRequest(BaseModel):
+    scenario_id: str
+
+
 @router.post("/sessions")
-async def create_session(scenario_id: str):
+async def create_session(request: CreateSessionRequest):
     """Démarre une nouvelle session sandbox."""
+    scenario_id = request.scenario_id
     scenario = get_scenario(scenario_id)
     if not scenario:
         raise HTTPException(status_code=404, detail="Scénario non trouvé")

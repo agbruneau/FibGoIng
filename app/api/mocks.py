@@ -63,6 +63,26 @@ class CustomerRequest(BaseModel):
     birth_date: Optional[str] = None
 
 
+class ConfigureServiceRequest(BaseModel):
+    latency: Optional[int] = None
+    failure_rate: Optional[float] = None
+
+
+class InjectFailureRequest(BaseModel):
+    failure_rate: float = 1.0
+
+
+class UpdateClaimStatusRequest(BaseModel):
+    new_status: str
+    note: Optional[str] = None
+
+
+class RecordPaymentRequest(BaseModel):
+    amount: float
+    payment_method: str = "VIREMENT"
+    reference: Optional[str] = None
+
+
 # ============================================================
 # ENDPOINTS GÉNÉRAUX
 # ============================================================
@@ -87,8 +107,7 @@ async def get_service_status(service_id: str):
 @router.post("/services/{service_id}/configure")
 async def configure_service(
     service_id: str,
-    latency_ms: Optional[int] = None,
-    failure_rate: Optional[float] = None
+    request: ConfigureServiceRequest
 ):
     """Configure un service (latence, taux de panne)."""
     ensure_initialized()
@@ -96,24 +115,24 @@ async def configure_service(
     if not service:
         raise HTTPException(status_code=404, detail=f"Service {service_id} not found")
 
-    if latency_ms is not None:
-        service.config.latency_ms = max(0, latency_ms)
-    if failure_rate is not None:
-        service.config.failure_rate = max(0.0, min(1.0, failure_rate))
+    if request.latency is not None:
+        service.config.latency_ms = max(0, request.latency)
+    if request.failure_rate is not None:
+        service.config.failure_rate = max(0.0, min(1.0, request.failure_rate))
 
     return service.get_stats()
 
 
 @router.post("/services/{service_id}/inject-failure")
-async def inject_failure(service_id: str, failure_rate: float = 1.0):
+async def inject_failure(service_id: str, request: InjectFailureRequest):
     """Injecte des pannes dans un service."""
     ensure_initialized()
     service = get_service(service_id)
     if not service:
         raise HTTPException(status_code=404, detail=f"Service {service_id} not found")
 
-    service.inject_failure(failure_rate)
-    return {"message": f"Failure injected with rate {failure_rate}", "stats": service.get_stats()}
+    service.inject_failure(request.failure_rate)
+    return {"message": f"Failure injected with rate {request.failure_rate}", "stats": service.get_stats()}
 
 
 @router.post("/services/reset")
@@ -295,14 +314,13 @@ async def get_claim(claim_number: str):
 @router.put("/claims/{claim_number}/status")
 async def update_claim_status(
     claim_number: str,
-    new_status: str,
-    note: Optional[str] = None
+    request: UpdateClaimStatusRequest
 ):
     """Met à jour le statut d'un sinistre."""
     ensure_initialized()
     service = get_service("claims")
     try:
-        return await service.update_status(claim_number, new_status, note)
+        return await service.update_status(claim_number, request.new_status, request.note)
     except MockServiceError as e:
         raise HTTPException(status_code=e.status_code, detail=e.message)
 
@@ -352,9 +370,7 @@ async def get_invoice(invoice_number: str):
 @router.post("/invoices/{invoice_number}/payment")
 async def record_payment(
     invoice_number: str,
-    amount: float,
-    payment_method: str = "VIREMENT",
-    reference: Optional[str] = None
+    request: RecordPaymentRequest
 ):
     """Enregistre un paiement."""
     ensure_initialized()
@@ -362,9 +378,9 @@ async def record_payment(
     try:
         return await service.record_payment(
             invoice_number=invoice_number,
-            amount=amount,
-            payment_method=payment_method,
-            reference=reference
+            amount=request.amount,
+            payment_method=request.payment_method,
+            reference=request.reference
         )
     except MockServiceError as e:
         raise HTTPException(status_code=e.status_code, detail=e.message)

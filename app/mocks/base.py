@@ -264,7 +264,12 @@ class MockServiceRegistry:
 
     def get_all_stats(self) -> List[Dict]:
         """Retourne les statistiques de tous les services."""
-        return [service.get_stats() for service in self._services.values()]
+        stats_list = []
+        for service_id, service in self._services.items():
+            stats = service.get_stats()
+            stats["id"] = service_id
+            stats_list.append(stats)
+        return stats_list
 
     def reset_all(self):
         """Réinitialise tous les services."""

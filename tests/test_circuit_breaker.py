@@ -503,15 +503,24 @@ class TestSuccessResetsFailure:
 class TestHalfOpenMaxCalls:
     """Tests de la limite d'appels en HALF_OPEN."""
 
+    def test_init_validation_error(self):
+        """Vérifie que l'initialisation échoue si half_open_max_calls < success_threshold."""
+        with pytest.raises(ValueError):
+            CircuitBreaker(
+                name="invalid_cb",
+                success_threshold=3,
+                half_open_max_calls=2
+            )
+
     @pytest.mark.asyncio
-    async def test_half_open_allows_limited_calls(self):
-        """Vérifie la limite d'appels en HALF_OPEN."""
+    async def test_half_open_allows_calls_up_to_threshold(self):
+        """Vérifie qu'on peut faire le nombre d'appels requis."""
         cb = CircuitBreaker(
             name="cb_half_open_test",
             failure_threshold=2,
-            success_threshold=3,
+            success_threshold=2,
             reset_timeout=0.1,
-            half_open_max_calls=1
+            half_open_max_calls=2
         )
 
         # Ouvrir le circuit
@@ -524,10 +533,14 @@ class TestHalfOpenMaxCalls:
         await asyncio.sleep(0.15)
         assert cb.state == "HALF_OPEN"
 
-        # Premier appel autorisé
+        # Appel 1: Succès
         async with cb:
             pass
 
-        # Le circuit devrait toujours être en HALF_OPEN car success_threshold=3
-        # Mais half_open_max_calls=1 pourrait limiter
-        # En réalité, après 1 succès, il faut vérifier le comportement
+        assert cb.state == "HALF_OPEN"
+
+        # Appel 2: Succès
+        async with cb:
+            pass
+
+        assert cb.state == "CLOSED"

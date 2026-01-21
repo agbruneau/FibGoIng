@@ -40,7 +40,7 @@ class CircuitBreakerConfig:
     failure_threshold: int = 5          # Nombre d'échecs avant ouverture
     success_threshold: int = 2          # Nombre de succès pour fermer
     reset_timeout: float = 30.0         # Temps avant de passer en HALF_OPEN (secondes)
-    half_open_max_calls: int = 1        # Appels autorisés en HALF_OPEN
+    half_open_max_calls: int = 2        # Appels autorisés en HALF_OPEN
 
 
 @dataclass
@@ -78,9 +78,15 @@ class CircuitBreaker:
         failure_threshold: int = 5,
         success_threshold: int = 2,
         reset_timeout: float = 30.0,
-        half_open_max_calls: int = 1,
+        half_open_max_calls: int = 2,
         on_state_change: Optional[Callable] = None
     ):
+        if half_open_max_calls < success_threshold:
+            raise ValueError(
+                f"half_open_max_calls ({half_open_max_calls}) must be >= "
+                f"success_threshold ({success_threshold})"
+            )
+
         self.name = name
         self.config = CircuitBreakerConfig(
             failure_threshold=failure_threshold,
