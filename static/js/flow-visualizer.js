@@ -73,13 +73,14 @@ class FlowVisualizer {
      * Initialise le visualiseur
      */
     init() {
-        // Créer le SVG
+        // Créer le SVG avec un fond visible
         this.svg = d3.select(`#${this.containerId}`)
             .append('svg')
             .attr('width', '100%')
             .attr('height', '100%')
             .attr('viewBox', `0 0 ${this.options.width} ${this.options.height}`)
-            .attr('class', 'flow-visualizer');
+            .attr('class', 'flow-visualizer')
+            .style('background-color', '#111827');  // bg-gray-900 pour contraste
 
         // Définir les marqueurs de flèches
         this.defineMarkers();
@@ -223,8 +224,8 @@ class FlowVisualizer {
             .append('line')
             .attr('class', 'link')
             .attr('stroke', d => PILLAR_COLORS[d.pillar] || '#94a3b8')
-            .attr('stroke-width', 2)
-            .attr('stroke-opacity', 0.6)
+            .attr('stroke-width', 3)
+            .attr('stroke-opacity', 0.8)
             .attr('marker-end', d => `url(#arrow-${d.pillar || 'default'})`);
 
         // Mise à jour des nœuds
@@ -315,25 +316,26 @@ class FlowVisualizer {
         const pillar = options.pillar || 'events';
         const color = PILLAR_COLORS[pillar] || '#f97316';
 
-        // Créer la particule
+        // Créer la particule avec effet de brillance
         const particle = this.particlesGroup.append('circle')
             .attr('class', 'message-particle')
-            .attr('r', 8)
+            .attr('r', 12)
             .attr('fill', color)
             .attr('cx', sourceNode.x)
             .attr('cy', sourceNode.y)
-            .attr('opacity', 1);
+            .attr('opacity', 1)
+            .style('filter', 'drop-shadow(0 0 6px ' + color + ')');
 
-        // Effet de halo
+        // Effet de halo plus visible
         const halo = this.particlesGroup.append('circle')
             .attr('class', 'message-halo')
-            .attr('r', 8)
+            .attr('r', 12)
             .attr('fill', 'none')
             .attr('stroke', color)
-            .attr('stroke-width', 2)
+            .attr('stroke-width', 3)
             .attr('cx', sourceNode.x)
             .attr('cy', sourceNode.y)
-            .attr('opacity', 0.8);
+            .attr('opacity', 1);
 
         // Animation
         particle.transition()
@@ -350,7 +352,7 @@ class FlowVisualizer {
             .duration(duration)
             .attr('cx', targetNode.x)
             .attr('cy', targetNode.y)
-            .attr('r', 20)
+            .attr('r', 30)
             .attr('opacity', 0)
             .on('end', () => halo.remove());
 
