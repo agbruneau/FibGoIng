@@ -1,0 +1,81 @@
+[
+  {
+    "id": "Q001",
+    "customer_id": "C001",
+    "product": "AUTO",
+    "risk_data": {
+      "age": 39,
+      "zone": "urbain",
+      "bonus_malus": 0.9,
+      "vehicle_type": "berline",
+      "claims_count": 0
+    },
+    "premium": 850.00,
+    "status": "ACCEPTED",
+    "valid_until": "2024-01-15T00:00:00",
+    "created_at": "2023-12-15T10:00:00"
+  },
+  {
+    "id": "Q002",
+    "customer_id": "C001",
+    "product": "HABITATION",
+    "risk_data": {
+      "surface": 75,
+      "rooms": 3,
+      "floor": 2,
+      "alarm": true
+    },
+    "premium": 420.00,
+    "status": "ACCEPTED",
+    "valid_until": "2024-02-20T00:00:00",
+    "created_at": "2024-01-20T14:30:00"
+  },
+  {
+    "id": "Q003",
+    "customer_id": "C002",
+    "product": "AUTO",
+    "risk_data": {
+      "age": 32,
+      "zone": "urbain",
+      "bonus_malus": 1.0,
+      "vehicle_type": "SUV",
+      "claims_count": 1
+    },
+    "premium": 1200.00,
+    "status": "ACCEPTED",
+    "valid_until": "2024-03-15T00:00:00",
+    "created_at": "2024-02-15T09:00:00"
+  },
+  {
+    "id": "Q100",
+    "customer_id": "C006",
+    "product": "AUTO",
+    "risk_data": {
+      "age": 29,
+      "zone": "rural",
+      "bonus_malus": 1.0,
+      "vehicle_type": "citadine",
+      "claims_count": 0
+    },
+    "premium": 480.00,
+    "status": "PENDING",
+    "valid_until": "2025-02-15T00:00:00",
+    "created_at": "2025-01-15T11:00:00"
+  },
+  {
+    "id": "Q101",
+    "customer_id": "C003",
+    "product": "HABITATION",
+    "risk_data": {
+      "surface": 120,
+      "rooms": 5,
+      "floor": 0,
+      "alarm": false,
+      "garden": true
+    },
+    "premium": 580.00,
+    "status": "PENDING",
+    "valid_until": "2025-02-20T00:00:00",
+    "created_at": "2025-01-20T14:00:00"
+  }
+]

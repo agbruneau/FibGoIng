@@ -1,0 +1,38 @@
+{
+  "AUTO": {
+    "base": 450.0,
+    "rc_rate": 0.30,
+    "vol_rate": 0.15,
+    "bris_glace_rate": 0.05,
+    "tous_risques_rate": 0.40
+  },
+  "HABITATION": {
+    "base": 280.0,
+    "incendie_rate": 0.20,
+    "degat_eau_rate": 0.15,
+    "vol_rate": 0.10,
+    "rc_rate": 0.05
+  },
+  "MRH": {
+    "base": 320.0,
+    "rc_rate": 0.25,
+    "mobilier_rate": 0.20,
+    "assistance_rate": 0.05,
+    "protection_juridique_rate": 0.08
+  },
+  "zone_factors": {
+    "A": 1.3,
+    "B": 1.0,
+    "C": 0.85
+  },
+  "age_factors": {
+    "under_25": 1.4,
+    "25_65": 1.0,
+    "over_65": 1.15
+  },
+  "market_trends": {
+    "AUTO": "+2.3%",
+    "HABITATION": "+1.8%",
+    "MRH": "+2.1%"
+  }
+}

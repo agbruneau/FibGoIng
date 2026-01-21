@@ -1,0 +1,92 @@
+[
+  {
+    "id": "C001",
+    "name": "Jean Dupont",
+    "email": "jean.dupont@email.com",
+    "phone": "06 12 34 56 78",
+    "address": {
+      "street": "15 rue de la Paix",
+      "city": "Paris",
+      "postal_code": "75002",
+      "country": "France"
+    },
+    "birth_date": "1985-03-15",
+    "status": "ACTIVE",
+    "created_at": "2020-01-15T10:30:00"
+  },
+  {
+    "id": "C002",
+    "name": "Marie Martin",
+    "email": "marie.martin@email.com",
+    "phone": "06 98 76 54 32",
+    "address": {
+      "street": "8 avenue des Champs",
+      "city": "Lyon",
+      "postal_code": "69001",
+      "country": "France"
+    },
+    "birth_date": "1992-07-22",
+    "status": "ACTIVE",
+    "created_at": "2021-03-20T14:15:00"
+  },
+  {
+    "id": "C003",
+    "name": "Pierre Bernard",
+    "email": "pierre.bernard@email.com",
+    "phone": "06 11 22 33 44",
+    "address": {
+      "street": "42 boulevard Victor Hugo",
+      "city": "Marseille",
+      "postal_code": "13001",
+      "country": "France"
+    },
+    "birth_date": "1978-11-08",
+    "status": "ACTIVE",
+    "created_at": "2019-06-10T09:00:00"
+  },
+  {
+    "id": "C004",
+    "name": "Sophie Leroy",
+    "email": "sophie.leroy@email.com",
+    "phone": "06 55 66 77 88",
+    "address": {
+      "street": "23 rue Nationale",
+      "city": "Lille",
+      "postal_code": "59000",
+      "country": "France"
+    },
+    "birth_date": "1990-01-30",
+    "status": "ACTIVE",
+    "created_at": "2022-01-05T16:45:00"
+  },
+  {
+    "id": "C005",
+    "name": "François Moreau",
+    "email": "francois.moreau@email.com",
+    "phone": "06 99 88 77 66",
+    "address": {
+      "street": "5 place de la République",
+      "city": "Bordeaux",
+      "postal_code": "33000",
+      "country": "France"
+    },
+    "birth_date": "1968-09-12",
+    "status": "ACTIVE",
+    "created_at": "2018-11-28T11:20:00"
+  },
+  {
+    "id": "C006",
+    "name": "Isabelle Petit",
+    "email": "isabelle.petit@email.com",
+    "phone": "06 44 33 22 11",
+    "address": {
+      "street": "18 rue du Commerce",
+      "city": "Toulouse",
+      "postal_code": "31000",
+      "country": "France"
+    },
+    "birth_date": "1995-05-25",
+    "status": "ACTIVE",
+    "created_at": "2023-02-14T08:30:00"
+  }
+]

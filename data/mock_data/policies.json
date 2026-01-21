@@ -1,0 +1,80 @@
+[
+  {
+    "number": "POL-2024-0001",
+    "customer_id": "C001",
+    "product": "AUTO",
+    "quote_id": "Q001",
+    "coverages": ["RC", "VOL", "BRIS_GLACE"],
+    "premium": 850.00,
+    "status": "ACTIVE",
+    "start_date": "2024-01-01T00:00:00",
+    "end_date": "2024-12-31T23:59:59",
+    "created_at": "2023-12-15T10:00:00",
+    "updated_at": "2024-01-01T00:00:00"
+  },
+  {
+    "number": "POL-2024-0002",
+    "customer_id": "C001",
+    "product": "HABITATION",
+    "quote_id": "Q002",
+    "coverages": ["INCENDIE", "DEGAT_EAU", "VOL", "RC"],
+    "premium": 420.00,
+    "status": "ACTIVE",
+    "start_date": "2024-02-01T00:00:00",
+    "end_date": "2025-01-31T23:59:59",
+    "created_at": "2024-01-20T14:30:00",
+    "updated_at": "2024-02-01T00:00:00"
+  },
+  {
+    "number": "POL-2024-0003",
+    "customer_id": "C002",
+    "product": "AUTO",
+    "quote_id": "Q003",
+    "coverages": ["RC", "TOUS_RISQUES"],
+    "premium": 1200.00,
+    "status": "ACTIVE",
+    "start_date": "2024-03-01T00:00:00",
+    "end_date": "2025-02-28T23:59:59",
+    "created_at": "2024-02-15T09:00:00",
+    "updated_at": "2024-03-01T00:00:00"
+  },
+  {
+    "number": "POL-2024-0004",
+    "customer_id": "C003",
+    "product": "MRH",
+    "quote_id": "Q004",
+    "coverages": ["RC", "INCENDIE", "DEGAT_EAU", "VOL", "ASSISTANCE"],
+    "premium": 380.00,
+    "status": "ACTIVE",
+    "start_date": "2024-01-15T00:00:00",
+    "end_date": "2025-01-14T23:59:59",
+    "created_at": "2024-01-10T11:00:00",
+    "updated_at": "2024-01-15T00:00:00"
+  },
+  {
+    "number": "POL-2023-0050",
+    "customer_id": "C004",
+    "product": "AUTO",
+    "quote_id": "Q050",
+    "coverages": ["RC"],
+    "premium": 550.00,
+    "status": "EXPIRED",
+    "start_date": "2023-01-01T00:00:00",
+    "end_date": "2023-12-31T23:59:59",
+    "created_at": "2022-12-20T16:00:00",
+    "updated_at": "2024-01-01T00:00:00"
+  },
+  {
+    "number": "POL-2024-0005",
+    "customer_id": "C005",
+    "product": "AUTO",
+    "quote_id": "Q005",
+    "coverages": ["RC", "VOL"],
+    "premium": 680.00,
+    "status": "PENDING",
+    "start_date": null,
+    "end_date": null,
+    "created_at": "2024-06-01T10:30:00",
+    "updated_at": "2024-06-01T10:30:00"
+  }
+]

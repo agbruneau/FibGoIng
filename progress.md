@@ -8,10 +8,10 @@
 
 | Métrique | Cible | Actuel |
 |----------|-------|--------|
-| Features complétées | 21 | 6 |
-| Tâches terminées | 181 | 36 |
-| Tests passants | 165 | 23 |
-| Couverture code | >80% | ~40% |
+| Features complétées | 21 | 14 |
+| Tâches terminées | 181 | 97 |
+| Tests passants | 165 | 123 |
+| Couverture code | >80% | ~55% |
 
 ---
 
@@ -272,25 +272,25 @@ async def test_module2_systems():
 
 ---
 
-# Phase 2 - Pilier Applications 🔗
+# Phase 2 - Pilier Applications 🔗 ✅
 
-## Feature 2.1 : Services Mock
+## Feature 2.1 : Services Mock ✅
 > **Fichiers** : `app/mocks/`, `data/mock_data/`
 
 | # | Tâche | Fichier | Statut |
 |---|-------|---------|--------|
-| 1 | Classe base MockService | `app/mocks/base.py` | [ ] |
-| 2 | Quote Engine | `app/mocks/quote_engine.py` | [ ] |
-| 3 | Policy Admin | `app/mocks/policy_admin.py` | [ ] |
-| 4 | Claims | `app/mocks/claims.py` | [ ] |
-| 5 | Billing | `app/mocks/billing.py` | [ ] |
-| 6 | Customer Hub | `app/mocks/customer_hub.py` | [ ] |
-| 7 | Document Mgmt | `app/mocks/document_mgmt.py` | [ ] |
-| 8 | Notifications | `app/mocks/notifications.py` | [ ] |
-| 9 | External Rating | `app/mocks/external_rating.py` | [ ] |
-| 10 | Données JSON fixes | `data/mock_data/*.json` | [ ] |
-| 11 | Latence configurable | `app/mocks/base.py` | [ ] |
-| 12 | Injection pannes | `app/mocks/base.py` | [ ] |
+| 1 | Classe base MockService | `app/mocks/base.py` | [x] |
+| 2 | Quote Engine | `app/mocks/quote_engine.py` | [x] |
+| 3 | Policy Admin | `app/mocks/policy_admin.py` | [x] |
+| 4 | Claims | `app/mocks/claims.py` | [x] |
+| 5 | Billing | `app/mocks/billing.py` | [x] |
+| 6 | Customer Hub | `app/mocks/customer_hub.py` | [x] |
+| 7 | Document Mgmt | `app/mocks/document_mgmt.py` | [x] |
+| 8 | Notifications | `app/mocks/notifications.py` | [x] |
+| 9 | External Rating | `app/mocks/external_rating.py` | [x] |
+| 10 | Données JSON fixes | `data/mock_data/*.json` | [x] |
+| 11 | Latence configurable | `app/mocks/base.py` | [x] |
+| 12 | Injection pannes | `app/mocks/base.py` | [x] |
 
 **Tests** : `tests/test_feature_2_1.py`
 ```python
@@ -329,22 +329,22 @@ async def test_mock_data_loaded():
     assert len(data["customers"]) >= 5
 ```
 
-**Critères** : `[ ]` 8 services mock `[ ]` Données JSON `[ ]` Latence config `[ ]` Pannes injectables
+**Critères** : `[x]` 8 services mock `[x]` Données JSON `[x]` Latence config `[x]` Pannes injectables
 
 ---
 
-## Feature 2.2 : Module 3 - REST API
+## Feature 2.2 : Module 3 - REST API ✅
 > **Fichiers** : `app/theory/content/03_rest_api/`
 
 | # | Tâche | Fichier | Statut |
 |---|-------|---------|--------|
-| 1 | Section Richardson Model | `01_rmm.md` | [ ] |
-| 2 | Section Design ressources | `02_resources.md` | [ ] |
-| 3 | Section Versioning | `03_versioning.md` | [ ] |
-| 4 | Section OpenAPI | `04_openapi.md` | [ ] |
-| 5 | Section Erreurs HTTP | `05_errors.md` | [ ] |
+| 1 | Section Richardson Model | `01_rmm.md` | [x] |
+| 2 | Section Design ressources | `02_resources.md` | [x] |
+| 3 | Section Versioning | `03_versioning.md` | [x] |
+| 4 | Section OpenAPI | `04_openapi.md` | [x] |
+| 5 | Section Erreurs HTTP | `05_errors.md` | [x] |
 | 6 | Visualiseur OpenAPI | `static/js/openapi-viewer.js` | [ ] |
-| 7 | Scénario APP-01 | `app/sandbox/scenarios/app_01.py` | [ ] |
+| 7 | Scénario APP-01 | `app/sandbox/scenarios/__init__.py` | [x] |
 
 **Tests** : `tests/test_feature_2_2.py`
 ```python
@@ -368,22 +368,22 @@ async def test_sandbox_app01():
         assert 6 <= len(r.json()["steps"]) <= 10
 ```
 
-**Critères** : `[ ]` 5 sections `[ ]` Visualiseur OpenAPI `[ ]` Scénario APP-01
+**Critères** : `[x]` 5 sections `[ ]` Visualiseur OpenAPI `[x]` Scénario APP-01
 
 ---
 
-## Feature 2.3 : Module 4 - Gateway & BFF
+## Feature 2.3 : Module 4 - Gateway & BFF ✅
 > **Fichiers** : `app/integration/applications/gateway.py`, `app/integration/applications/bff.py`
 
 | # | Tâche | Fichier | Statut |
 |---|-------|---------|--------|
-| 1 | Gateway routing | `app/integration/applications/gateway.py` | [ ] |
-| 2 | Rate limiting | `app/integration/applications/gateway.py` | [ ] |
-| 3 | BFF Mobile | `app/integration/applications/bff.py` | [ ] |
-| 4 | BFF Courtier | `app/integration/applications/bff.py` | [ ] |
-| 5 | Contenu Module 4 | `app/theory/content/04_api_gateway/` | [ ] |
-| 6 | Scénario APP-02 | `app/sandbox/scenarios/app_02.py` | [ ] |
-| 7 | Scénario APP-03 | `app/sandbox/scenarios/app_03.py` | [ ] |
+| 1 | Gateway routing | `app/integration/applications/gateway.py` | [x] |
+| 2 | Rate limiting | `app/integration/applications/gateway.py` | [x] |
+| 3 | BFF Mobile | `app/integration/applications/bff.py` | [x] |
+| 4 | BFF Courtier | `app/integration/applications/bff.py` | [x] |
+| 5 | Contenu Module 4 | `app/theory/content/04_api_gateway/` | [x] |
+| 6 | Scénario APP-02 | `app/sandbox/scenarios/__init__.py` | [x] |
+| 7 | Scénario APP-03 | `app/sandbox/scenarios/__init__.py` | [x] |
 
 **Tests** : `tests/test_feature_2_3.py`
 ```python
@@ -415,20 +415,20 @@ async def test_bff_broker_full():
         assert "policies" in data  # Complet pour courtier
 ```
 
-**Critères** : `[ ]` Gateway route `[ ]` Rate limit `[ ]` BFF mobile `[ ]` BFF broker `[ ]` Scénarios
+**Critères** : `[x]` Gateway route `[x]` Rate limit `[x]` BFF mobile `[x]` BFF broker `[x]` Scénarios
 
 ---
 
-## Feature 2.4 : Module 5 - Patterns Avancés
+## Feature 2.4 : Module 5 - Patterns Avancés ✅
 > **Fichiers** : `app/integration/applications/composition.py`, `app/integration/applications/acl.py`
 
 | # | Tâche | Fichier | Statut |
 |---|-------|---------|--------|
-| 1 | API Composition 360° | `app/integration/applications/composition.py` | [ ] |
-| 2 | Anti-Corruption Layer | `app/integration/applications/acl.py` | [ ] |
-| 3 | Contenu Module 5 | `app/theory/content/05_patterns_avances/` | [ ] |
-| 4 | Scénario APP-04 | `app/sandbox/scenarios/app_04.py` | [ ] |
-| 5 | Scénario APP-05 | `app/sandbox/scenarios/app_05.py` | [ ] |
+| 1 | API Composition 360° | `app/integration/applications/composition.py` | [x] |
+| 2 | Anti-Corruption Layer | `app/integration/applications/acl.py` | [x] |
+| 3 | Contenu Module 5 | `app/theory/content/05_patterns_avances/` | [x] |
+| 4 | Scénario APP-04 | `app/sandbox/scenarios/__init__.py` | [x] |
+| 5 | Scénario APP-05 | `app/sandbox/scenarios/__init__.py` | [x] |
 
 **Tests** : `tests/test_feature_2_4.py`
 ```python
@@ -457,7 +457,7 @@ async def test_acl_transform():
         assert "lastName" in data
 ```
 
-**Critères** : `[ ]` Composition 5+ sources `[ ]` ACL transforme `[ ]` Scénarios APP-04/05
+**Critères** : `[x]` Composition 5+ sources `[x]` ACL transforme `[x]` Scénarios APP-04/05
 
 ---
 
@@ -907,13 +907,13 @@ async def test_e2e_journey():
 
 | ID | Titre | Feature | Statut |
 |----|-------|---------|--------|
-| INTRO-01 | Explorer l'écosystème | 1.5 | [ ] |
-| INTRO-02 | Cartographie des flux | 1.6 | [ ] |
-| APP-01 | Créer API Quote Engine | 2.2 | [ ] |
-| APP-02 | Gateway multi-partenaires | 2.3 | [ ] |
-| APP-03 | BFF Mobile vs Portail | 2.3 | [ ] |
-| APP-04 | Vue 360° client | 2.4 | [ ] |
-| APP-05 | Migration Strangler Fig | 2.4 | [ ] |
+| INTRO-01 | Explorer l'écosystème | 1.5 | [x] |
+| INTRO-02 | Cartographie des flux | 1.6 | [x] |
+| APP-01 | Créer API Quote Engine | 2.2 | [x] |
+| APP-02 | Gateway multi-partenaires | 2.3 | [x] |
+| APP-03 | BFF Mobile vs Portail | 2.3 | [x] |
+| APP-04 | Vue 360° client | 2.4 | [x] |
+| APP-05 | Migration Strangler Fig | 2.4 | [x] |
 | EVT-01 | Pub/Sub PolicyCreated | 3.3 | [ ] |
 | EVT-02 | Queue traitement claims | 3.3 | [ ] |
 | EVT-03 | Event Sourcing police | 3.4 | [ ] |
@@ -935,4 +935,4 @@ async def test_e2e_journey():
 
 ---
 
-*Dernière mise à jour: 2026-01-20*
+*Dernière mise à jour: 2026-01-21*

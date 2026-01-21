@@ -1,0 +1,85 @@
+[
+  {
+    "number": "INV-2024-0001",
+    "policy_number": "POL-2024-0001",
+    "amount": 850.00,
+    "amount_paid": 850.00,
+    "status": "PAID",
+    "due_date": "2024-01-31T23:59:59",
+    "description": "Prime annuelle - Assurance Auto",
+    "created_at": "2024-01-01T00:00:00",
+    "updated_at": "2024-01-20T15:30:00",
+    "paid_at": "2024-01-20T15:30:00",
+    "payments": [
+      {
+        "amount": 850.00,
+        "method": "VIREMENT",
+        "reference": "PAY-2024-001",
+        "date": "2024-01-20T15:30:00"
+      }
+    ]
+  },
+  {
+    "number": "INV-2024-0002",
+    "policy_number": "POL-2024-0002",
+    "amount": 420.00,
+    "amount_paid": 210.00,
+    "status": "PARTIAL",
+    "due_date": "2024-02-28T23:59:59",
+    "description": "Prime annuelle - Assurance Habitation",
+    "created_at": "2024-02-01T00:00:00",
+    "updated_at": "2024-02-15T10:00:00",
+    "payments": [
+      {
+        "amount": 210.00,
+        "method": "CARTE",
+        "reference": "PAY-2024-002",
+        "date": "2024-02-15T10:00:00"
+      }
+    ]
+  },
+  {
+    "number": "INV-2024-0003",
+    "policy_number": "POL-2024-0003",
+    "amount": 1200.00,
+    "amount_paid": 0.00,
+    "status": "PENDING",
+    "due_date": "2024-03-31T23:59:59",
+    "description": "Prime annuelle - Assurance Auto Tous Risques",
+    "created_at": "2024-03-01T00:00:00",
+    "updated_at": "2024-03-01T00:00:00",
+    "payments": []
+  },
+  {
+    "number": "INV-2024-0004",
+    "policy_number": "POL-2024-0004",
+    "amount": 380.00,
+    "amount_paid": 380.00,
+    "status": "PAID",
+    "due_date": "2024-02-15T23:59:59",
+    "description": "Prime annuelle - MRH",
+    "created_at": "2024-01-15T00:00:00",
+    "updated_at": "2024-02-10T09:00:00",
+    "paid_at": "2024-02-10T09:00:00",
+    "payments": [
+      {
+        "amount": 380.00,
+        "method": "PRELEVEMENT",
+        "reference": "PAY-2024-004",
+        "date": "2024-02-10T09:00:00"
+      }
+    ]
+  },
+  {
+    "number": "INV-2023-0100",
+    "policy_number": "POL-2023-0050",
+    "amount": 550.00,
+    "amount_paid": 0.00,
+    "status": "OVERDUE",
+    "due_date": "2023-01-31T23:59:59",
+    "description": "Prime annuelle - Assurance Auto (impayée)",
+    "created_at": "2023-01-01T00:00:00",
+    "updated_at": "2023-02-15T00:00:00",
+    "payments": []
+  }
+]

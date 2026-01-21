@@ -1,0 +1,92 @@
+[
+  {
+    "id": "DOC-001",
+    "filename": "attestation_assurance_auto_C001.pdf",
+    "content_type": "PDF",
+    "category": "ATTESTATION",
+    "entity_type": "policy",
+    "entity_id": "POL-2024-0001",
+    "metadata": {
+      "generated_by": "system",
+      "version": "1.0"
+    },
+    "size_bytes": 125000,
+    "content_hash": "a1b2c3d4e5f6",
+    "storage_path": "/documents/2024/01/DOC-001",
+    "status": "ACTIVE",
+    "created_at": "2024-01-01T10:00:00",
+    "updated_at": "2024-01-01T10:00:00"
+  },
+  {
+    "id": "DOC-002",
+    "filename": "contrat_habitation_C001.pdf",
+    "content_type": "PDF",
+    "category": "CONTRAT",
+    "entity_type": "policy",
+    "entity_id": "POL-2024-0002",
+    "metadata": {
+      "generated_by": "system",
+      "signed": true,
+      "signature_date": "2024-01-28"
+    },
+    "size_bytes": 450000,
+    "content_hash": "b2c3d4e5f6a1",
+    "storage_path": "/documents/2024/02/DOC-002",
+    "status": "ACTIVE",
+    "created_at": "2024-02-01T14:30:00",
+    "updated_at": "2024-02-01T14:30:00"
+  },
+  {
+    "id": "DOC-003",
+    "filename": "declaration_sinistre_CLM-2024-0001.pdf",
+    "content_type": "PDF",
+    "category": "DECLARATION_SINISTRE",
+    "entity_type": "claim",
+    "entity_id": "CLM-2024-0001",
+    "metadata": {
+      "declared_by": "C001",
+      "photos_count": 3
+    },
+    "size_bytes": 890000,
+    "content_hash": "c3d4e5f6a1b2",
+    "storage_path": "/documents/2024/03/DOC-003",
+    "status": "ACTIVE",
+    "created_at": "2024-03-15T16:15:00",
+    "updated_at": "2024-03-15T16:15:00"
+  },
+  {
+    "id": "DOC-004",
+    "filename": "rapport_expertise_CLM-2024-0001.pdf",
+    "content_type": "PDF",
+    "category": "EXPERTISE",
+    "entity_type": "claim",
+    "entity_id": "CLM-2024-0001",
+    "metadata": {
+      "expert_name": "M. Expert",
+      "expert_company": "Expertise Pro"
+    },
+    "size_bytes": 1250000,
+    "content_hash": "d4e5f6a1b2c3",
+    "storage_path": "/documents/2024/03/DOC-004",
+    "status": "ACTIVE",
+    "created_at": "2024-03-25T11:30:00",
+    "updated_at": "2024-03-25T11:30:00"
+  },
+  {
+    "id": "DOC-005",
+    "filename": "facture_INV-2024-0001.pdf",
+    "content_type": "PDF",
+    "category": "FACTURE",
+    "entity_type": "invoice",
+    "entity_id": "INV-2024-0001",
+    "metadata": {
+      "generated_by": "billing_system"
+    },
+    "size_bytes": 85000,
+    "content_hash": "e5f6a1b2c3d4",
+    "storage_path": "/documents/2024/01/DOC-005",
+    "status": "ACTIVE",
+    "created_at": "2024-01-01T00:05:00",
+    "updated_at": "2024-01-01T00:05:00"
+  }
+]
