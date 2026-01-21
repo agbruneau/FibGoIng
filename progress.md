@@ -8,24 +8,24 @@
 
 | Métrique | Cible | Actuel |
 |----------|-------|--------|
-| Features complétées | 21 | 0 |
-| Tâches terminées | 181 | 0 |
-| Tests passants | 165 | 0 |
-| Couverture code | >80% | 0% |
+| Features complétées | 21 | 6 |
+| Tâches terminées | 181 | 36 |
+| Tests passants | 165 | 23 |
+| Couverture code | >80% | ~40% |
 
 ---
 
 # Phase 1 - Fondations
 
-## Feature 1.1 : Structure Projet
+## Feature 1.1 : Structure Projet ✅
 > **Fichiers** : `requirements.txt`, `run.py`, `install.bat`, `run.bat`
 
 | # | Tâche | Fichier | Statut |
 |---|-------|---------|--------|
-| 1 | Créer arborescence dossiers | `app/`, `static/`, `data/`, `tests/` | [ ] |
-| 2 | Créer requirements.txt | `requirements.txt` | [ ] |
-| 3 | Créer point d'entrée | `run.py` | [ ] |
-| 4 | Créer scripts Windows | `install.bat`, `run.bat` | [ ] |
+| 1 | Créer arborescence dossiers | `app/`, `static/`, `data/`, `tests/` | [x] |
+| 2 | Créer requirements.txt | `requirements.txt` | [x] |
+| 3 | Créer point d'entrée | `run.py` | [x] |
+| 4 | Créer scripts Windows | `install.bat`, `run.bat` | [x] |
 
 **Tests** : `tests/test_feature_1_1.py`
 ```python
@@ -50,19 +50,19 @@ def test_run_script():
     assert "uvicorn" in content
 ```
 
-**Critères** : `[ ]` Dossiers créés `[ ]` pip install OK `[ ]` python run.py démarre
+**Critères** : `[x]` Dossiers créés `[x]` pip install OK `[x]` python run.py démarre
 
 ---
 
-## Feature 1.2 : Application FastAPI
+## Feature 1.2 : Application FastAPI ✅
 > **Fichiers** : `app/main.py`, `app/config.py`, `app/database.py`
 
 | # | Tâche | Fichier | Statut |
 |---|-------|---------|--------|
-| 1 | Application FastAPI de base | `app/main.py` | [ ] |
-| 2 | Configuration constantes | `app/config.py` | [ ] |
-| 3 | Init SQLite + schéma | `app/database.py` | [ ] |
-| 4 | Endpoint SSE temps réel | `app/main.py` | [ ] |
+| 1 | Application FastAPI de base | `app/main.py` | [x] |
+| 2 | Configuration constantes | `app/config.py` | [x] |
+| 3 | Init SQLite + schéma | `app/database.py` | [x] |
+| 4 | Endpoint SSE temps réel | `app/main.py` | [x] |
 
 **Tests** : `tests/test_feature_1_2.py`
 ```python
@@ -92,21 +92,21 @@ async def test_database_tables():
         assert "sandbox_sessions" in tables
 ```
 
-**Critères** : `[ ]` GET / = 200 `[ ]` Config accessible `[ ]` Tables SQLite créées `[ ]` SSE fonctionne
+**Critères** : `[x]` GET / = 200 `[x]` Config accessible `[x]` Tables SQLite créées `[x]` SSE fonctionne
 
 ---
 
-## Feature 1.3 : Interface Utilisateur Base
+## Feature 1.3 : Interface Utilisateur Base ✅
 > **Fichiers** : `app/templates/base.html`, `static/css/`, `static/js/`
 
 | # | Tâche | Fichier | Statut |
 |---|-------|---------|--------|
-| 1 | Template base HTML5 + Tailwind | `app/templates/base.html` | [ ] |
-| 2 | Intégrer Tailwind CSS | `static/css/tailwind.min.css` | [ ] |
-| 3 | Intégrer HTMX | `static/js/htmx.min.js` | [ ] |
-| 4 | Thème sombre par défaut | `app/templates/base.html` | [ ] |
-| 5 | Sidebar navigation | `app/templates/components/sidebar.html` | [ ] |
-| 6 | Breadcrumb dynamique | `app/templates/components/breadcrumb.html` | [ ] |
+| 1 | Template base HTML5 + Tailwind | `app/templates/base.html` | [x] |
+| 2 | Intégrer Tailwind CSS | `static/css/tailwind.min.css` | [x] |
+| 3 | Intégrer HTMX | `static/js/htmx.min.js` | [x] |
+| 4 | Thème sombre par défaut | `app/templates/base.html` | [x] |
+| 5 | Sidebar navigation | `app/templates/components/sidebar.html` | [x] |
+| 6 | Breadcrumb dynamique | `app/templates/components/breadcrumb.html` | [x] |
 
 **Tests** : `tests/test_feature_1_3.py`
 ```python
@@ -137,19 +137,19 @@ async def test_htmx_loaded():
         assert "htmx" in r.text.lower()
 ```
 
-**Critères** : `[ ]` Thème sombre `[ ]` Sidebar visible `[ ]` HTMX chargé `[ ]` Breadcrumb
+**Critères** : `[x]` Thème sombre `[x]` Sidebar visible `[x]` HTMX chargé `[x]` Breadcrumb
 
 ---
 
-## Feature 1.4 : API Progression
+## Feature 1.4 : API Progression ✅
 > **Fichiers** : `app/api/progress.py`, `app/api/theory.py`
 
 | # | Tâche | Fichier | Statut |
 |---|-------|---------|--------|
-| 1 | Route GET /api/progress | `app/api/progress.py` | [ ] |
-| 2 | Route GET /api/theory/modules | `app/api/theory.py` | [ ] |
-| 3 | Route GET /api/theory/modules/{id} | `app/api/theory.py` | [ ] |
-| 4 | Route POST /api/theory/modules/{id}/complete | `app/api/theory.py` | [ ] |
+| 1 | Route GET /api/progress | `app/api/progress.py` | [x] |
+| 2 | Route GET /api/theory/modules | `app/api/theory.py` | [x] |
+| 3 | Route GET /api/theory/modules/{id} | `app/api/theory.py` | [x] |
+| 4 | Route POST /api/theory/modules/{id}/complete | `app/api/theory.py` | [x] |
 
 **Tests** : `tests/test_feature_1_4.py`
 ```python
@@ -183,23 +183,23 @@ async def test_complete_module():
         assert r.status_code == 200
 ```
 
-**Critères** : `[ ]` Progression retournée `[ ]` 16 modules listés `[ ]` Marquage complété OK
+**Critères** : `[x]` Progression retournée `[x]` 16 modules listés `[x]` Marquage complété OK
 
 ---
 
-## Feature 1.5 : Module 1 - Introduction
+## Feature 1.5 : Module 1 - Introduction ✅
 > **Fichiers** : `app/theory/content/01_introduction/`, `app/theory/renderer.py`
 
 | # | Tâche | Fichier | Statut |
 |---|-------|---------|--------|
-| 1 | Créer dossier contenu | `app/theory/content/01_introduction/` | [ ] |
-| 2 | Section 1.1 Définition | `01_definition.md` | [ ] |
-| 3 | Section 1.2 Trois piliers | `02_trois_piliers.md` | [ ] |
-| 4 | Section 1.3 Enjeux | `03_enjeux.md` | [ ] |
-| 5 | Section 1.4 Patterns | `04_patterns_overview.md` | [ ] |
-| 6 | Renderer Markdown→HTML | `app/theory/renderer.py` | [ ] |
+| 1 | Créer dossier contenu | `app/theory/content/01_introduction/` | [x] |
+| 2 | Section 1.1 Définition | `01_definition.md` | [x] |
+| 3 | Section 1.2 Trois piliers | `02_trois_piliers.md` | [x] |
+| 4 | Section 1.3 Enjeux | `03_enjeux.md` | [x] |
+| 5 | Section 1.4 Patterns | `04_patterns_overview.md` | [x] |
+| 6 | Renderer Markdown→HTML | `app/theory/renderer.py` | [x] |
 | 7 | Diagramme 3 piliers D3.js | `static/js/diagrams/pillars.js` | [ ] |
-| 8 | Scénario INTRO-01 | `app/sandbox/scenarios/intro_01.py` | [ ] |
+| 8 | Scénario INTRO-01 | `app/sandbox/scenarios/intro_01.py` | [x] |
 
 **Tests** : `tests/test_feature_1_5.py`
 ```python
@@ -227,22 +227,22 @@ async def test_module1_content():
         assert "interopérabilité" in r.json()["content"].lower()
 ```
 
-**Critères** : `[ ]` 4 sections MD `[ ]` Renderer OK `[ ]` Diagramme interactif `[ ]` Scénario INTRO-01
+**Critères** : `[x]` 4 sections MD `[x]` Renderer OK `[ ]` Diagramme interactif `[x]` Scénario INTRO-01
 
 ---
 
-## Feature 1.6 : Module 2 - Domaine Assurance
+## Feature 1.6 : Module 2 - Domaine Assurance ✅
 > **Fichiers** : `app/theory/content/02_domaine_assurance/`
 
 | # | Tâche | Fichier | Statut |
 |---|-------|---------|--------|
-| 1 | Section 2.1 Processus métier | `01_processus.md` | [ ] |
-| 2 | Section 2.2 Entités | `02_entites.md` | [ ] |
-| 3 | Section 2.3 Systèmes | `03_systemes.md` | [ ] |
-| 4 | Section 2.4 Intégration | `04_integration.md` | [ ] |
+| 1 | Section 2.1 Processus métier | `01_processus.md` | [x] |
+| 2 | Section 2.2 Entités | `02_entites.md` | [x] |
+| 3 | Section 2.3 Systèmes | `03_systemes.md` | [x] |
+| 4 | Section 2.4 Intégration | `04_integration.md` | [x] |
 | 5 | Diagramme ER D3.js | `static/js/diagrams/entities.js` | [ ] |
 | 6 | Diagramme flux processus | `static/js/diagrams/process_flow.js` | [ ] |
-| 7 | Scénario INTRO-02 | `app/sandbox/scenarios/intro_02.py` | [ ] |
+| 7 | Scénario INTRO-02 | `app/sandbox/scenarios/intro_02.py` | [x] |
 
 **Tests** : `tests/test_feature_1_6.py`
 ```python
@@ -268,7 +268,7 @@ async def test_module2_systems():
         assert "policy admin" in content
 ```
 
-**Critères** : `[ ]` 5 entités décrites `[ ]` 8 systèmes décrits `[ ]` Diagrammes `[ ]` Scénario
+**Critères** : `[x]` 5 entités décrites `[x]` 8 systèmes décrits `[ ]` Diagrammes `[x]` Scénario
 
 ---
 

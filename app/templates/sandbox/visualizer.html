@@ -1,0 +1,372 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="h-full flex flex-col">
+    <!-- Header avec infos session -->
+    <div class="flex items-center justify-between mb-4">
+        <div>
+            <h1 class="text-2xl font-bold text-white" id="scenario-title">Visualiseur de Flux</h1>
+            <p class="text-gray-400 text-sm" id="scenario-description"></p>
+        </div>
+        <div class="flex items-center gap-4">
+            <span class="text-sm text-gray-400">Étape <span id="current-step">1</span> / <span id="total-steps">6</span></span>
+            <button onclick="resetScenario()" class="px-3 py-1 bg-gray-700 hover:bg-gray-600 rounded text-sm">
+                <i data-lucide="refresh-cw" class="w-4 h-4 inline"></i> Reset
+            </button>
+        </div>
+    </div>
+
+    <!-- Zone principale -->
+    <div class="flex-1 flex gap-4 min-h-0">
+        <!-- Instructions -->
+        <div class="w-80 bg-gray-800 rounded-lg border border-gray-700 flex flex-col">
+            <div class="p-4 border-b border-gray-700">
+                <h2 class="font-semibold text-white">Instructions</h2>
+            </div>
+            <div class="flex-1 overflow-auto p-4">
+                <div id="instruction-content" class="text-gray-300">
+                    <p class="text-gray-500 italic">Chargement...</p>
+                </div>
+            </div>
+            <div class="p-4 border-t border-gray-700 flex gap-2">
+                <button onclick="showHint()" class="flex-1 px-3 py-2 bg-gray-700 hover:bg-gray-600 rounded text-sm">
+                    💡 Indice
+                </button>
+                <button onclick="validateStep()" class="flex-1 px-3 py-2 bg-green-600 hover:bg-green-700 rounded text-sm font-medium">
+                    Valider ✓
+                </button>
+            </div>
+        </div>
+
+        <!-- Visualiseur D3 -->
+        <div class="flex-1 bg-gray-800 rounded-lg border border-gray-700 flex flex-col">
+            <div class="p-4 border-b border-gray-700 flex items-center justify-between">
+                <h2 class="font-semibold text-white">Flux d'intégration</h2>
+                <div class="flex items-center gap-2">
+                    <button onclick="zoomIn()" class="p-1 bg-gray-700 hover:bg-gray-600 rounded">
+                        <i data-lucide="zoom-in" class="w-4 h-4"></i>
+                    </button>
+                    <button onclick="zoomOut()" class="p-1 bg-gray-700 hover:bg-gray-600 rounded">
+                        <i data-lucide="zoom-out" class="w-4 h-4"></i>
+                    </button>
+                    <button onclick="resetZoom()" class="p-1 bg-gray-700 hover:bg-gray-600 rounded">
+                        <i data-lucide="maximize" class="w-4 h-4"></i>
+                    </button>
+                </div>
+            </div>
+            <div class="flex-1 relative" id="visualizer-container">
+                <svg id="flow-svg" width="100%" height="100%"></svg>
+            </div>
+            <!-- Timeline -->
+            <div class="p-4 border-t border-gray-700">
+                <div class="flex items-center gap-4">
+                    <button onclick="playReplay()" class="p-2 bg-gray-700 hover:bg-gray-600 rounded">
+                        <i data-lucide="play" class="w-4 h-4"></i>
+                    </button>
+                    <div class="flex-1 h-2 bg-gray-700 rounded-full overflow-hidden">
+                        <div id="timeline-progress" class="h-full bg-blue-500 transition-all" style="width: 0%"></div>
+                    </div>
+                    <span class="text-sm text-gray-400" id="timeline-time">0ms</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- Console -->
+        <div class="w-96 bg-gray-800 rounded-lg border border-gray-700 flex flex-col">
+            <div class="p-4 border-b border-gray-700 flex items-center justify-between">
+                <h2 class="font-semibold text-white">Console</h2>
+                <button onclick="clearConsole()" class="text-xs text-gray-400 hover:text-white">
+                    Effacer
+                </button>
+            </div>
+            <div id="console-output" class="flex-1 overflow-auto p-4 font-mono text-sm space-y-1">
+                <div class="text-gray-500">// Console prête</div>
+            </div>
+            <div class="p-4 border-t border-gray-700">
+                <div class="flex gap-2">
+                    <input type="text" id="console-input" placeholder="Entrez une commande..."
+                           class="flex-1 bg-gray-900 border border-gray-700 rounded px-3 py-2 text-sm focus:outline-none focus:border-blue-500"
+                           onkeypress="if(event.key==='Enter')executeCommand()">
+                    <button onclick="executeCommand()" class="px-3 py-2 bg-blue-600 hover:bg-blue-700 rounded text-sm">
+                        Exécuter
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    let sessionId = null;
+    let scenario = null;
+    let currentStep = 1;
+    let svg, simulation, nodes, links;
+
+    // Initialisation D3
+    function initVisualizer() {
+        const container = document.getElementById('visualizer-container');
+        const width = container.clientWidth;
+        const height = container.clientHeight;
+
+        svg = d3.select('#flow-svg')
+            .attr('viewBox', [0, 0, width, height]);
+
+        // Groupe principal pour le zoom
+        const g = svg.append('g').attr('id', 'main-group');
+
+        // Zoom
+        const zoom = d3.zoom()
+            .scaleExtent([0.5, 3])
+            .on('zoom', (event) => g.attr('transform', event.transform));
+
+        svg.call(zoom);
+
+        // Définitions (flèches)
+        const defs = svg.append('defs');
+        defs.append('marker')
+            .attr('id', 'arrowhead')
+            .attr('viewBox', '-0 -5 10 10')
+            .attr('refX', 20)
+            .attr('refY', 0)
+            .attr('orient', 'auto')
+            .attr('markerWidth', 8)
+            .attr('markerHeight', 8)
+            .append('path')
+            .attr('d', 'M 0,-5 L 10,0 L 0,5')
+            .attr('fill', '#6b7280');
+
+        // Services mockés de base
+        const defaultNodes = [
+            { id: 'gateway', label: 'API Gateway', x: 100, y: height/2, type: 'gateway' },
+            { id: 'quote', label: 'Quote Engine', x: 300, y: height/3, type: 'service' },
+            { id: 'policy', label: 'Policy Admin', x: 300, y: height/2, type: 'service' },
+            { id: 'claims', label: 'Claims', x: 300, y: 2*height/3, type: 'service' },
+            { id: 'billing', label: 'Billing', x: 500, y: height/3, type: 'service' },
+            { id: 'notif', label: 'Notifications', x: 500, y: height/2, type: 'service' },
+            { id: 'broker', label: 'Event Bus', x: 400, y: 2*height/3, type: 'broker' }
+        ];
+
+        const defaultLinks = [
+            { source: 'gateway', target: 'quote' },
+            { source: 'gateway', target: 'policy' },
+            { source: 'gateway', target: 'claims' },
+            { source: 'policy', target: 'broker' },
+            { source: 'broker', target: 'billing' },
+            { source: 'broker', target: 'notif' }
+        ];
+
+        // Liens
+        g.selectAll('.link')
+            .data(defaultLinks)
+            .enter().append('line')
+            .attr('class', 'link')
+            .attr('stroke', '#4b5563')
+            .attr('stroke-width', 2)
+            .attr('marker-end', 'url(#arrowhead)')
+            .attr('x1', d => defaultNodes.find(n => n.id === d.source).x)
+            .attr('y1', d => defaultNodes.find(n => n.id === d.source).y)
+            .attr('x2', d => defaultNodes.find(n => n.id === d.target).x)
+            .attr('y2', d => defaultNodes.find(n => n.id === d.target).y);
+
+        // Nœuds
+        const nodeGroups = g.selectAll('.node')
+            .data(defaultNodes)
+            .enter().append('g')
+            .attr('class', 'node')
+            .attr('transform', d => `translate(${d.x},${d.y})`);
+
+        // Rectangles des nœuds
+        nodeGroups.append('rect')
+            .attr('x', -50)
+            .attr('y', -20)
+            .attr('width', 100)
+            .attr('height', 40)
+            .attr('rx', 6)
+            .attr('fill', d => {
+                if (d.type === 'gateway') return '#3b82f6';
+                if (d.type === 'broker') return '#f97316';
+                return '#374151';
+            })
+            .attr('stroke', d => {
+                if (d.type === 'gateway') return '#60a5fa';
+                if (d.type === 'broker') return '#fb923c';
+                return '#4b5563';
+            })
+            .attr('stroke-width', 2);
+
+        // Labels des nœuds
+        nodeGroups.append('text')
+            .attr('text-anchor', 'middle')
+            .attr('dy', 4)
+            .attr('fill', 'white')
+            .attr('font-size', '12px')
+            .text(d => d.label);
+    }
+
+    // Animation d'un message
+    function animateMessage(from, to, data, duration = 500) {
+        const fromNode = d3.select(`#main-group`).selectAll('.node').filter(d => d.id === from);
+        const toNode = d3.select(`#main-group`).selectAll('.node').filter(d => d.id === to);
+
+        if (fromNode.empty() || toNode.empty()) return;
+
+        const fromData = fromNode.data()[0];
+        const toData = toNode.data()[0];
+
+        const particle = d3.select('#main-group').append('circle')
+            .attr('r', 6)
+            .attr('fill', '#22c55e')
+            .attr('cx', fromData.x)
+            .attr('cy', fromData.y);
+
+        particle.transition()
+            .duration(duration)
+            .attr('cx', toData.x)
+            .attr('cy', toData.y)
+            .on('end', () => particle.remove());
+
+        logToConsole(`→ ${from} → ${to}: ${JSON.stringify(data)}`, 'message');
+    }
+
+    // Console
+    function logToConsole(message, type = 'info') {
+        const console = document.getElementById('console-output');
+        const colors = {
+            info: 'text-gray-400',
+            success: 'text-green-400',
+            error: 'text-red-400',
+            message: 'text-blue-400',
+            event: 'text-orange-400'
+        };
+        const timestamp = new Date().toLocaleTimeString();
+        console.innerHTML += `<div class="${colors[type]}">[${timestamp}] ${message}</div>`;
+        console.scrollTop = console.scrollHeight;
+    }
+
+    function clearConsole() {
+        document.getElementById('console-output').innerHTML = '<div class="text-gray-500">// Console effacée</div>';
+    }
+
+    async function executeCommand() {
+        const input = document.getElementById('console-input');
+        const command = input.value.trim();
+        if (!command) return;
+
+        logToConsole(`> ${command}`, 'info');
+        input.value = '';
+
+        try {
+            const response = await fetch(`/api/sandbox/sessions/${sessionId}/execute?command=${encodeURIComponent(command)}`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ args: {} })
+            });
+            const data = await response.json();
+            logToConsole(data.output, data.success ? 'success' : 'error');
+        } catch (e) {
+            logToConsole('Erreur: ' + e.message, 'error');
+        }
+    }
+
+    // Validation d'étape
+    async function validateStep() {
+        if (!sessionId) return;
+
+        try {
+            const response = await fetch(`/api/sandbox/sessions/${sessionId}/validate`, {
+                method: 'POST'
+            });
+            const data = await response.json();
+
+            if (data.completed) {
+                logToConsole('🎉 Scénario terminé !', 'success');
+                showToast('Félicitations ! Scénario terminé.', 'success');
+            } else {
+                currentStep = data.current_step;
+                updateStepDisplay();
+                logToConsole(`✓ Étape ${data.previous_step} validée`, 'success');
+            }
+        } catch (e) {
+            logToConsole('Erreur validation: ' + e.message, 'error');
+        }
+    }
+
+    function updateStepDisplay() {
+        document.getElementById('current-step').textContent = currentStep;
+        if (scenario && scenario.steps[currentStep - 1]) {
+            const step = scenario.steps[currentStep - 1];
+            document.getElementById('instruction-content').innerHTML = `
+                <div class="mb-4">
+                    <span class="px-2 py-1 bg-blue-600/30 text-blue-400 rounded text-xs">Étape ${step.id}</span>
+                </div>
+                <h3 class="font-semibold text-white mb-2">${step.title}</h3>
+                <p class="text-gray-300">${step.instruction}</p>
+            `;
+        }
+    }
+
+    function showHint() {
+        showToast('💡 Indice: Suivez les instructions étape par étape', 'info');
+    }
+
+    function playReplay() {
+        logToConsole('▶ Replay en cours...', 'info');
+        // Animation de la timeline
+        let progress = 0;
+        const interval = setInterval(() => {
+            progress += 5;
+            document.getElementById('timeline-progress').style.width = progress + '%';
+            document.getElementById('timeline-time').textContent = (progress * 10) + 'ms';
+            if (progress >= 100) clearInterval(interval);
+        }, 100);
+    }
+
+    function resetScenario() {
+        location.reload();
+    }
+
+    // Zoom functions
+    function zoomIn() {
+        svg.transition().call(d3.zoom().scaleBy, 1.3);
+    }
+
+    function zoomOut() {
+        svg.transition().call(d3.zoom().scaleBy, 0.7);
+    }
+
+    function resetZoom() {
+        svg.transition().call(d3.zoom().transform, d3.zoomIdentity);
+    }
+
+    // Charger la session
+    async function loadSession() {
+        const params = new URLSearchParams(window.location.search);
+        sessionId = params.get('session');
+
+        if (sessionId) {
+            try {
+                const response = await fetch(`/api/sandbox/sessions/${sessionId}`);
+                const data = await response.json();
+                scenario = data.scenario;
+                currentStep = data.current_step;
+
+                document.getElementById('scenario-title').textContent = scenario.title;
+                document.getElementById('scenario-description').textContent = scenario.description;
+                document.getElementById('total-steps').textContent = scenario.steps.length;
+
+                updateStepDisplay();
+                logToConsole(`Session ${sessionId} chargée - ${scenario.title}`, 'success');
+            } catch (e) {
+                logToConsole('Erreur chargement session: ' + e.message, 'error');
+            }
+        }
+    }
+
+    // Initialisation
+    document.addEventListener('DOMContentLoaded', () => {
+        initVisualizer();
+        loadSession();
+        lucide.createIcons();
+    });
+</script>
+{% endblock %}

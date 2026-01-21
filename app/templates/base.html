@@ -1,0 +1,242 @@
+<!DOCTYPE html>
+<html lang="fr" class="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{{ page_title }} - Interop Learning</title>
+
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    colors: {
+                        'pillar-app': '#3B82F6',
+                        'pillar-event': '#F97316',
+                        'pillar-data': '#22C55E',
+                        'pillar-cross': '#8B5CF6',
+                    }
+                }
+            }
+        }
+    </script>
+
+    <!-- HTMX -->
+    <script src="https://unpkg.com/htmx.org@1.9.10"></script>
+
+    <!-- D3.js -->
+    <script src="https://d3js.org/d3.v7.min.js"></script>
+
+    <!-- Lucide Icons -->
+    <script src="https://unpkg.com/lucide@latest"></script>
+
+    <style>
+        /* Animations personnalisées */
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(-10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        .animate-fade-in {
+            animation: fadeIn 0.5s ease-out;
+        }
+
+        @keyframes pulse-slow {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.7; }
+        }
+        .animate-pulse-slow {
+            animation: pulse-slow 2s infinite;
+        }
+
+        /* Scrollbar personnalisée */
+        ::-webkit-scrollbar {
+            width: 8px;
+            height: 8px;
+        }
+        ::-webkit-scrollbar-track {
+            background: #1f2937;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #4b5563;
+            border-radius: 4px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: #6b7280;
+        }
+
+        /* Styles pour le contenu Markdown */
+        .prose-content h1 { font-size: 2rem; font-weight: 700; margin-bottom: 1rem; color: #f9fafb; }
+        .prose-content h2 { font-size: 1.5rem; font-weight: 600; margin-top: 2rem; margin-bottom: 0.75rem; color: #e5e7eb; }
+        .prose-content h3 { font-size: 1.25rem; font-weight: 600; margin-top: 1.5rem; margin-bottom: 0.5rem; color: #d1d5db; }
+        .prose-content p { margin-bottom: 1rem; line-height: 1.75; }
+        .prose-content ul, .prose-content ol { margin-bottom: 1rem; padding-left: 1.5rem; }
+        .prose-content li { margin-bottom: 0.5rem; }
+        .prose-content code { background: #374151; padding: 0.125rem 0.375rem; border-radius: 0.25rem; font-size: 0.875rem; }
+        .prose-content pre { background: #1f2937; padding: 1rem; border-radius: 0.5rem; overflow-x: auto; margin-bottom: 1rem; }
+        .prose-content pre code { background: none; padding: 0; }
+        .prose-content table { width: 100%; border-collapse: collapse; margin-bottom: 1rem; }
+        .prose-content th, .prose-content td { border: 1px solid #374151; padding: 0.5rem 0.75rem; text-align: left; }
+        .prose-content th { background: #1f2937; font-weight: 600; }
+        .prose-content blockquote { border-left: 4px solid #3b82f6; padding-left: 1rem; margin: 1rem 0; color: #9ca3af; }
+        .prose-content hr { border-color: #374151; margin: 2rem 0; }
+    </style>
+</head>
+<body class="bg-gray-900 text-gray-100 min-h-screen">
+    <div class="flex h-screen overflow-hidden">
+        <!-- Sidebar -->
+        {% include 'components/sidebar.html' %}
+
+        <!-- Main content -->
+        <div class="flex-1 flex flex-col overflow-hidden">
+            <!-- Header avec breadcrumb -->
+            <header class="bg-gray-800 border-b border-gray-700 px-6 py-4">
+                {% include 'components/breadcrumb.html' %}
+            </header>
+
+            <!-- Content area -->
+            <main class="flex-1 overflow-auto p-6">
+                <div class="animate-fade-in">
+                    {% block content %}
+                    <!-- Page d'accueil par défaut -->
+                    <div class="max-w-6xl mx-auto">
+                        <h1 class="text-3xl font-bold mb-8">Bienvenue dans Interop Learning</h1>
+
+                        <!-- Stats cards -->
+                        <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+                            <div class="bg-gray-800 rounded-lg p-6 border border-gray-700">
+                                <div class="flex items-center justify-between">
+                                    <div>
+                                        <p class="text-gray-400 text-sm">Modules complétés</p>
+                                        <p class="text-2xl font-bold" id="completed-modules">0 / 16</p>
+                                    </div>
+                                    <i data-lucide="book-open" class="w-10 h-10 text-blue-500"></i>
+                                </div>
+                            </div>
+                            <div class="bg-gray-800 rounded-lg p-6 border border-gray-700">
+                                <div class="flex items-center justify-between">
+                                    <div>
+                                        <p class="text-gray-400 text-sm">Sessions sandbox</p>
+                                        <p class="text-2xl font-bold" id="sandbox-sessions">0</p>
+                                    </div>
+                                    <i data-lucide="play-circle" class="w-10 h-10 text-orange-500"></i>
+                                </div>
+                            </div>
+                            <div class="bg-gray-800 rounded-lg p-6 border border-gray-700">
+                                <div class="flex items-center justify-between">
+                                    <div>
+                                        <p class="text-gray-400 text-sm">Progression</p>
+                                        <p class="text-2xl font-bold" id="progress-percent">0%</p>
+                                    </div>
+                                    <i data-lucide="trending-up" class="w-10 h-10 text-green-500"></i>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Les trois piliers -->
+                        <h2 class="text-2xl font-semibold mb-6">Les trois piliers de l'intégration</h2>
+                        <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+                            <a href="/theory/modules/3" class="bg-gray-800 rounded-lg p-6 border border-pillar-app hover:border-pillar-app/80 transition-all hover:shadow-lg hover:shadow-pillar-app/20">
+                                <div class="flex items-center gap-3 mb-4">
+                                    <span class="text-2xl">🔗</span>
+                                    <h3 class="text-xl font-semibold text-pillar-app">Applications</h3>
+                                </div>
+                                <p class="text-gray-400">API REST, Gateway, BFF, Composition, patterns synchrones</p>
+                            </a>
+                            <a href="/theory/modules/6" class="bg-gray-800 rounded-lg p-6 border border-pillar-event hover:border-pillar-event/80 transition-all hover:shadow-lg hover:shadow-pillar-event/20">
+                                <div class="flex items-center gap-3 mb-4">
+                                    <span class="text-2xl">⚡</span>
+                                    <h3 class="text-xl font-semibold text-pillar-event">Événements</h3>
+                                </div>
+                                <p class="text-gray-400">Messaging, Pub/Sub, Event Sourcing, CQRS, Saga</p>
+                            </a>
+                            <a href="/theory/modules/9" class="bg-gray-800 rounded-lg p-6 border border-pillar-data hover:border-pillar-data/80 transition-all hover:shadow-lg hover:shadow-pillar-data/20">
+                                <div class="flex items-center gap-3 mb-4">
+                                    <span class="text-2xl">📊</span>
+                                    <h3 class="text-xl font-semibold text-pillar-data">Données</h3>
+                                </div>
+                                <p class="text-gray-400">ETL, CDC, Data Quality, MDM, Data Lineage</p>
+                            </a>
+                        </div>
+
+                        <!-- Accès rapides -->
+                        <h2 class="text-2xl font-semibold mb-6">Accès rapides</h2>
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                            <a href="/theory/modules/1" class="flex items-center gap-4 bg-gray-800 rounded-lg p-4 border border-gray-700 hover:border-gray-600 transition-all">
+                                <i data-lucide="book" class="w-8 h-8 text-blue-400"></i>
+                                <div>
+                                    <h4 class="font-semibold">Commencer le parcours</h4>
+                                    <p class="text-sm text-gray-400">Module 1 : Introduction à l'interopérabilité</p>
+                                </div>
+                            </a>
+                            <a href="/sandbox" class="flex items-center gap-4 bg-gray-800 rounded-lg p-4 border border-gray-700 hover:border-gray-600 transition-all">
+                                <i data-lucide="terminal" class="w-8 h-8 text-green-400"></i>
+                                <div>
+                                    <h4 class="font-semibold">Ouvrir le Sandbox</h4>
+                                    <p class="text-sm text-gray-400">Expérimentez avec les scénarios interactifs</p>
+                                </div>
+                            </a>
+                        </div>
+                    </div>
+                    {% endblock %}
+                </div>
+            </main>
+        </div>
+    </div>
+
+    <!-- Toast notifications -->
+    <div id="toast-container" class="fixed bottom-4 right-4 z-50 space-y-2"></div>
+
+    <script>
+        // Initialiser Lucide icons
+        lucide.createIcons();
+
+        // Charger les stats
+        async function loadStats() {
+            try {
+                const response = await fetch('/api/progress');
+                const data = await response.json();
+                document.getElementById('completed-modules').textContent = `${data.completed_modules} / ${data.total_modules}`;
+                document.getElementById('progress-percent').textContent = `${data.percentage}%`;
+            } catch (e) {
+                console.error('Erreur chargement stats:', e);
+            }
+
+            try {
+                const response = await fetch('/api/progress/stats');
+                const data = await response.json();
+                document.getElementById('sandbox-sessions').textContent = data.sandbox.total_sessions;
+            } catch (e) {
+                console.error('Erreur chargement stats sandbox:', e);
+            }
+        }
+
+        // Afficher un toast
+        function showToast(message, type = 'info') {
+            const container = document.getElementById('toast-container');
+            const colors = {
+                info: 'bg-blue-600',
+                success: 'bg-green-600',
+                error: 'bg-red-600',
+                warning: 'bg-yellow-600'
+            };
+            const toast = document.createElement('div');
+            toast.className = `${colors[type]} text-white px-4 py-3 rounded-lg shadow-lg animate-fade-in`;
+            toast.textContent = message;
+            container.appendChild(toast);
+            setTimeout(() => toast.remove(), 5000);
+        }
+
+        // SSE pour les événements temps réel
+        const eventSource = new EventSource('/events/stream');
+        eventSource.addEventListener('sandbox_event', (e) => {
+            const data = JSON.parse(e.data);
+            showToast(`Événement: ${data.type}`, 'info');
+        });
+
+        // Charger au démarrage
+        document.addEventListener('DOMContentLoaded', loadStats);
+    </script>
+</body>
+</html>

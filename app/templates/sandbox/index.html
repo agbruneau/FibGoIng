@@ -1,0 +1,128 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="h-full flex flex-col">
+    <div class="mb-6">
+        <h1 class="text-3xl font-bold text-white mb-2">Sandbox</h1>
+        <p class="text-gray-400">Expérimentez avec les scénarios d'intégration interactifs</p>
+    </div>
+
+    <!-- Filtres par pilier -->
+    <div class="flex gap-4 mb-6">
+        <button onclick="filterScenarios(null)" class="filter-btn active px-4 py-2 rounded-lg bg-gray-700 text-white" data-filter="all">
+            Tous
+        </button>
+        <button onclick="filterScenarios('applications')" class="filter-btn px-4 py-2 rounded-lg bg-gray-800 text-gray-400 hover:bg-gray-700" data-filter="applications">
+            🔗 Applications
+        </button>
+        <button onclick="filterScenarios('events')" class="filter-btn px-4 py-2 rounded-lg bg-gray-800 text-gray-400 hover:bg-gray-700" data-filter="events">
+            ⚡ Événements
+        </button>
+        <button onclick="filterScenarios('data')" class="filter-btn px-4 py-2 rounded-lg bg-gray-800 text-gray-400 hover:bg-gray-700" data-filter="data">
+            📊 Données
+        </button>
+        <button onclick="filterScenarios('cross_cutting')" class="filter-btn px-4 py-2 rounded-lg bg-gray-800 text-gray-400 hover:bg-gray-700" data-filter="cross_cutting">
+            🛡️ Transversal
+        </button>
+    </div>
+
+    <!-- Grille des scénarios -->
+    <div id="scenarios-grid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 flex-1 overflow-auto">
+        <!-- Chargé dynamiquement -->
+    </div>
+</div>
+
+<script>
+    let allScenarios = [];
+    let currentFilter = null;
+
+    async function loadScenarios() {
+        try {
+            const response = await fetch('/api/sandbox/scenarios');
+            allScenarios = await response.json();
+            renderScenarios(allScenarios);
+        } catch (e) {
+            console.error('Erreur chargement scénarios:', e);
+        }
+    }
+
+    function filterScenarios(pillar) {
+        currentFilter = pillar;
+
+        // Mettre à jour les boutons
+        document.querySelectorAll('.filter-btn').forEach(btn => {
+            btn.classList.remove('active', 'bg-gray-700', 'text-white');
+            btn.classList.add('bg-gray-800', 'text-gray-400');
+        });
+        const activeBtn = document.querySelector(`[data-filter="${pillar || 'all'}"]`);
+        if (activeBtn) {
+            activeBtn.classList.remove('bg-gray-800', 'text-gray-400');
+            activeBtn.classList.add('active', 'bg-gray-700', 'text-white');
+        }
+
+        // Filtrer et afficher
+        const filtered = pillar
+            ? allScenarios.filter(s => s.pillar === pillar)
+            : allScenarios;
+        renderScenarios(filtered);
+    }
+
+    function renderScenarios(scenarios) {
+        const container = document.getElementById('scenarios-grid');
+
+        const pillarColors = {
+            'applications': 'border-pillar-app',
+            'events': 'border-pillar-event',
+            'data': 'border-pillar-data',
+            'cross_cutting': 'border-pillar-cross',
+            null: 'border-gray-600'
+        };
+
+        const pillarIcons = {
+            'applications': '🔗',
+            'events': '⚡',
+            'data': '📊',
+            'cross_cutting': '🛡️',
+            null: '📚'
+        };
+
+        container.innerHTML = scenarios.map(s => `
+            <div class="scenario-card bg-gray-800 rounded-lg p-5 border-2 ${pillarColors[s.pillar] || 'border-gray-700'} hover:shadow-lg transition-all cursor-pointer"
+                 onclick="startScenario('${s.id}')">
+                <div class="flex items-start justify-between mb-3">
+                    <div class="flex items-center gap-2">
+                        <span class="text-xl">${pillarIcons[s.pillar]}</span>
+                        <span class="text-xs font-mono text-gray-500">${s.id}</span>
+                    </div>
+                    <span class="text-xs">${'⭐'.repeat(s.complexity)}</span>
+                </div>
+                <h3 class="font-semibold text-white mb-2">${s.title}</h3>
+                <p class="text-sm text-gray-400 mb-4">${s.description}</p>
+                <div class="flex items-center justify-between text-xs text-gray-500">
+                    <span>${s.steps.length} étapes</span>
+                    <button class="px-3 py-1 bg-gray-700 hover:bg-gray-600 rounded-full text-gray-300 transition-colors">
+                        Démarrer →
+                    </button>
+                </div>
+            </div>
+        `).join('');
+    }
+
+    async function startScenario(scenarioId) {
+        try {
+            const response = await fetch('/api/sandbox/sessions', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ scenario_id: scenarioId })
+            });
+            const data = await response.json();
+            window.location.href = `/sandbox/visualizer?session=${data.session_id}`;
+        } catch (e) {
+            showToast('Erreur lors du démarrage du scénario', 'error');
+        }
+    }
+
+    // Charger au démarrage
+    document.addEventListener('DOMContentLoaded', loadScenarios);
+</script>
+{% endblock %}
