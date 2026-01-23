@@ -23,7 +23,8 @@ func Run(cfg config.AppConfig, calculatorMap map[string]fibonacci.Calculator) in
 	for _, c := range calculatorMap {
 		calculators = append(calculators, c)
 	}
-	model := NewModel(cfg, calculators)
+	// Use the new HTOP-style dashboard model
+	model := NewDashboardModel(cfg, calculators)
 
 	p := tea.NewProgram(
 		model,
@@ -47,7 +48,8 @@ func RunWithOutput(cfg config.AppConfig, calculatorMap map[string]fibonacci.Calc
 	for _, c := range calculatorMap {
 		calculators = append(calculators, c)
 	}
-	model := NewModel(cfg, calculators)
+	// Use the new HTOP-style dashboard model
+	model := NewDashboardModel(cfg, calculators)
 
 	opts := []tea.ProgramOption{
 		tea.WithAltScreen(),

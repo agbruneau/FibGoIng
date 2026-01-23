@@ -316,18 +316,43 @@ curl "http://localhost:8080/calculate?n=100&algo=fast"
 
 ## 🖥️ TUI Mode
 
-The Terminal User Interface (TUI) provides a rich, interactive experience built with [Bubbletea](https://github.com/charmbracelet/bubbletea) (Charm stack).
+The Terminal User Interface (TUI) provides a rich, interactive experience built with [Bubbletea](https://github.com/charmbracelet/bubbletea) (Charm stack). Inspired by HTOP, it displays all information on a single, refreshing dashboard.
+
+### Dashboard Layout
+
+```
++==============================================================================+
+|  FIBONACCI CALCULATOR                                    Theme: dark  [?]Help |
++==============================================================================+
+|  INPUT -------------------------------------------------------------------- |
+|  N: [_______________1000000_______________]  [c] CALCULATE  [m] COMPARE ALL  |
++------------------------------------------------------------------------------+
+|  ALGORITHMS -------------------------------------------------------------- |
+|  #   Algorithm         Progress              Duration      Status            |
+|  --------------------------------------------------------------------------- |
+|  1   fast-doubling     [████████████████████] 100%         23.4ms     OK     |
+|  2   matrix            [████████████░░░░░░░░]  62%            -       ...    |
+|  3   fft-hybrid        [██████████░░░░░░░░░░]  50%            -       ...    |
++------------------------------------------------------------------------------+
+|  RESULT ------------------------------------------------------------------ |
+|  F(1000000) = 1953282128...7896443125  (208,988 digits)                      |
+|  Fastest: fast-doubling (23.4ms)       ✓ All results consistent              |
++==============================================================================+
+|  Tab:Focus  Enter:Action  c:Calc  m:Compare  x:Hex  t:Theme  ?:Help  q:Quit  |
++==============================================================================+
+```
 
 ### Features
 
 | Feature | Description |
 |---------|-------------|
-| **Visual Navigation** | Navigate between screens with keyboard shortcuts |
-| **Real-time Progress** | Animated progress bar with ETA calculation |
-| **Algorithm Comparison** | Side-by-side multi-algorithm comparison view |
+| **Single-Screen Dashboard** | All information visible at once, HTOP-style |
+| **Real-time Progress** | Multiple progress bars updating simultaneously |
+| **Section Navigation** | Tab through Input, Algorithms, and Results sections |
+| **Algorithm Comparison** | See all algorithms running in parallel with progress |
 | **Theme Support** | Dark, light, and no-color themes (integrates with `NO_COLOR`) |
 | **Result Actions** | Save to file, toggle hex display, view full result |
-| **Settings Screen** | Configure default algorithm, theme, and options |
+| **Help Overlay** | Press `?` to show help without leaving the dashboard |
 
 ### TUI vs CLI vs REPL
 
@@ -348,38 +373,36 @@ NO_COLOR=1 fibcalc --tui    # No-color mode
 fibcalc --tui --theme light # Light theme
 ```
 
-### TUI Screens
+### Dashboard Sections
 
-1. **Home** - Main menu with navigation to all features
-2. **Calculator** - Input N value and select algorithm
-3. **Progress** - Real-time calculation progress with ETA
-4. **Results** - Display result with action options
-5. **Comparison** - Multi-algorithm benchmark comparison
-6. **Settings** - Configure themes and defaults
-7. **Help** - Full keyboard shortcut reference
+The dashboard has three main sections that you navigate with `Tab`:
+
+1. **Input Section** - Enter N value and trigger calculations
+2. **Algorithms Section** - View all algorithms with real-time progress bars
+3. **Results Section** - See calculation results with formatting options
 
 ### Keyboard Shortcuts
 
 | Key | Action |
 |-----|--------|
-| `Tab` / `Shift+Tab` | Navigate between fields |
-| `↑` / `↓` | Navigate lists and menus |
+| `Tab` / `Shift+Tab` | Navigate between sections |
+| `↑` / `↓` / `k` / `j` | Navigate within section |
 | `Enter` | Confirm / Start calculation |
-| `Esc` | Cancel / Go back |
-| `q` / `Ctrl+C` | Quit |
-| `?` / `F1` | Help |
-| `c` | New calculation |
+| `Esc` | Cancel running calculation |
+| `c` | Calculate F(N) with selected algorithm |
 | `m` | Compare all algorithms |
-| `t` | Change theme |
-| `s` | Settings |
 | `x` | Toggle hexadecimal display |
 | `v` | Toggle full value display |
+| `t` | Cycle theme (dark/light/none) |
+| `?` / `F1` | Toggle help overlay |
 | `Ctrl+S` | Save result to file |
+| `q` / `Ctrl+C` | Quit |
 
 ### Terminal Requirements
 
 - Terminal supporting ANSI escape sequences (99% of modern terminals)
 - Recommended: Terminal with true color support (24-bit)
+- Minimum size: 80x20 characters
 - Works with: iTerm2, Terminal.app, Windows Terminal, GNOME Terminal, Konsole, Alacritty, Kitty, etc.
 
 ---

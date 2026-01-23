@@ -87,11 +87,15 @@ This is a high-performance Fibonacci calculator implementing multiple algorithms
 - `Format*` functions: Return formatted string, no I/O (e.g., `FormatQuietResult`)
 - `Write*` functions: Write data to filesystem (e.g., `WriteResultToFile`)
 
-**TUI Package (`internal/tui/`)**:
-- `view*.go` files: View rendering functions for each screen (home, calculator, progress, results, comparison, settings, help)
-- `update*` methods: Handle key/message events for each view
+**TUI Package (`internal/tui/`)** - HTOP-style single-screen dashboard:
+- `dashboard.go`: Main DashboardModel with Init, Update, View
+- `dashboard_input.go`: Input section (N field, calculate/compare buttons)
+- `dashboard_algorithms.go`: Algorithm table with real-time progress bars
+- `dashboard_results.go`: Results display section
+- `dashboard_overlays.go`: Help overlay and settings panel
+- `sections.go`: Section type (Input, Algorithms, Results) and navigation
 - `*Msg` types: Messages for state updates (ProgressMsg, ResultMsg, etc.)
-- `*State` structs: View-specific state within the Model
+- `*State` structs: Consolidated state (InputState, AlgorithmTableState, etc.)
 
 ## Adding New Components
 

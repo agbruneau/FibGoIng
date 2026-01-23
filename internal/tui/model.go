@@ -3,20 +3,19 @@ package tui
 import (
 	"context"
 	"fmt"
-	"strings"
+	"time"
 
 	"github.com/charmbracelet/bubbles/help"
-	"github.com/charmbracelet/bubbles/key"
 	tea "github.com/charmbracelet/bubbletea"
-	"github.com/charmbracelet/lipgloss"
 
 	"github.com/agbru/fibcalc/internal/config"
 	"github.com/agbru/fibcalc/internal/fibonacci"
 	"github.com/agbru/fibcalc/internal/orchestration"
-	"github.com/agbru/fibcalc/internal/ui"
 )
 
-// Model is the root model for the TUI application.
+// Model is the legacy model type for backward compatibility.
+// The new HTOP-style dashboard uses DashboardModel instead.
+// This type is kept for existing tests and as documentation of the old structure.
 type Model struct {
 	// Configuration
 	config      config.AppConfig
@@ -34,7 +33,7 @@ type Model struct {
 	height      int
 	ready       bool
 
-	// View-specific state
+	// View-specific state (legacy)
 	homeState       HomeState
 	calculatorState CalculatorState
 	progressState   ProgressState
@@ -47,12 +46,12 @@ type Model struct {
 	lastError error
 }
 
-// HomeState holds state for the home view.
+// HomeState holds state for the home view (legacy).
 type HomeState struct {
 	cursor int
 }
 
-// CalculatorState holds state for the calculator view.
+// CalculatorState holds state for the calculator view (legacy).
 type CalculatorState struct {
 	inputN         string
 	selectedAlgo   int
@@ -60,7 +59,7 @@ type CalculatorState struct {
 	availableAlgos []string
 }
 
-// ProgressState holds state for the progress view.
+// ProgressState holds state for the progress view (legacy).
 type ProgressState struct {
 	n              uint64
 	algorithm      string
@@ -71,7 +70,7 @@ type ProgressState struct {
 	progressChan   chan fibonacci.ProgressUpdate
 }
 
-// ResultsState holds state for the results view.
+// ResultsState holds state for the results view (legacy).
 type ResultsState struct {
 	result   *orchestration.CalculationResult
 	n        uint64
@@ -79,7 +78,7 @@ type ResultsState struct {
 	showFull bool
 }
 
-// ComparisonState holds state for the comparison view.
+// ComparisonState holds state for the comparison view (legacy).
 type ComparisonState struct {
 	results      []orchestration.CalculationResult
 	n            uint64
@@ -90,26 +89,30 @@ type ComparisonState struct {
 	inProgress   bool
 }
 
-// SettingsState holds state for the settings view.
+// SettingsState holds state for the settings view (legacy).
 type SettingsState struct {
 	cursor       int
 	themeIndex   int
 	themeOptions []string
 }
 
-// HelpState holds state for the help view.
+// HelpState holds state for the help view (legacy).
 type HelpState struct {
 	scrollOffset int
 }
 
-// NewModel creates a new TUI model with the given configuration.
+// NewModel creates a new legacy Model.
+// This is kept for backward compatibility with tests.
+// New code should use NewDashboardModel instead.
 func NewModel(cfg config.AppConfig, calculators []fibonacci.Calculator) Model {
 	ctx, cancel := context.WithCancel(context.Background())
 
 	// Get algorithm names
-	algoNames := make([]string, len(calculators))
-	for i, c := range calculators {
-		algoNames[i] = c.Name()
+	algoNames := make([]string, 0, len(calculators))
+	for _, c := range calculators {
+		if c != nil {
+			algoNames = append(algoNames, c.Name())
+		}
 	}
 
 	return Model{
@@ -136,223 +139,50 @@ func NewModel(cfg config.AppConfig, calculators []fibonacci.Calculator) Model {
 	}
 }
 
-// Init initializes the model.
+// Init initializes the model (legacy - not used by new dashboard).
 func (m Model) Init() tea.Cmd {
 	return tea.Batch(
 		tea.EnterAltScreen,
-		tickCmd(100),
+		tickCmd(100*time.Millisecond),
 	)
 }
 
-// Update handles messages and updates the model.
-func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
-	switch msg := msg.(type) {
-	case tea.KeyMsg:
-		return m.handleKeyMsg(msg)
-	case tea.WindowSizeMsg:
-		return m.handleWindowSizeMsg(msg)
-	case NavigateMsg:
-		return m.handleNavigateMsg(msg)
-	case ProgressMsg:
-		return m.handleProgressUpdate(msg)
-	case ProgressDoneMsg:
-		return m, nil
-	case CalculationResultMsg:
-		return m.handleCalculationResult(msg)
-	case ComparisonResultsMsg:
-		return m.handleComparisonResults(msg)
-	case ErrorMsg:
-		m.lastError = msg.Err
-		return m, nil
-	case ThemeChangedMsg:
-		return m.handleThemeChanged(msg)
-	case ResultSavedMsg:
-		// Clear any error and show success (error field used for messages)
-		m.lastError = nil
-		return m, nil
-	case TickMsg:
-		return m, tickCmd(100)
-	}
+// Update handles messages (legacy - not used by new dashboard).
+func (m Model) Update(_ tea.Msg) (tea.Model, tea.Cmd) {
 	return m, nil
 }
 
-func (m Model) handleKeyMsg(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
-	switch {
-	case key.Matches(msg, m.keys.Quit):
-		m.cancel()
-		return m, tea.Quit
-	case key.Matches(msg, m.keys.Help):
-		return m.toggleHelp()
-	case key.Matches(msg, m.keys.Escape):
-		return m.handleEscape()
-	}
-	return m.updateCurrentView(msg)
-}
-
-func (m Model) toggleHelp() (tea.Model, tea.Cmd) {
-	if m.currentView != ViewHelp {
-		m.prevView = m.currentView
-		m.currentView = ViewHelp
-	} else {
-		m.currentView = m.prevView
-	}
-	return m, nil
-}
-
-func (m Model) handleWindowSizeMsg(msg tea.WindowSizeMsg) (tea.Model, tea.Cmd) {
-	m.width = msg.Width
-	m.height = msg.Height
-	m.ready = true
-	m.help.Width = msg.Width
-	return m, nil
-}
-
-func (m Model) handleNavigateMsg(msg NavigateMsg) (tea.Model, tea.Cmd) {
-	m.prevView = m.currentView
-	m.currentView = msg.To
-	return m, nil
-}
-
-func (m Model) handleCalculationResult(msg CalculationResultMsg) (tea.Model, tea.Cmd) {
-	m.resultsState.result = &msg.Result
-	m.resultsState.n = msg.N
-	m.progressState.done = true
-	m.currentView = ViewResults
-	return m, nil
-}
-
-func (m Model) handleComparisonResults(msg ComparisonResultsMsg) (tea.Model, tea.Cmd) {
-	m.comparisonState.results = msg.Results
-	m.comparisonState.n = msg.N
-	m.comparisonState.inProgress = false
-	m.currentView = ViewComparison
-	return m, nil
-}
-
-func (m Model) handleThemeChanged(msg ThemeChangedMsg) (tea.Model, tea.Cmd) {
-	ui.SetTheme(msg.ThemeName)
-	m.styles.RefreshStyles()
-	return m, nil
-}
-
-func (m Model) handleEscape() (tea.Model, tea.Cmd) {
-	switch m.currentView {
-	case ViewHome:
-		m.cancel()
-		return m, tea.Quit
-	case ViewHelp:
-		m.currentView = m.prevView
-	case ViewProgress:
-		// Cancel current calculation
-		m.cancel()
-		m.ctx, m.cancel = context.WithCancel(context.Background())
-		m.currentView = ViewCalculator
-	default:
-		m.currentView = ViewHome
-	}
-	return m, nil
-}
-
-func (m Model) updateCurrentView(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
-	switch m.currentView {
-	case ViewHome:
-		return m.updateHome(msg)
-	case ViewCalculator:
-		return m.updateCalculator(msg)
-	case ViewProgress:
-		return m.updateProgress(msg)
-	case ViewResults:
-		return m.updateResults(msg)
-	case ViewComparison:
-		return m.updateComparison(msg)
-	case ViewSettings:
-		return m.updateSettings(msg)
-	case ViewHelp:
-		return m.updateHelp(msg)
-	}
-	return m, nil
-}
-
-func (m Model) handleProgressUpdate(msg ProgressMsg) (tea.Model, tea.Cmd) {
-	idx := msg.Update.CalculatorIndex
-	if idx >= 0 && idx < len(m.progressState.progresses) {
-		m.progressState.progresses[idx] = msg.Update.Value
-	}
-	if idx >= 0 && idx < len(m.comparisonState.progresses) {
-		m.comparisonState.progresses[idx] = msg.Update.Value
-	}
-	// Continue listening for progress
-	if m.progressState.progressChan != nil {
-		return m, listenForProgress(m.progressState.progressChan)
-	}
-	if m.comparisonState.progressChan != nil && m.comparisonState.inProgress {
-		return m, listenForProgress(m.comparisonState.progressChan)
-	}
-	return m, nil
-}
-
-// View renders the TUI.
+// View renders the model (legacy - not used by new dashboard).
 func (m Model) View() string {
-	if !m.ready {
-		return "Loading..."
-	}
-
-	var content string
-	switch m.currentView {
-	case ViewHome:
-		content = m.viewHome()
-	case ViewCalculator:
-		content = m.viewCalculator()
-	case ViewProgress:
-		content = m.viewProgress()
-	case ViewResults:
-		content = m.viewResults()
-	case ViewComparison:
-		content = m.viewComparison()
-	case ViewSettings:
-		content = m.viewSettings()
-	case ViewHelp:
-		content = m.viewHelp()
-	}
-
-	// Build the full view with header and footer
-	return m.buildFrame(content)
+	return "Legacy Model - use DashboardModel instead"
 }
 
-func (m Model) buildFrame(content string) string {
-	// Header
-	header := m.styles.Header.Render(
-		lipgloss.JoinHorizontal(lipgloss.Center,
-			m.styles.Title.Render("Fibonacci Calculator"),
-			strings.Repeat(" ", maxInt(0, m.width-40)),
-			m.styles.Muted.Render(fmt.Sprintf("Theme: %s", ui.GetCurrentTheme().Name)),
-		),
-	)
-
-	// Footer with help
-	footer := m.styles.Footer.Render(
-		m.help.ShortHelpView(m.keys.ShortHelp()),
-	)
-
-	// Error display
-	var errorBar string
-	if m.lastError != nil {
-		errorBar = m.styles.Error.Render(fmt.Sprintf("Error: %v", m.lastError))
-	}
-
-	// Combine all parts
-	parts := []string{header}
-	if errorBar != "" {
-		parts = append(parts, errorBar)
-	}
-	parts = append(parts, content, footer)
-
-	return lipgloss.JoinVertical(lipgloss.Left, parts...)
-}
-
+// maxInt returns the maximum of two integers.
 func maxInt(a, b int) int {
 	if a > b {
 		return a
 	}
 	return b
+}
+
+// renderProgressBar renders a progress bar (legacy helper for tests).
+func renderProgressBar(progress float64, width int, styles Styles) string {
+	filled := int(progress * float64(width))
+	if filled > width {
+		filled = width
+	}
+	if filled < 0 {
+		filled = 0
+	}
+
+	filledStr := ""
+	emptyStr := ""
+	for i := 0; i < filled; i++ {
+		filledStr += "█"
+	}
+	for i := filled; i < width; i++ {
+		emptyStr += "░"
+	}
+
+	return styles.ProgressFilled.Render(filledStr) + styles.ProgressEmpty.Render(emptyStr)
 }

@@ -158,25 +158,25 @@ Command-line user interface:
 
 ### `internal/tui`
 
-Rich Terminal User Interface using the Charm stack (Bubbletea, Bubbles, Lipgloss):
+Rich Terminal User Interface using the Charm stack (Bubbletea, Bubbles, Lipgloss).
+Redesigned as a single-screen HTOP-style dashboard:
 
 - **`tui.go`**: Entry point, `tea.NewProgram()` initialization
-- **`model.go`**: Root Model with Elm Architecture (Init, Update, View)
+- **`dashboard.go`**: DashboardModel with consolidated state (Init, Update, View)
+- **`sections.go`**: Section type (Input, Algorithms, Results) and navigation helpers
+- **Dashboard Sections**:
+  - `dashboard_input.go`: Input section (N field, calculate/compare buttons)
+  - `dashboard_algorithms.go`: Algorithm table with real-time progress bars
+  - `dashboard_results.go`: Results display section
+  - `dashboard_overlays.go`: Help overlay and settings panel
 - **`messages.go`**: Message types for state updates (ProgressMsg, ResultMsg, etc.)
 - **`commands.go`**: Async commands for calculations and progress listening
-- **`keys.go`**: Keyboard bindings (navigation, actions, quit)
+- **`keys.go`**: Keyboard bindings (section navigation, actions, quit)
 - **`styles.go`**: Lipgloss styles integrated with `internal/ui` themes
 - **`presenter.go`**: Interface implementations:
   - `TUIProgressReporter`: Bridges orchestration progress to Bubbletea messages
   - `TUIResultPresenter`: No-op (TUI handles results via messages)
-- **View Files** (`view_*.go`):
-  - `view_home.go`: Main menu navigation
-  - `view_calculator.go`: Input N and algorithm selection
-  - `view_progress.go`: Real-time progress bar with ETA
-  - `view_results.go`: Result display with actions
-  - `view_comparison.go`: Multi-algorithm comparison
-  - `view_settings.go`: Theme and configuration
-  - `view_help.go`: Keyboard shortcuts reference
+- **`model.go`**: Legacy model kept for backward compatibility
 
 ### `internal/config`
 
@@ -309,27 +309,35 @@ Centralised error handling:
 4. Repeats until exit or EOF
 ```
 
-### TUI Mode
+### TUI Mode (HTOP-style Dashboard)
 
 ```
 1. main() detects --tui and calls app.runTUI()
-2. tui.Run() initializes tea.Program with alt-screen mode
-3. Model.Init() returns initial state (HomeView)
+2. tui.Run() initializes tea.Program with DashboardModel
+3. DashboardModel.Init() returns initial state (single-screen dashboard)
 4. Bubbletea event loop:
    a. Update() receives messages (key events, progress updates, results)
-   b. Dispatches to view-specific update handler (updateHome, updateCalculator, etc.)
-   c. Returns updated model and commands
-   d. View() renders current state to terminal
-5. Calculation flow:
-   a. User enters N in calculator view, presses Enter
-   b. CalculationStartMsg triggers runCalculation command
-   c. Command spawns goroutine with TUIProgressReporter
-   d. ProgressMsg updates progress bar in real-time
-   e. CalculationResultMsg displays results view
-6. Program exits on quit key or Ctrl+C
+   b. Global shortcuts handled first (Tab, Escape, Help)
+   c. Section-specific handlers update focused section
+   d. View() renders all sections on single screen
+5. Dashboard sections (all visible at once):
+   - Input: N field and action buttons
+   - Algorithms: Table with real-time progress bars for all algorithms
+   - Results: Calculation results with formatting options
+6. Calculation flow:
+   a. User enters N in input section, presses Enter or 'c'
+   b. startSingleCalculation() triggers runCalculation command
+   c. ProgressMsg updates progress bar for running algorithm
+   d. CalculationResultMsg updates results section
+7. Comparison flow:
+   a. User presses 'm' to compare all algorithms
+   b. startComparison() runs all calculators in parallel
+   c. All progress bars update simultaneously
+   d. ComparisonResultsMsg updates algorithms table and results
+8. Program exits on 'q' or Ctrl+C
 ```
 
-#### TUI Architecture Pattern (Elm Architecture)
+#### TUI Architecture Pattern (HTOP-style Dashboard)
 
 ```
 ┌─────────────────────────────────────────────────────────┐
@@ -341,25 +349,33 @@ Centralised error handling:
 │   └─────────┘    └────┬────┘    └────┬────┘           │
 │                       │              │                 │
 │                       │              ▼                 │
-│                       │         ┌─────────┐           │
-│                       │         │ Render  │           │
-│                       │         │ Terminal│           │
-│                       │         └─────────┘           │
-│                       │                               │
+│                       │    ┌─────────────────────┐    │
+│                       │    │  Single Dashboard   │    │
+│                       │    │  ┌───────────────┐  │    │
+│                       │    │  │ Input Section │  │    │
+│                       │    │  ├───────────────┤  │    │
+│                       │    │  │ Algorithms    │  │    │
+│                       │    │  │ (Progress)    │  │    │
+│                       │    │  ├───────────────┤  │    │
+│                       │    │  │ Results       │  │    │
+│                       │    │  └───────────────┘  │    │
+│                       │    └─────────────────────┘    │
 │                       ▼                               │
 │   ┌─────────────────────────────────────────┐        │
 │   │               Commands                   │        │
 │   │  • listenForProgress() - Channel bridge │        │
 │   │  • runCalculation() - Async calculation │        │
+│   │  • runComparison() - All algorithms     │        │
 │   │  • tickCmd() - Animation ticks          │        │
 │   └─────────────────────────────────────────┘        │
 │                       │                               │
 │                       ▼                               │
 │   ┌─────────────────────────────────────────┐        │
 │   │               Messages                   │        │
-│   │  • ProgressMsg, ResultMsg               │        │
-│   │  • KeyMsg, WindowSizeMsg                │        │
-│   │  • NavigateMsg, ThemeChangedMsg         │        │
+│   │  • ProgressMsg (with CalculatorIndex)   │        │
+│   │  • CalculationResultMsg                 │        │
+│   │  • ComparisonResultsMsg                 │        │
+│   │  • KeyMsg, ThemeChangedMsg              │        │
 │   └─────────────────────────────────────────┘        │
 │                                                       │
 └───────────────────────────────────────────────────────┘

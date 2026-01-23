@@ -19,16 +19,35 @@ type KeyMap struct {
 	Quit   key.Binding
 
 	// Shortcuts
-	NewCalc    key.Binding
+	Calculate  key.Binding
 	Compare    key.Binding
 	Theme      key.Binding
 	Settings   key.Binding
+	Save       key.Binding
+	Hex        key.Binding
+	Full       key.Binding
+
+	// Legacy aliases (for backward compatibility)
+	NewCalc    key.Binding
 	SaveResult key.Binding
 	HexToggle  key.Binding
 }
 
 // DefaultKeyMap returns the default key bindings.
 func DefaultKeyMap() KeyMap {
+	calcBinding := key.NewBinding(
+		key.WithKeys("c"),
+		key.WithHelp("c", "calculate"),
+	)
+	saveBinding := key.NewBinding(
+		key.WithKeys("ctrl+s"),
+		key.WithHelp("ctrl+s", "save"),
+	)
+	hexBinding := key.NewBinding(
+		key.WithKeys("x"),
+		key.WithHelp("x", "hex"),
+	)
+
 	return KeyMap{
 		Up: key.NewBinding(
 			key.WithKeys("up", "k"),
@@ -48,11 +67,11 @@ func DefaultKeyMap() KeyMap {
 		),
 		Tab: key.NewBinding(
 			key.WithKeys("tab"),
-			key.WithHelp("tab", "next field"),
+			key.WithHelp("tab", "next section"),
 		),
 		ShiftTab: key.NewBinding(
 			key.WithKeys("shift+tab"),
-			key.WithHelp("shift+tab", "previous field"),
+			key.WithHelp("shift+tab", "prev section"),
 		),
 		Enter: key.NewBinding(
 			key.WithKeys("enter"),
@@ -60,40 +79,39 @@ func DefaultKeyMap() KeyMap {
 		),
 		Escape: key.NewBinding(
 			key.WithKeys("esc"),
-			key.WithHelp("esc", "back/cancel"),
+			key.WithHelp("esc", "cancel"),
 		),
 		Help: key.NewBinding(
 			key.WithKeys("?", "f1"),
-			key.WithHelp("?/F1", "help"),
+			key.WithHelp("?", "help"),
 		),
 		Quit: key.NewBinding(
 			key.WithKeys("q", "ctrl+c"),
 			key.WithHelp("q", "quit"),
 		),
-		NewCalc: key.NewBinding(
-			key.WithKeys("c"),
-			key.WithHelp("c", "new calculation"),
-		),
+		Calculate: calcBinding,
 		Compare: key.NewBinding(
 			key.WithKeys("m"),
-			key.WithHelp("m", "compare mode"),
+			key.WithHelp("m", "compare"),
 		),
 		Theme: key.NewBinding(
 			key.WithKeys("t"),
-			key.WithHelp("t", "change theme"),
+			key.WithHelp("t", "theme"),
 		),
 		Settings: key.NewBinding(
 			key.WithKeys("s"),
 			key.WithHelp("s", "settings"),
 		),
-		SaveResult: key.NewBinding(
-			key.WithKeys("ctrl+s"),
-			key.WithHelp("ctrl+s", "save result"),
+		Save: saveBinding,
+		Hex:  hexBinding,
+		Full: key.NewBinding(
+			key.WithKeys("v"),
+			key.WithHelp("v", "full value"),
 		),
-		HexToggle: key.NewBinding(
-			key.WithKeys("x"),
-			key.WithHelp("x", "toggle hex"),
-		),
+		// Legacy aliases
+		NewCalc:    calcBinding,
+		SaveResult: saveBinding,
+		HexToggle:  hexBinding,
 	}
 }
 

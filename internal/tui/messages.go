@@ -89,6 +89,11 @@ type AlgorithmSelectedMsg struct {
 	Algorithm string
 }
 
+// ResultSavedMsg signals that a result was saved to file.
+type ResultSavedMsg struct {
+	FilePath string
+}
+
 // ResultActionMsg carries a result action request.
 type ResultActionMsg struct {
 	Action ResultAction
