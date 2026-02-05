@@ -1,18 +1,18 @@
 # Algorithm Comparison
 
-> **Last Updated**: November 2025
-
 ## Overview
 
 This document compares the three Fibonacci calculation algorithms implemented in FibCalc.
 
 ## Available Algorithms
 
-| Algorithm | Flag | Description |
-|-----------|------|-------------|
-| Fast Doubling | `-algo fast` | Main algorithm, most performant |
-| Matrix Exponentiation | `-algo matrix` | Matrix approach with Strassen |
-| FFT-Based | `-algo fft` | Forces FFT multiplication |
+| Algorithm | Registry Name | Name() Output |
+|-----------|--------------|---------------|
+| Fast Doubling | `"fast"` | "Fast Doubling (O(log n), Parallel, Zero-Alloc)" |
+| Matrix Exponentiation | `"matrix"` | "Matrix Exponentiation (O(log n), Parallel, Zero-Alloc)" |
+| FFT-Based | `"fft"` | "FFT-Based Doubling (O(log n), FFT Mul)" |
+
+An optional GMP-based calculator (`"gmp"`) is available when built with `-tags=gmp`.
 
 ## Theoretical Comparison
 
@@ -21,7 +21,7 @@ This document compares the three Fibonacci calculation algorithms implemented in
 All algorithms have the same asymptotic complexity:
 
 ```
-O(log n × M(n))
+O(log n * M(n))
 ```
 
 Where M(n) is the cost of multiplying numbers of n bits.
@@ -35,33 +35,36 @@ Where M(n) is the cost of multiplying numbers of n bits.
 | Matrix Exp. (Symmetric) | 4 | 4 | 0 | 8 |
 | Matrix Exp. (Strassen) | 7 | 18 | 18 | 43 |
 
-> **Note**: While Strassen reduces multiplications (the most expensive operation), it significantly increases additions and subtractions. This explains why it is only beneficial for extremely large numbers where $M(n) \gg A(n)$.
+> **Note**: While Strassen reduces multiplications (the most expensive operation), it significantly increases additions and subtractions. This explains why it is only beneficial for extremely large numbers where M(n) >> A(n).
 
 ### Asymptotic Constants Analysis
 
-Let $T(n)$ be the time to compute $F_n$.
-$$ T(n) \approx k \cdot \log_2(n) \cdot M(n) $$
+Let T(n) be the time to compute F(n):
 
-The constant $k$ represents the "multiplicative density" of the algorithm.
+```
+T(n) ~ k * log2(n) * M(n)
+```
 
-1.  **Fast Doubling ($k \approx 3$)**:
-    - Requires 3 multiplications per bit.
-    - $F_{2k} = F_k(2F_{k+1} - F_k)$
-    - $F_{2k+1} = F_{k+1}^2 + F_k^2$
-    - This is effectively the lower bound for any doubling-based method.
+The constant k represents the "multiplicative density" of the algorithm.
 
-2.  **Matrix Exponentiation ($k \approx 4-8$)**:
-    - Naive matrix multiplication requires 8 mults ($k=8$).
-    - Symmetric optimization ($B=C$) reduces this to 4 mults ($k=4$).
-    - Even with optimization, it performs slightly more auxiliary work (additions/memory moves) than Fast Doubling.
+1. **Fast Doubling (k ~ 3)**:
+   - Requires 3 multiplications per bit
+   - F(2k) = F(k) * (2*F(k+1) - F(k))
+   - F(2k+1) = F(k+1)^2 + F(k)^2
+   - This is effectively the lower bound for any doubling-based method
 
-**Conclusion**: Fast Doubling is consistently faster because its constant factor $k$ is strictly smaller (3 vs 4+).
+2. **Matrix Exponentiation (k ~ 4-8)**:
+   - Naive matrix multiplication requires 8 mults (k=8)
+   - Symmetric optimization (B=C) reduces this to 4 mults (k=4)
+   - Even with optimization, it performs slightly more auxiliary work than Fast Doubling
+
+**Conclusion**: Fast Doubling is consistently faster because its constant factor k is strictly smaller (3 vs 4+).
 
 ### Memory
 
 | Algorithm | Temporary variables | Pool objects |
 |-----------|---------------------|--------------|
-| Fast Doubling | 6 big.Int | calculationState |
+| Fast Doubling | 6 big.Int | CalculationState |
 | Matrix Exp. | 3 matrices + ~22 big.Int | matrixState |
 
 ## Benchmarks
@@ -71,23 +74,23 @@ The constant $k$ represents the "multiplicative density" of the algorithm.
 ```
 CPU: AMD Ryzen 9 5900X (12 cores)
 RAM: 32 GB DDR4-3600
-Go: 1.25
+Go: 1.25.0
 OS: Linux 6.1
 ```
 
 ### Results (average times over 10 runs)
 
-#### Small N (N ≤ 10,000)
+#### Small N (N <= 10,000)
 
 | N | Fast Doubling | Matrix Exp. | FFT-Based |
 |---|---------------|-------------|-----------|
-| 100 | 1.2µs | 1.5µs | 8.5µs |
-| 1,000 | 15µs | 18µs | 45µs |
-| 10,000 | 180µs | 220µs | 350µs |
+| 100 | 1.2us | 1.5us | 8.5us |
+| 1,000 | 15us | 18us | 45us |
+| 10,000 | 180us | 220us | 350us |
 
-**Winner**: Fast Doubling (3-4× faster than FFT-Based)
+**Winner**: Fast Doubling (3-4x faster than FFT-Based)
 
-#### Medium N (10,000 < N ≤ 1,000,000)
+#### Medium N (10,000 < N <= 1,000,000)
 
 | N | Fast Doubling | Matrix Exp. | FFT-Based |
 |---|---------------|-------------|-----------|
@@ -95,7 +98,7 @@ OS: Linux 6.1
 | 500,000 | 35ms | 48ms | 42ms |
 | 1,000,000 | 85ms | 110ms | 95ms |
 
-**Winner**: Fast Doubling, but gap narrowed with FFT-Based
+**Winner**: Fast Doubling, but gap narrows with FFT-Based
 
 #### Large N (N > 1,000,000)
 
@@ -121,124 +124,104 @@ OS: Linux 6.1
 
 ```
 Time (log)
-    │
-  1h├                                    /
-    │                                   / ← Matrix
-    │                                  /
- 10m├                              /  /
-    │                             / /
-    │                            /╱  ← FFT-Based
-  1m├                         /╱╱
-    │                       ╱╱╱
-    │                     ╱╱╱ ← Fast Doubling
- 10s├                  ╱╱╱
-    │               ╱╱╱
-    │            ╱╱╱
-  1s├         ╱╱╱
-    │      ╱╱╱
-    │   ╱╱╱
-100ms├╱╱╱
-    └─────┬─────┬─────┬─────┬─────┬─────
+    |
+  1h+                                    /
+    |                                   / <- Matrix
+    |                                  /
+ 10m+                              /  /
+    |                             / /
+    |                            //  <- FFT-Based
+  1m+                         ///
+    |                       ///
+    |                     /// <- Fast Doubling
+ 10s+                  ///
+    |               ///
+    |            ///
+  1s+         ///
+    |      ///
+    |   ///
+100ms+///
+    +-----+-----+-----+-----+-----+-----
         10K   100K    1M   10M  100M    N
 ```
 
 ## When to Use Each Algorithm
 
-### Fast Doubling (`-algo fast`)
+### Fast Doubling (`"fast"`)
 
-✅ **Recommended for**:
-- General usage (default)
-- Maximum performance
-- All orders of magnitude of N
+**Recommended for**: General usage (default), maximum performance, all orders of magnitude of N.
+
+```go
+factory := fibonacci.GlobalFactory()
+calc, _ := factory.Get("fast")
+result, _ := calc.Calculate(ctx, progressChan, 0, 10_000_000, fibonacci.Options{
+    ParallelThreshold: 4096,
+    FFTThreshold:      500_000,
+})
+```
+
+### Matrix Exponentiation (`"matrix"`)
+
+**Recommended for**: Educational understanding, cross-verification of results, testing Strassen algorithm.
+
+```go
+factory := fibonacci.GlobalFactory()
+calc, _ := factory.Get("matrix")
+result, _ := calc.Calculate(ctx, progressChan, 0, 10_000_000, fibonacci.Options{
+    StrassenThreshold: 3072,
+})
+```
+
+### FFT-Based (`"fft"`)
+
+**Recommended for**: FFT multiplication benchmarking, very large number tests (N > 100M), FFT vs Karatsuba performance comparison.
+
+```go
+factory := fibonacci.GlobalFactory()
+calc, _ := factory.Get("fft")
+result, _ := calc.Calculate(ctx, progressChan, 0, 100_000_000, fibonacci.Options{
+    FFTThreshold: 500_000,
+})
+```
+
+## Running a Complete Comparison
 
 ```bash
-./fibcalc -n 10000000 -algo fast
-```
-
-### Matrix Exponentiation (`-algo matrix`)
-
-✅ **Recommended for**:
-- Educational understanding
-- Cross-verification of results
-- When you want to test the Strassen algorithm
-
-```bash
-./fibcalc -n 10000000 -algo matrix --strassen-threshold 2048
-```
-
-### FFT-Based (`-algo fft`)
-
-✅ **Recommended for**:
-- FFT multiplication benchmarking
-- Very large number tests (N > 100M)
-- FFT vs Karatsuba performance comparison
-
-```bash
-./fibcalc -n 100000000 -algo fft
-```
-
-## Complete Comparison
-
-```bash
-# Compare all algorithms on the same N
-./fibcalc -n 10000000 -algo all -d
-```
-
-Typical output:
-
-```
-=== Execution Configuration ===
-Calculating F(10000000) with a timeout of 5m0s.
-Environment: 24 logical processors, Go go1.25.
-Optimization thresholds: Parallelism=4096 bits, FFT=500000 bits.
-Execution mode: Parallel comparison of all algorithms.
-
-=== Comparison Summary ===
-Algorithm                                    Duration    Status
-Fast Doubling (O(log n), Parallel, Zero-Alloc)   2.1s       ✅ Success
-FFT-Based Doubling (O(log n), FFT Mul)           2.3s       ✅ Success
-Matrix Exponentiation (O(log n), Parallel, Zero-Alloc)   2.8s       ✅ Success
-
-=== All algorithms succeeded ===
-Result binary size: 6,942,420 bits.
+# Compare all algorithm benchmarks
+go test -bench='Benchmark(FastDoubling|Matrix|FFT)' -benchmem ./internal/fibonacci/
 ```
 
 ## Configuration Recommendations
 
-### For Small Calculations (N < 100,000)
+All thresholds are configured via the `fibonacci.Options` struct:
 
-```bash
-./fibcalc -n 50000 -algo fast --threshold 0 --fft-threshold 0
+```go
+// Small calculations (N < 100,000): disable parallelism and FFT
+opts := fibonacci.Options{
+    ParallelThreshold: 0,  // disable parallelism (overhead > gains)
+    FFTThreshold:      0,  // disable FFT (too small)
+}
+
+// Medium calculations (100,000 < N < 10,000,000)
+opts := fibonacci.Options{
+    ParallelThreshold: 4096,
+    FFTThreshold:      500_000,
+    KaratsubaThreshold: 2048,
+}
+
+// Large calculations (N > 10,000,000): use calibration or defaults
+opts := fibonacci.Options{
+    ParallelThreshold:  4096,
+    FFTThreshold:       500_000,
+    KaratsubaThreshold: 2048,
+    StrassenThreshold:  3072,
+}
 ```
-
-- Disable parallelism (overhead > gains)
-- Disable FFT (too small)
-
-### For Medium Calculations (100,000 < N < 10,000,000)
-
-```bash
-./fibcalc -n 5000000 -algo fast --threshold 4096
-```
-
-- Parallelism enabled
-- FFT for the largest operations
-
-### For Large Calculations (N > 10,000,000)
-
-```bash
-./fibcalc -n 100000000 -algo fast --auto-calibrate --timeout 30m
-```
-
-- Auto-calibration for optimal thresholds
-- Extended timeout
 
 ## Conclusion
 
-| Criterion | Fast Doubling | Matrix Exp. | FFT-Based |
-|-----------|---------------|-------------|-----------|
-| **Performance** | ⭐⭐⭐⭐⭐ | ⭐⭐⭐ | ⭐⭐⭐⭐ |
-| **Memory** | ⭐⭐⭐⭐⭐ | ⭐⭐⭐ | ⭐⭐⭐⭐ |
-| **Simplicity** | ⭐⭐⭐ | ⭐⭐⭐⭐ | ⭐⭐⭐ |
-| **Educational** | ⭐⭐⭐ | ⭐⭐⭐⭐⭐ | ⭐⭐ |
+**Fast Doubling** is the recommended algorithm for all general use cases. It has the best performance across all input sizes due to requiring only 3 multiplications per iteration (the theoretical minimum for doubling-based methods). It also has the lowest memory footprint.
 
-**General recommendation**: Use **Fast Doubling** (`-algo fast`) for all use cases, except for specific testing or comparison needs.
+**Matrix Exponentiation** is valuable for educational purposes and result verification. Its elegant mathematical foundation (Q-matrix) makes it ideal for understanding the theory, and the Strassen optimization demonstrates practical algorithm design. However, it is consistently 30-50% slower than Fast Doubling.
+
+**FFT-Based** is a specialized variant that forces FFT multiplication for all operations. It approaches Fast Doubling's performance for very large N (> 100M) where FFT's O(n log n) multiplication dominates, but carries unnecessary overhead for smaller inputs. Its primary use is benchmarking the FFT subsystem.
