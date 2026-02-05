@@ -160,7 +160,7 @@ graph TD
 | `internal/calibration` | Auto-tuning logic to find optimal hardware thresholds. |
 | `internal/parallel` | Parallel execution utilities. |
 | `internal/logging` | Structured logging with zerolog adapters. |
-| `internal/app` | Application lifecycle management, dependency injection. |
+| `internal/app` | CLI application runner, version info. |
 | `internal/ui` | Color themes, terminal formatting, NO_COLOR environment variable support. |
 | `internal/config` | Configuration parsing, validation, and environment variable support. |
 | `internal/errors` | Custom error types with standardized exit codes. |
@@ -196,12 +196,16 @@ fibcalc [flags]
 
 | Flag | Short | Default | Description |
 |------|-------|---------|-------------|
-| `--n` | `-n` | `250,000,000` | The Fibonacci index to calculate. |
+| `--n` | `-n` | `100,000,000` | The Fibonacci index to calculate. |
 | `--algo` | | `all` | Algorithm: `fast`, `matrix`, `fft`, or `all`. |
+| `--calculate` | `-c` | `false` | Display the calculated Fibonacci value. |
+| `--verbose` | `-v` | `false` | Display the full value of the result. |
+| `--details` | `-d` | `false` | Display performance details and result metadata. |
 | `--output` | `-o` | | Write result to a file. |
 | `--json` | | `false` | Output results in JSON format. |
 | `--hex` | | `false` | Display result in hexadecimal. |
-| `--calculate` | `-c` | `false` | Print the full value (auto-suppressed for large $N$). |
+| `--quiet` | `-q` | `false` | Minimal output for scripting. |
+| `--no-color` | | `false` | Disable colored output (also respects `NO_COLOR`). |
 | `--calibrate` | | `false` | Run system benchmarks to find optimal thresholds. |
 | `--timeout` | | `5m` | Maximum calculation time (e.g. "10s", "1h"). |
 
