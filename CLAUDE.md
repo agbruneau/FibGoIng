@@ -5,108 +5,153 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 ## Build & Test Commands
 
 ```bash
-make build              # Build binary to ./build/fibcalc
-make test               # Run all tests with race detector
-make test-short         # Run tests without slow ones
-go test -v -run <TEST> ./internal/fibonacci/  # Run single test by name
-make coverage           # Generate coverage report (coverage.html)
-make benchmark          # Run benchmarks for fibonacci algorithms
-make lint               # Run golangci-lint
-make check              # Run format + lint + test
-make clean              # Remove build artifacts
-make generate-mocks     # Regenerate mock implementations
-make security           # Run gosec security audit
-make pgo-rebuild        # Full PGO workflow: profile + build
-go test -fuzz=FuzzFastDoubling ./internal/fibonacci/  # Run fuzz tests
+# NOTE: cmd/fibcalc does not currently exist — Makefile targets referencing it will fail.
+# Use go test/build commands directly for now.
+
+go test -v -race -cover ./...                          # Run all tests with race detector
+go test -v -short ./...                                # Skip slow tests
+go test -v -run TestFastDoubling ./internal/fibonacci/  # Run single test by name
+go test -bench=. -benchmem ./internal/fibonacci/        # Run benchmarks
+go test -fuzz=FuzzFastDoubling ./internal/fibonacci/    # Run fuzz tests
+go generate ./...                                       # Regenerate mocks
+```
+
+Makefile targets (require `make`, not available on all systems):
+```bash
+make test           # go test -v -race -cover ./...
+make lint           # golangci-lint run ./...
+make coverage       # Generate coverage.html
+make check          # format + lint + test
+make security       # gosec ./...
 ```
 
 ## Architecture Overview
 
 **Go Module**: `github.com/agbru/fibcalc` (Go 1.25+)
 
-This is a high-performance Fibonacci calculator implementing multiple algorithms with Clean Architecture principles. The codebase has four main layers:
+CLI-only high-performance Fibonacci calculator. Four layers:
 
-### Entry Points → Orchestration → Business → Presentation
+```
+Entry Point (cmd/fibcalc)
+    ↓
+Orchestration (internal/orchestration)  — parallel execution, result aggregation
+    ↓
+Business (internal/fibonacci, internal/bigfft)  — algorithms, FFT multiplication
+    ↓
+Presentation (internal/cli)  — progress bars, output formatting
+```
 
-1. **Entry Points** (`cmd/fibcalc`): CLI main, routes to CLI mode
-2. **Orchestration** (`internal/orchestration`): Parallel algorithm execution, result aggregation
-3. **Business** (`internal/fibonacci`, `internal/bigfft`): Core algorithms and FFT multiplication
-4. **Presentation** (`internal/cli`): CLI output, progress bars, shell completions
+### Key Interfaces and Their Relationships
+
+**Calculator** (`internal/fibonacci/calculator.go`): Public interface consumed by orchestration. Methods: `Calculate()`, `Name()`.
+
+**coreCalculator** (`internal/fibonacci/calculator.go`): Internal interface for algorithm implementations. Methods: `CalculateCore()`, `Name()`. Wrapped by `FibCalculator` (decorator) which adds small-N optimization and progress reporting.
+
+**CalculatorFactory** (`internal/fibonacci/registry.go`): Creates/caches `Calculator` instances. `DefaultFactory` pre-registers "fast", "matrix", "fft". Global instance via `GlobalFactory()`. GMP calculator auto-registers via `init()` when built with `-tags=gmp`.
+
+**MultiplicationStrategy** (`internal/fibonacci/strategy.go`): Abstraction for multiply/square operations. Strategies: `SmartStrategy` (selects Karatsuba vs FFT by operand size), `FFTStrategy` (always FFT).
+
+**ProgressReporter / ResultPresenter** (`internal/orchestration/interfaces.go`): Decouple orchestration from presentation. CLI implementations in `internal/cli/presenter.go`. `NullProgressReporter` for quiet mode/testing.
+
+**ProgressObserver** (`internal/fibonacci/observer.go`): Observer pattern for progress updates. `ProgressSubject` manages observers; `ChannelObserver` bridges to channel-based reporting. `CalculateWithObservers()` is the observer-aware entry point; `Calculate()` wraps it for backward compatibility.
 
 ### Core Packages
 
-| Package | Responsibility |
-|---------|----------------|
-| `internal/fibonacci` | Calculator interface, algorithms (Fast Doubling, Matrix, FFT-based) |
-| `internal/bigfft` | FFT multiplication for large `big.Int` - O(n log n) vs Karatsuba O(n^1.585) |
-| `internal/orchestration` | Concurrent algorithm execution with timeout/cancellation |
-| `internal/cli` | Spinner, progress bar with ETA, color themes, shell completions |
-| `internal/calibration` | Auto-tuning to find optimal thresholds per hardware |
-| `internal/config` | Configuration management and validation |
-| `internal/parallel` | Concurrency utilities |
-| `internal/errors` | Custom error types with standardized exit codes |
-| `internal/app` | Application composition root and lifecycle management |
-| `internal/ui` | Color themes, terminal formatting, NO_COLOR support |
-| `internal/logging` | Structured logging with zerolog adapters |
+| Package | Key Files | Responsibility |
+|---------|-----------|----------------|
+| `internal/fibonacci` | `fastdoubling.go`, `matrix.go`, `fft_based.go` | Algorithm implementations |
+| `internal/fibonacci` | `registry.go`, `calculator.go`, `strategy.go` | Factory, interfaces, strategies |
+| `internal/fibonacci` | `observer.go`, `common.go`, `constants.go` | Progress, task semaphore, thresholds |
+| `internal/bigfft` | `fft.go`, `fermat.go`, `pool.go`, `karatsuba.go` | FFT/Karatsuba multiplication with pooling |
+| `internal/bigfft` | `arith_amd64.go`, `arith_amd64.s` | Assembly-optimized FFT (AVX2/AVX-512) |
+| `internal/orchestration` | `orchestrator.go`, `interfaces.go` | Parallel execution via `errgroup` |
+| `internal/cli` | `output.go`, `presenter.go`, `ui.go`, `progress_eta.go` | CLI output, progress display |
+| `internal/calibration` | `calibration.go`, `adaptive.go`, `microbench.go` | Auto-tuning thresholds per hardware |
+| `internal/config` | `config.go`, `env.go` | Flag parsing, env vars, validation |
+| `internal/app` | `lifecycle.go`, `version.go` | Context setup (timeout + signals) |
+| `internal/errors` | `errors.go`, `handler.go` | Custom error types, exit codes |
+| `internal/ui` | | Color themes, `NO_COLOR` support |
 
-### Key Algorithms
+### Data Flow
 
-- **Fast Doubling** (default): O(log n) using F(2k) = F(k)(2F(k+1) - F(k))
-- **Matrix Exponentiation**: O(log n) with Strassen's algorithm for large matrices
-- **FFT-Based**: Switches to FFT multiplication when numbers exceed ~500k bits
+1. `config.ParseConfig()` parses CLI flags + env vars → `AppConfig`
+2. `fibonacci.GlobalFactory()` provides calculators by name
+3. `orchestration.ExecuteCalculations()` runs calculators concurrently via `errgroup`
+4. Each `Calculator.Calculate()` sends `ProgressUpdate` on a channel
+5. `CLIProgressReporter` displays spinner/progress bar
+6. `orchestration.AnalyzeComparisonResults()` compares results
+7. `CLIResultPresenter` formats and displays output
 
 ## Code Conventions
 
-**Imports**: Group as (1) stdlib, (2) third-party, (3) internal
+**Imports**: Group as (1) stdlib, (2) third-party, (3) internal. Error package aliased as `apperrors`.
 
-**Error Handling**: Use `internal/errors` package; always wrap errors
+**Error Handling**: Use `internal/errors` package (`apperrors`). Types: `ConfigError`, `CalculationError`, `TimeoutError`. Each has a standardized exit code.
 
-**Concurrency**: Use `sync.Pool` for object recycling to minimize GC pressure
+**Concurrency**: Use `sync.Pool` for object recycling. Task semaphore in `common.go` limits goroutines to `runtime.NumCPU()*2`.
 
-**Testing**: Table-driven tests with subtests; >75% coverage target; use mockgen for mocks
+**Testing**: Table-driven with subtests. >75% coverage target. Golden file tests in `internal/fibonacci/testdata/fibonacci_golden.json`. Fuzz tests (`FuzzFastDoubling`). Property-based tests via `gopter`.
 
-**Configuration**: Use functional options pattern for configurable components
+**Linting**: `.golangci.yml` — 20+ linters. Key limits: cyclomatic complexity 15, cognitive complexity 30, function length 100 lines / 50 statements. Relaxed in `_test.go` files.
 
-**Linting**: `.golangci.yml` enforces gofmt, govet, errcheck, staticcheck, revive, gosec, and 20+ more linters. Key thresholds: cyclomatic complexity max 15, cognitive complexity max 30, function length max 100 lines / 50 statements. Complexity/length linters are relaxed in test files.
+**Commits**: [Conventional Commits](https://www.conventionalcommits.org/) — `feat`, `fix`, `docs`, `refactor`, `perf`, `test`, `chore`. Format: `<type>(<scope>): <description>`
 
-**Commits**: Follow [Conventional Commits](https://www.conventionalcommits.org/) — `feat`, `fix`, `docs`, `style`, `refactor`, `perf`, `test`, `chore`. Format: `<type>(<scope>): <description>`
-
-**Branch naming**: `feature/`, `fix/`, `docs/`, `refactor/`, `perf/` prefixes (e.g., `feature/add-new-algorithm`)
+**Branch naming**: `feature/`, `fix/`, `docs/`, `refactor/`, `perf/` prefixes.
 
 ## Key Patterns
 
-- **Strategy Pattern**: Calculator interface abstracts algorithm implementations
-- **Object Pooling**: `sync.Pool` for `big.Int` and calculation states (20-30% perf gain)
-- **Smart Multiplication**: `smartMultiply` selects Karatsuba vs FFT based on operand size
-- **Adaptive Parallelism**: Parallelism enabled only above configurable threshold
-- **Task Semaphore**: Limits concurrent goroutines to `runtime.NumCPU()*2` in `internal/fibonacci/common.go`
-- **Optimized Zeroing**: Uses Go 1.21+ `clear()` builtin instead of loops in `internal/bigfft`
-- **Interface-Based Decoupling**: Orchestration layer uses `ProgressReporter` and `ResultPresenter` interfaces (defined in `internal/orchestration/interfaces.go`) to avoid depending on CLI. Implementation in `internal/cli/presenter.go`
-- **Observer Pattern**: `ProgressObserver` interface (`internal/fibonacci/observer.go`) enables multiple progress consumers (UI, logging). Concrete observers: `ChannelObserver`, `LoggingObserver`. Calculators expose `CalculateWithObservers()` alongside standard `Calculate()`
+- **Decorator**: `FibCalculator` wraps `coreCalculator` to add small-N fast path and progress reporting
+- **Factory + Registry**: `DefaultFactory` with lazy creation and caching; GMP auto-registers via `init()`
+- **Strategy**: `MultiplicationStrategy` selects Karatsuba vs FFT based on operand bit size
+- **Observer**: `ProgressSubject`/`ProgressObserver` for progress events; `ChannelObserver` bridges to channels
+- **Object Pooling**: `sync.Pool` for `big.Int` and calculation states; `MaxPooledBitLen = 4M bits` cap
+- **Interface-Based Decoupling**: Orchestration depends on `ProgressReporter`/`ResultPresenter` interfaces, not CLI directly
 
 ## Build Tags & Platform-Specific Code
 
-- **GMP support**: Build with `-tags=gmp` to use GNU Multiple Precision Arithmetic Library via `internal/fibonacci/calculator_gmp.go`. Auto-registers via `init()`.
-- **amd64 optimizations**: `internal/bigfft/arith_amd64.go` and `arith_amd64.s` provide assembly-optimized FFT operations with runtime CPU feature detection (AVX2/AVX-512 dynamic dispatch)
-- **PGO**: Profile-Guided Optimization via `make pgo-profile` then `make build-pgo`. Profile stored at `cmd/fibcalc/default.pgo`
+- **GMP**: `go build -tags=gmp` — requires libgmp. `calculator_gmp.go` auto-registers via `init()`
+- **amd64 ASM**: `internal/bigfft/arith_amd64.s` — runtime CPU feature detection (AVX2/AVX-512)
+- **PGO**: Profile stored at `cmd/fibcalc/default.pgo`
 
 ## Naming Conventions
 
-**CLI Package (`internal/cli/output.go`)**:
-- `Display*` functions: Write formatted output to `io.Writer` (e.g., `DisplayResult`)
-- `Format*` functions: Return formatted string, no I/O (e.g., `FormatQuietResult`)
-- `Write*` functions: Write data to filesystem (e.g., `WriteResultToFile`)
+**CLI Package** (`internal/cli/output.go`):
+- `Display*`: Write formatted output to `io.Writer`
+- `Format*`: Return formatted string, no I/O
+- `Write*`: Write data to filesystem
 
-## Adding New Components
+## Adding a New Algorithm
 
-**New Algorithm**: Implement `coreCalculator` interface in `internal/fibonacci`, register in `calculatorRegistry`
+1. Implement `coreCalculator` interface (`CalculateCore`, `Name`) in `internal/fibonacci/`
+2. Register in `NewDefaultFactory()` in `registry.go`
+3. Add tests (table-driven + golden file validation)
 
-**Mock Locations**: Mocks live in `mocks/` subdirectories (e.g., `internal/fibonacci/mocks/mock_calculator.go`). Regenerate with `make generate-mocks` after modifying interfaces.
+## Mock Generation
+
+Interfaces with `//go:generate mockgen` directives:
+- `Calculator` → `internal/fibonacci/mocks/mock_calculator.go`
+- `MultiplicationStrategy` → `internal/fibonacci/mocks/mock_strategy.go`
+- `Generator` → `internal/fibonacci/mocks/mock_generator.go`
+- `Spinner` → `internal/cli/mocks/mock_ui.go`
+
+Regenerate: `go generate ./...`
 
 ## Configuration Priority
 
-CLI flags > Environment variables > Defaults. See `.env.example` for all `FIBCALC_*` environment variables.
+CLI flags > Environment variables (`FIBCALC_*` prefix) > Defaults. See `.env.example`.
 
 ## Key Dependencies
 
-zerolog, golang.org/x/sync, gmp
+| Dependency | Purpose |
+|-----------|---------|
+| `golang.org/x/sync` | `errgroup` for concurrent calculator execution |
+| `github.com/rs/zerolog` | Structured logging |
+| `github.com/briandowns/spinner` | CLI spinner animation |
+| `github.com/ncw/gmp` | GMP bindings (optional, build tag) |
+| `github.com/golang/mock` | Mock generation for testing |
+| `github.com/leanovate/gopter` | Property-based testing |
+
+## Known Issues
+
+- `cmd/fibcalc` directory does not exist — the main entry point was removed in a prior refactor. Only `cmd/generate-golden` exists. Makefile `build` target will fail.
+- `Docs/TROUBLESHOOTING.md` is referenced in README but does not exist.
