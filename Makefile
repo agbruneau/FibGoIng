@@ -30,11 +30,16 @@ GOFLAGS=$(LDFLAGS)
 # Default target
 all: clean build test
 
-## build: Build the application for current platform
+## build: Build the application for current platform (uses PGO if profile exists)
 build:
 	@echo "Building $(BINARY_NAME) version $(VERSION)..."
 	@mkdir -p $(BUILD_DIR)
-	$(GO) build $(GOFLAGS) -o $(BUILD_DIR)/$(BINARY_NAME) $(CMD_DIR)
+	@if [ -f $(PGO_PROFILE) ]; then \
+		echo "PGO profile found, building with PGO..."; \
+		$(GO) build $(GOFLAGS) -pgo=$(PGO_PROFILE) -o $(BUILD_DIR)/$(BINARY_NAME) $(CMD_DIR); \
+	else \
+		$(GO) build $(GOFLAGS) -o $(BUILD_DIR)/$(BINARY_NAME) $(CMD_DIR); \
+	fi
 	@echo "Build complete: $(BUILD_DIR)/$(BINARY_NAME)"
 
 ## pgo-profile: Generate CPU profile from benchmarks for PGO
