@@ -35,11 +35,9 @@ Requires MinGW or WSL with libgmp installed.
 Because this implementation relies on CGO and an external C library, it is hidden behind a build tag (`gmp`) to prevent build failures on systems without GMP.
 
 ```bash
-# Build with GMP support (requires rebuilding cmd/fibcalc)
+# Build with GMP support
 go build -tags gmp -o fibcalc ./cmd/fibcalc
 ```
-
-> **Note**: `cmd/fibcalc` does not currently exist and needs to be rebuilt. The GMP calculator can still be used via the Go API and tests.
 
 ## Auto-Registration
 

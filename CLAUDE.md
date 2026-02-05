@@ -149,6 +149,4 @@ CLI flags > Environment variables (`FIBCALC_*` prefix) > Defaults. See `.env.exa
 | `github.com/golang/mock` | Mock generation for testing |
 | `github.com/leanovate/gopter` | Property-based testing |
 
-## Known Issues
 
-- `Docs/TROUBLESHOOTING.md` is referenced in README but does not exist.

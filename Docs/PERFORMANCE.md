@@ -133,7 +133,7 @@ import "github.com/agbru/fibcalc/internal/calibration"
 profile, err := calibration.RunCalibration(ctx)
 ```
 
-> **Note**: The `cmd/fibcalc` entry point (which provided `--calibrate` and `--auto-calibrate` flags) does not currently exist and needs to be rebuilt.
+> **Tip**: Use `fibcalc --calibrate` to run calibration, or `--auto-calibrate` for a quick startup calibration.
 
 ### Configuration Parameters
 
@@ -231,11 +231,9 @@ GOMAXPROCS=8 go test -bench=. ./internal/fibonacci/
 ### 4. Optimized Compilation
 
 ```bash
-# Build with aggressive optimizations (requires rebuilding cmd/fibcalc)
+# Build with aggressive optimizations
 go build -ldflags="-s -w" -gcflags="-B" ./cmd/fibcalc
 ```
-
-> **Note**: `cmd/fibcalc` does not currently exist. These flags apply to any Go binary built from this project.
 
 ## Known Limitations
 

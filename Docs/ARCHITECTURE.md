@@ -13,7 +13,7 @@ The Fibonacci Calculator is designed according to **Clean Architecture** princip
 │                           ENTRY POINT                                   │
 │                                                                         │
 │                    ┌────────────────────────┐                           │
-│                    │  cmd/fibcalc (removed)  │                          │
+│                    │  cmd/fibcalc            │                          │
 │                    │  cmd/generate-golden    │                          │
 │                    └───────────┬─────────────┘                          │
 └────────────────────────────────┼─────────────────────────────────────────┘
@@ -69,13 +69,13 @@ The Fibonacci Calculator is designed according to **Clean Architecture** princip
 
 ## Package Structure
 
-### `cmd/fibcalc` (removed)
+### `cmd/fibcalc`
 
-The main CLI entry point was removed in a prior refactor. Only `cmd/generate-golden` currently exists (generates golden test data). The entry point needs to be rebuilt to provide:
+The main CLI entry point. A minimal wrapper that calls `app.New()` and `app.Run()`, providing:
 
-- Command-line argument parsing
-- Component initialization
-- System signal handling
+- Version flag handling (`--version`)
+- Command-line argument parsing via `internal/config`
+- Application lifecycle (timeout + signal handling)
 
 ### `cmd/generate-golden`
 
