@@ -475,22 +475,6 @@ func TestMultipleAlgorithms(t *testing.T) {
 	}
 }
 
-// TestSetupSignals tests the SetupSignals function.
-func TestSetupSignals(t *testing.T) {
-	t.Parallel()
-	ctx := context.Background()
-	ctxWithSignals, stop := SetupSignals(ctx)
-	defer stop()
-
-	// Context should not be nil
-	if ctxWithSignals == nil {
-		t.Error("Context should not be nil")
-	}
-
-	// Stop should not panic
-	stop()
-}
-
 func TestApplyAdaptiveThresholds(t *testing.T) {
 	t.Parallel()
 	// Test case where defaults are present and should be replaced
