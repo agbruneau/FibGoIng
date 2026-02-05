@@ -72,45 +72,6 @@ func (e CalculationError) Error() string { return e.Cause.Error() }
 //   - error: The underlying cause of the CalculationError.
 func (e CalculationError) Unwrap() error { return e.Cause }
 
-// ServerError represents errors that occur in the HTTP server component.
-// It wraps an underlying error with additional context specific to the server operation.
-type ServerError struct {
-	// Message is a descriptive message about the server error.
-	Message string
-	// Cause is the underlying error, if any.
-	Cause error
-}
-
-// Error returns the error message for a ServerError.
-// It combines the descriptive message and the underlying cause if present.
-//
-// Returns:
-//   - string: The complete error message.
-func (e ServerError) Error() string {
-	if e.Cause != nil {
-		return fmt.Sprintf("%s: %v", e.Message, e.Cause)
-	}
-	return e.Message
-}
-
-// Unwrap returns the underlying error.
-//
-// Returns:
-//   - error: The cause of the ServerError, or nil if there is none.
-func (e ServerError) Unwrap() error { return e.Cause }
-
-// NewServerError creates a new ServerError with a message and optional cause.
-//
-// Parameters:
-//   - message: A description of the error context.
-//   - cause: The underlying error that occurred (can be nil).
-//
-// Returns:
-//   - error: A new ServerError instance.
-func NewServerError(message string, cause error) error {
-	return ServerError{Message: message, Cause: cause}
-}
-
 // WrapError wraps an error with additional context using fmt.Errorf and %w.
 // This allows the wrapped error to be unwrapped with errors.Unwrap() and
 // checked with errors.Is() and errors.As().
@@ -141,34 +102,3 @@ func IsContextError(err error) bool {
 	return errors.Is(err, context.Canceled) || errors.Is(err, context.DeadlineExceeded)
 }
 
-// ValidationError represents an error due to invalid input validation.
-// It is used for API request validation and configuration validation.
-type ValidationError struct {
-	// Field is the name of the field that failed validation.
-	Field string
-	// Message describes why validation failed.
-	Message string
-	// Value is the invalid value (optional, may be nil).
-	Value any
-}
-
-// Error returns the error message for a ValidationError.
-func (e ValidationError) Error() string {
-	if e.Field != "" {
-		return fmt.Sprintf("validation error for '%s': %s", e.Field, e.Message)
-	}
-	return fmt.Sprintf("validation error: %s", e.Message)
-}
-
-// NewValidationError creates a new ValidationError.
-//
-// Parameters:
-//   - field: The name of the field that failed validation.
-//   - message: A description of why validation failed.
-//   - value: The invalid value (optional).
-//
-// Returns:
-//   - error: A new ValidationError instance.
-func NewValidationError(field, message string, value any) error {
-	return ValidationError{Field: field, Message: message, Value: value}
-}
