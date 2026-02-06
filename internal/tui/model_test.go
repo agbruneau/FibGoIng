@@ -111,8 +111,8 @@ func TestModel_Update_ProgressMsg(t *testing.T) {
 	updated, _ := m.Update(msg)
 	result := updated.(Model)
 
-	if len(result.chart.dataPoints) == 0 {
-		t.Error("expected chart to have data points after progress update")
+	if result.chart.averageProgress == 0 {
+		t.Error("expected chart to have progress after progress update")
 	}
 }
 
@@ -131,8 +131,8 @@ func TestModel_Update_ProgressMsg_Paused(t *testing.T) {
 	updated, _ := model.Update(msg)
 	result := updated.(Model)
 
-	if len(result.chart.dataPoints) != 0 {
-		t.Error("expected chart to have no data points when paused")
+	if result.chart.averageProgress != 0 {
+		t.Error("expected chart to have no progress when paused")
 	}
 }
 
@@ -237,7 +237,7 @@ func TestModel_HandleKey_Restart(t *testing.T) {
 	updated, cmd := m.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'r'}})
 	result := updated.(Model)
 
-	if len(result.chart.dataPoints) != 0 {
+	if result.chart.averageProgress != 0 {
 		t.Error("expected chart to be reset after restart")
 	}
 	if len(result.logs.entries) != 0 {

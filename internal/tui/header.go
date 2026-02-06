@@ -44,7 +44,10 @@ func (h *HeaderModel) SetWidth(w int) {
 // View renders the header.
 func (h HeaderModel) View() string {
 	title := titleStyle.Render("FibGo Monitor")
-	version := versionStyle.Render(h.version)
+	version := ""
+	if h.version != "" && h.version != "dev" {
+		version = versionStyle.Render(h.version)
+	}
 	var duration time.Duration
 	if !h.endTime.IsZero() {
 		duration = h.endTime.Sub(h.startTime)

@@ -68,7 +68,7 @@ The Fibonacci Calculator is designed according to **Clean Architecture** princip
 │  │         internal/tui             │  Activated via --tui flag         │
 │  │  • btop-style dashboard          │                                   │
 │  │  • Real-time logs, metrics       │                                   │
-│  │  • Sparkline progress chart      │                                   │
+│  │  • Progress bar with ETA         │                                   │
 │  │  • Keyboard navigation           │                                   │
 │  └──────────────────────────────────┘                                   │
 └──────────────────────────────────────────────────────────────────────────┘
@@ -134,6 +134,7 @@ FFT and Karatsuba multiplication for `big.Int`, with object pooling, memory mana
 | `fermat.go` | Modular arithmetic for FFT (Fermat number ring) |
 | `karatsuba.go` | `KaratsubaMultiplyTo` implementation |
 | `pool.go` | `sync.Pool`-based object pools with size classes |
+| `pool_warming.go` | Pool pre-warming for adaptive buffer pre-allocation |
 | `allocator.go` | Memory allocator abstraction |
 | `bump.go` | Bump allocator for batch allocations |
 | `memory_est.go` | Memory estimation for pre-allocation |
@@ -161,6 +162,8 @@ Command-line user interface and presentation layer.
 | `output.go` | `Display*` / `Format*` / `Write*` functions for output |
 | `presenter.go` | `CLIProgressReporter` and `CLIResultPresenter` implementations |
 | `ui.go` | Spinner management and terminal interaction |
+| `ui_display.go` | Display functions for progress reporting and result presentation |
+| `ui_format.go` | Number formatting and duration/ETA formatting utilities |
 | `progress_eta.go` | ETA estimation algorithm |
 | `calculate.go` | Calculation orchestration entry point for CLI |
 | `completion.go` | Shell completion script generation (bash, zsh, fish, powershell) |
@@ -177,12 +180,12 @@ Interactive TUI dashboard (btop-style), activated via `--tui` flag or `FIBCALC_T
 | `styles.go` | btop-inspired dark theme palette with lipgloss (rounded borders, color scheme) |
 | `keymap.go` | Keyboard bindings (`q`, `space`, `r`, arrows, `pgup`/`pgdn`) |
 | `bridge.go` | `TUIProgressReporter` and `TUIResultPresenter` — implements orchestration interfaces |
-| `header.go` | Header sub-model (title, version, elapsed time) |
+| `header.go` | Header sub-model (title, version, elapsed time using `FormatExecutionDuration`) |
 | `logs.go` | Scrollable log panel sub-model (viewport, auto-scroll) |
 | `metrics.go` | Runtime metrics sub-model (memory, heap, GC, goroutines, speed) |
-| `chart.go` | Sparkline chart sub-model (braille block characters, circular buffer) |
+| `chart.go` | Progress bar and ETA display sub-model |
 | `footer.go` | Footer sub-model (keyboard shortcuts, status indicator) |
-| `model.go` | Root model, `Init()`/`Update()`/`View()`, `Run()` entry point |
+| `model.go` | Root model, `Init()`/`Update()`/`View()`, `Run()` entry point, layout (60/40 split) |
 
 ### `internal/calibration`
 

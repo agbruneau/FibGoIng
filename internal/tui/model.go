@@ -136,6 +136,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.done = true
 		m.exitCode = msg.ExitCode
 		m.header.SetDone()
+		m.chart.SetDone(time.Since(m.header.startTime))
 		m.footer.SetDone(true)
 		return m, nil
 

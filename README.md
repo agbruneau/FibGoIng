@@ -71,7 +71,7 @@ FibCalc serves as both a practical high-performance tool and a reference impleme
 - **Clean Architecture**: Strict separation of concerns (Core Logic, Orchestration, Interface, Infrastructure) with interface-based decoupling.
 - **Interface-Based Decoupling**: The orchestration layer uses `ProgressReporter` and `ResultPresenter` interfaces to avoid depending on CLI, enabling testability and alternative presentations.
 - **Modern CLI**: Features progress spinners, ETA calculation, formatted output, and colour themes.
-- **Interactive TUI Dashboard**: Optional btop-inspired terminal dashboard (`--tui`) with real-time progress logs, memory metrics, sparkline chart, and keyboard navigation — powered by [Bubble Tea](https://github.com/charmbracelet/bubbletea).
+- **Interactive TUI Dashboard**: Optional btop-inspired terminal dashboard (`--tui`) with real-time progress logs, memory metrics, progress bar with ETA, and keyboard navigation — powered by [Bubble Tea](https://github.com/charmbracelet/bubbletea).
 
 ---
 
@@ -131,7 +131,7 @@ $$
 
 This allows calculating numbers with billions of digits feasible. See [Docs/algorithms/FFT.md](Docs/algorithms/FFT.md) for details.
 
-> **Algorithm deep dives**: [Comparison](Docs/algorithms/COMPARISON.md) | [GMP](Docs/algorithms/GMP.md) | [Progress Bar](Docs/algorithms/PROGRESS_BAR_ALGORITHM.md)
+> **Algorithm deep dives**: [Comparison](Docs/algorithms/COMPARISON.md) | [BigFFT Internals](Docs/algorithms/BIGFFT.md) | [GMP](Docs/algorithms/GMP.md) | [Progress Bar](Docs/algorithms/PROGRESS_BAR_ALGORITHM.md)
 
 ---
 
@@ -162,11 +162,11 @@ graph TD
 | `internal/fibonacci` | Core domain logic. Implements the `Calculator` interface and algorithms. |
 | `internal/bigfft` | Specialized FFT arithmetic for `big.Int` with memory pooling. |
 | `internal/orchestration` | Manages concurrent execution, result aggregation, and defines `ProgressReporter`/`ResultPresenter` interfaces for Clean Architecture decoupling. |
-| `internal/cli` | Progress bar, spinner, and output formatting (Display*/Format*/Write*). |
+| `internal/cli` | Progress bar, spinner, output formatting (Display*/Format*/Write*), and duration/ETA helpers. |
 | `internal/calibration` | Auto-tuning logic to find optimal hardware thresholds. |
 | `internal/parallel` | Parallel execution utilities. |
 | `internal/logging` | Structured logging with zerolog adapters. |
-| `internal/tui` | Interactive TUI dashboard (btop-style) powered by Bubble Tea, with real-time logs, metrics, sparkline chart, and keyboard navigation. |
+| `internal/tui` | Interactive TUI dashboard (btop-style) powered by Bubble Tea, with real-time logs, metrics, progress bar with ETA, and keyboard navigation. |
 | `internal/app` | CLI application runner, version info. |
 | `internal/ui` | Color themes, terminal formatting, NO_COLOR environment variable support. |
 | `internal/config` | Configuration parsing, validation, and environment variable support. |
@@ -232,7 +232,7 @@ fibcalc --tui -n 1000000
 
 ```
 ┌─────────────────────────────────────────────────────────────────┐
-│  FibGo Monitor                v0.1.0       Elapsed: 0m 12s     │
+│  FibGo Monitor                v0.1.0         Elapsed: 0m 12s   │
 ├──────────────────────────────────────┬──────────────────────────┤
 │  Calculations Log                    │  Metrics                 │
 │                                      │   Memory:    42.3 MB     │
@@ -243,9 +243,9 @@ fibcalc --tui -n 1000000
 │  ...                                 ├──────────────────────────┤
 │                                      │  Progress Chart          │
 │  [12:00:08] Fast Doubling   100% OK  │                          │
-│  [12:00:09] Matrix Exp      100% OK  │  ▁▂▃▄▅▆▇█▇▆▅▇█          │
+│  [12:00:09] Matrix Exp      100% OK  │  [████████░░░░]  67.8%   │
 │  [12:00:10] FFT Based       100% OK  │                          │
-│                                      │  avg: 67.8%  ETA: 4s     │
+│                                      │  ETA: 4s                 │
 ├──────────────────────────────────────┴──────────────────────────┤
 │  q: Quit   r: Reset   space: Pause/Resume       Status: Running │
 └─────────────────────────────────────────────────────────────────┘
@@ -257,12 +257,12 @@ fibcalc --tui -n 1000000
 |-----|--------|
 | `q` / `Ctrl+C` | Quit (cancels calculations) |
 | `Space` | Pause/Resume display (calculations continue) |
-| `r` | Reset metrics and chart |
+| `r` | Restart calculation (reset all panels) |
 | `Up` / `k` | Scroll logs up |
 | `Down` / `j` | Scroll logs down |
 | `PgUp` / `PgDn` | Fast scroll |
 
-The dashboard shows five panels: header with elapsed time, scrollable calculation logs (60% width), runtime memory metrics, a braille sparkline chart tracking progress, and a footer with status indicator. The TUI uses the same `ProgressReporter`/`ResultPresenter` interfaces as the CLI, ensuring identical calculation behavior.
+The dashboard shows five panels: header with elapsed time, scrollable calculation logs (60% width), runtime memory metrics, a progress bar with ETA tracking, and a footer with status indicator. The TUI uses the same `ProgressReporter`/`ResultPresenter` interfaces as the CLI, ensuring identical calculation behavior.
 
 ### Advanced Examples
 
@@ -387,7 +387,7 @@ make benchmark   # Run performance benchmarks
 ### Project Structure
 - `cmd/generate-golden/`: Golden file generator for test data.
 - `internal/`: Private application code (algorithms, CLI, orchestration, etc.).
-- `Docs/`: Detailed documentation ([Architecture](Docs/ARCHITECTURE.md), [Performance](Docs/PERFORMANCE.md), [Algorithms](Docs/algorithms/)).
+- `Docs/`: Detailed documentation ([Architecture](Docs/ARCHITECTURE.md), [Performance](Docs/PERFORMANCE.md), [Algorithms](Docs/algorithms/), [Design Patterns](Docs/DESIGN_PATTERNS.md), [Build](Docs/BUILD.md), [Testing](Docs/TESTING.md), [Calibration](Docs/CALIBRATION.md), [TUI Guide](Docs/TUI_GUIDE.md)).
 
 ---
 
