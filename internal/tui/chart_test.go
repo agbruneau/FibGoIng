@@ -103,6 +103,42 @@ func TestChartModel_View(t *testing.T) {
 	}
 }
 
+func TestChartModel_RenderSparkline_NegativeValues(t *testing.T) {
+	chart := NewChartModel()
+	chart.SetSize(50, 10)
+
+	// Negative values should clamp to lowest block
+	chart.AddDataPoint(-0.5, 0.0, 0)
+	chart.AddDataPoint(-1.0, 0.0, 0)
+
+	sparkline := chart.renderSparkline()
+	if len(sparkline) == 0 {
+		t.Error("expected non-empty sparkline for negative values")
+	}
+	// All characters should be the lowest block
+	for _, r := range sparkline {
+		if r != sparkBlocks[0] {
+			t.Errorf("expected lowest block for negative value, got %q", string(r))
+		}
+	}
+}
+
+func TestChartModel_RenderSparkline_OverOneValues(t *testing.T) {
+	chart := NewChartModel()
+	chart.SetSize(50, 10)
+
+	// Values > 1.0 should clamp to highest block
+	chart.AddDataPoint(1.5, 1.0, 0)
+	chart.AddDataPoint(2.0, 1.0, 0)
+
+	sparkline := chart.renderSparkline()
+	for _, r := range sparkline {
+		if r != sparkBlocks[len(sparkBlocks)-1] {
+			t.Errorf("expected highest block for >1.0 value, got %q", string(r))
+		}
+	}
+}
+
 func TestChartModel_SetSize_TrimsData(t *testing.T) {
 	chart := NewChartModel()
 	chart.maxPoints = 100

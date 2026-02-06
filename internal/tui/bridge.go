@@ -8,6 +8,7 @@ import (
 	tea "github.com/charmbracelet/bubbletea"
 
 	"github.com/agbru/fibcalc/internal/cli"
+	apperrors "github.com/agbru/fibcalc/internal/errors"
 	"github.com/agbru/fibcalc/internal/fibonacci"
 	"github.com/agbru/fibcalc/internal/orchestration"
 )
@@ -91,5 +92,5 @@ func (t *TUIResultPresenter) FormatDuration(d time.Duration) string {
 // HandleError sends an error message to the TUI and returns the exit code.
 func (t *TUIResultPresenter) HandleError(err error, duration time.Duration, _ io.Writer) int {
 	t.ref.Send(ErrorMsg{Err: err, Duration: duration})
-	return 1
+	return apperrors.HandleCalculationError(err, 0, io.Discard, nil)
 }

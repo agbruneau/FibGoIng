@@ -1,12 +1,18 @@
 package tui
 
 import (
+	"context"
+	"errors"
+	"math/big"
 	"sync"
 	"testing"
+	"time"
 
 	tea "github.com/charmbracelet/bubbletea"
 
+	apperrors "github.com/agbru/fibcalc/internal/errors"
 	"github.com/agbru/fibcalc/internal/fibonacci"
+	"github.com/agbru/fibcalc/internal/orchestration"
 )
 
 // testProgramRef creates a programRef with a collector for sent messages.
@@ -69,23 +75,124 @@ func TestTUIResultPresenter_FormatDuration(t *testing.T) {
 	presenter := &TUIResultPresenter{ref: ref}
 
 	tests := []struct {
-		name     string
-		input    string
-		expected string
+		name  string
+		input time.Duration
 	}{
-		{"microseconds", "500µs", "500µs"},
-		{"milliseconds", "42ms", "42ms"},
-		{"seconds", "2.5s", "2.5s"},
+		{"zero", 0},
+		{"microseconds", 500 * time.Microsecond},
+		{"milliseconds", 42 * time.Millisecond},
+		{"seconds", 2*time.Second + 500*time.Millisecond},
+		{"minutes", 3 * time.Minute},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			// FormatDuration delegates to cli.FormatExecutionDuration
-			// Just verify it doesn't panic
-			result := presenter.FormatDuration(0)
+			result := presenter.FormatDuration(tt.input)
 			if result == "" {
-				t.Error("expected non-empty duration format")
+				t.Errorf("expected non-empty duration format for %v", tt.input)
 			}
 		})
 	}
+}
+
+func TestProgramRef_Send_NilProgram(t *testing.T) {
+	ref := &programRef{} // program is nil
+	// Should not panic
+	ref.Send(ProgressMsg{Value: 0.5})
+}
+
+func TestTUIResultPresenter_PresentComparisonTable(t *testing.T) {
+	ref := &programRef{} // nil program — just verify no panic
+	presenter := &TUIResultPresenter{ref: ref}
+
+	results := []orchestration.CalculationResult{
+		{Name: "Fast", Result: big.NewInt(55), Duration: 100 * time.Millisecond},
+		{Name: "Matrix", Result: big.NewInt(55), Duration: 200 * time.Millisecond},
+	}
+	// Should not panic
+	presenter.PresentComparisonTable(results, nil)
+}
+
+func TestTUIResultPresenter_PresentResult(t *testing.T) {
+	ref := &programRef{}
+	presenter := &TUIResultPresenter{ref: ref}
+
+	result := orchestration.CalculationResult{
+		Name:     "Fast",
+		Result:   big.NewInt(55),
+		Duration: 100 * time.Millisecond,
+	}
+	// Should not panic
+	presenter.PresentResult(result, 10, true, true, true, nil)
+}
+
+func TestTUIResultPresenter_HandleError_Timeout(t *testing.T) {
+	ref := &programRef{}
+	presenter := &TUIResultPresenter{ref: ref}
+
+	exitCode := presenter.HandleError(context.DeadlineExceeded, time.Second, nil)
+	if exitCode != apperrors.ExitErrorTimeout {
+		t.Errorf("expected exit code %d for timeout, got %d", apperrors.ExitErrorTimeout, exitCode)
+	}
+}
+
+func TestTUIResultPresenter_HandleError_Canceled(t *testing.T) {
+	ref := &programRef{}
+	presenter := &TUIResultPresenter{ref: ref}
+
+	exitCode := presenter.HandleError(context.Canceled, time.Second, nil)
+	if exitCode != apperrors.ExitErrorCanceled {
+		t.Errorf("expected exit code %d for canceled, got %d", apperrors.ExitErrorCanceled, exitCode)
+	}
+}
+
+func TestTUIResultPresenter_HandleError_Generic(t *testing.T) {
+	ref := &programRef{}
+	presenter := &TUIResultPresenter{ref: ref}
+
+	exitCode := presenter.HandleError(errors.New("something failed"), time.Second, nil)
+	if exitCode != apperrors.ExitErrorGeneric {
+		t.Errorf("expected exit code %d for generic error, got %d", apperrors.ExitErrorGeneric, exitCode)
+	}
+}
+
+func TestTUIResultPresenter_HandleError_Nil(t *testing.T) {
+	ref := &programRef{}
+	presenter := &TUIResultPresenter{ref: ref}
+
+	exitCode := presenter.HandleError(nil, 0, nil)
+	if exitCode != apperrors.ExitSuccess {
+		t.Errorf("expected exit code %d for nil error, got %d", apperrors.ExitSuccess, exitCode)
+	}
+}
+
+func TestTUIProgressReporter_MultipleCalculators(t *testing.T) {
+	ref := &programRef{}
+	reporter := &TUIProgressReporter{ref: ref}
+
+	ch := make(chan fibonacci.ProgressUpdate, 10)
+	var wg sync.WaitGroup
+	wg.Add(1)
+
+	ch <- fibonacci.ProgressUpdate{CalculatorIndex: 0, Value: 0.25}
+	ch <- fibonacci.ProgressUpdate{CalculatorIndex: 1, Value: 0.50}
+	ch <- fibonacci.ProgressUpdate{CalculatorIndex: 0, Value: 0.75}
+	ch <- fibonacci.ProgressUpdate{CalculatorIndex: 1, Value: 1.00}
+	close(ch)
+
+	go reporter.DisplayProgress(&wg, ch, 2, nil)
+	wg.Wait()
+}
+
+func TestTUIProgressReporter_EmptyChannel(t *testing.T) {
+	ref := &programRef{}
+	reporter := &TUIProgressReporter{ref: ref}
+
+	ch := make(chan fibonacci.ProgressUpdate)
+	close(ch)
+
+	var wg sync.WaitGroup
+	wg.Add(1)
+	go reporter.DisplayProgress(&wg, ch, 1, nil)
+	wg.Wait()
 }
