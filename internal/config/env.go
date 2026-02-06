@@ -1,4 +1,3 @@
-// Package config provides the configuration management for the fibcalc application.
 // This file contains environment variable utilities for configuration override.
 package config
 

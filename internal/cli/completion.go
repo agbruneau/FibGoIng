@@ -1,4 +1,3 @@
-// Package cli provides shell completion script generation for various shells.
 package cli
 
 import (

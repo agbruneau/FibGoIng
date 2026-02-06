@@ -1,6 +1,5 @@
 //go:build amd64
 
-// Package bigfft implements multiplication of big.Int using FFT.
 // This file provides CPU feature detection for SIMD optimizations on amd64.
 package bigfft
 

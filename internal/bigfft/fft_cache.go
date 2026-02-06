@@ -1,4 +1,3 @@
-// Package bigfft implements multiplication of big.Int using FFT.
 // This file provides a thread-safe LRU cache for FFT transform results.
 package bigfft
 

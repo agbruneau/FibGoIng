@@ -1,4 +1,3 @@
-// Package bigfft implements multiplication of big.Int using FFT.
 // This file provides the TempAllocator interface for unified temporary buffer management.
 package bigfft
 

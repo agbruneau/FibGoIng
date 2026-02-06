@@ -1,4 +1,3 @@
-// Package cli provides progress tracking with ETA estimation.
 package cli
 
 import (

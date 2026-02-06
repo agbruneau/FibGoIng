@@ -1,4 +1,3 @@
-// Package bigfft implements multiplication of big.Int using FFT.
 // This file provides memory pooling for FFT operations to reduce GC pressure.
 package bigfft
 

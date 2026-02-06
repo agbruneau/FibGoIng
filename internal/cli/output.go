@@ -1,5 +1,3 @@
-// Package cli provides output utilities for exporting calculation results.
-//
 // # Naming Conventions
 //
 // Functions in this package follow consistent naming patterns based on their behavior:

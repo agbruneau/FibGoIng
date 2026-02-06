@@ -1,4 +1,3 @@
-// Package calibration provides performance calibration for the Fibonacci calculator.
 // This file implements adaptive threshold generation based on hardware characteristics.
 package calibration
 

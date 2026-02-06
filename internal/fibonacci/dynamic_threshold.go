@@ -1,4 +1,3 @@
-// Package fibonacci provides implementations for calculating Fibonacci numbers.
 // This file implements dynamic threshold adjustment during calculation.
 package fibonacci
 

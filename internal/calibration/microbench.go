@@ -1,4 +1,3 @@
-// Package calibration provides performance calibration for the Fibonacci calculator.
 // This file implements fast micro-benchmarks for quick threshold estimation (~100ms).
 package calibration
 

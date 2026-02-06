@@ -1,4 +1,3 @@
-// Package ui provides theme and color support for the application's user interface.
 package ui
 
 // Color functions return ANSI escape codes from the current theme.

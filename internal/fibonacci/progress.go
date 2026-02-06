@@ -1,4 +1,3 @@
-// Package fibonacci provides implementations for calculating Fibonacci numbers.
 // This file contains progress reporting types and utilities used by calculators.
 package fibonacci
 

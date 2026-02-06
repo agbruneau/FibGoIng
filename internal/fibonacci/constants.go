@@ -1,4 +1,3 @@
-// Package fibonacci provides implementations for calculating Fibonacci numbers.
 package fibonacci
 
 // ─────────────────────────────────────────────────────────────────────────────

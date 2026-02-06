@@ -1,4 +1,3 @@
-// Package fibonacci provides implementations for calculating Fibonacci numbers.
 // This file contains concrete observer implementations for the Observer pattern.
 package fibonacci
 

@@ -1,4 +1,3 @@
-// Package fibonacci provides implementations for calculating Fibonacci numbers.
 // This file defines the multiplication strategy abstraction to eliminate code
 // duplication between different calculator implementations.
 package fibonacci

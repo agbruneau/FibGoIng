@@ -1,10 +1,6 @@
-// The cli package provides functions for building a command-line interface (CLI)
-// for the Fibonacci calculation application. It handles the asynchronous
-// display of calculation progress and formats the results for a clear and
-// readable presentation.
-package cli
-
 //go:generate mockgen -source=ui.go -destination=mocks/mock_ui.go -package=mocks
+
+package cli
 
 import (
 	"fmt"

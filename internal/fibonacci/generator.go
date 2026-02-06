@@ -1,4 +1,3 @@
-// Package fibonacci provides implementations for calculating Fibonacci numbers.
 // This file defines the SequenceGenerator interface for iterative/streaming
 // generation of Fibonacci numbers.
 package fibonacci

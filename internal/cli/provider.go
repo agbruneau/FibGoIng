@@ -1,4 +1,3 @@
-// Package cli provides command-line interface components for the Fibonacci calculator.
 // This file provides a color provider implementation for use with the errors package.
 package cli
 

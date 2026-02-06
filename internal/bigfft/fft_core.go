@@ -1,4 +1,3 @@
-// Package bigfft implements multiplication of big.Int using FFT.
 package bigfft
 
 // fourier performs an unnormalized Fourier transform

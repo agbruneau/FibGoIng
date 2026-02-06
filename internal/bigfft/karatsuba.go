@@ -1,4 +1,3 @@
-// Package bigfft implements multiplication of big.Int using FFT.
 // This file provides a Karatsuba multiplication implementation with
 // memory pooling for reduced GC pressure.
 package bigfft

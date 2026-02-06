@@ -1,3 +1,5 @@
+// Package main provides a standalone tool that generates the golden test data
+// file (fibonacci_golden.json) used by Fibonacci tests.
 package main
 
 import (
@@ -15,6 +17,8 @@ type GoldenData struct {
 	Result string `json:"result"`
 }
 
+// main writes precomputed Fibonacci values for selected indices to the output
+// directory.
 func main() {
 	outputDir := flag.String("out", "internal/fibonacci/testdata", "Output directory for the golden file")
 	flag.Parse()

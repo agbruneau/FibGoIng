@@ -1,6 +1,5 @@
 //go:build amd64
 
-// Package bigfft implements multiplication of big.Int using FFT.
 // This file provides the dispatcher for SIMD-optimized arithmetic operations on amd64.
 package bigfft
 

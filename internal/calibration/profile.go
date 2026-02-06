@@ -1,4 +1,3 @@
-// Package calibration provides performance calibration for the Fibonacci calculator.
 // This file implements calibration profile persistence.
 package calibration
 
