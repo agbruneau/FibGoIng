@@ -76,6 +76,8 @@ type AppConfig struct {
 	Completion string
 	// ShowValue, if true, displays the calculated Fibonacci value. Set with -c/--calculate.
 	ShowValue bool
+	// TUI, if true, launches the interactive TUI dashboard instead of CLI mode.
+	TUI bool
 }
 
 // ToCalculationOptions converts the application configuration into
@@ -168,6 +170,7 @@ func ParseConfig(programName string, args []string, errorWriter io.Writer, avail
 	fs.StringVar(&config.Completion, "completion", "", "Generate shell completion script (bash, zsh, fish, powershell).")
 	fs.BoolVar(&config.ShowValue, "calculate", false, "Display the calculated value (disabled by default).")
 	fs.BoolVar(&config.ShowValue, "c", false, "Display the calculated value (shorthand).")
+	fs.BoolVar(&config.TUI, "tui", false, "Launch interactive TUI dashboard.")
 	setCustomUsage(fs)
 
 	if err := fs.Parse(args); err != nil {

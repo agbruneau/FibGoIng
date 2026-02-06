@@ -64,6 +64,13 @@ The Fibonacci Calculator is designed according to **Clean Architecture** princip
 │  │  • ETA estimation                │  │  • NO_COLOR support         │ │
 │  │  • Shell completion              │  │                              │ │
 │  └──────────────────────────────────┘  └──────────────────────────────┘ │
+│  ┌──────────────────────────────────┐                                   │
+│  │         internal/tui             │  Activated via --tui flag         │
+│  │  • btop-style dashboard          │                                   │
+│  │  • Real-time logs, metrics       │                                   │
+│  │  • Sparkline progress chart      │                                   │
+│  │  • Keyboard navigation           │                                   │
+│  └──────────────────────────────────┘                                   │
 └──────────────────────────────────────────────────────────────────────────┘
 ```
 
@@ -158,6 +165,24 @@ Command-line user interface and presentation layer.
 | `calculate.go` | Calculation orchestration entry point for CLI |
 | `completion.go` | Shell completion script generation (bash, zsh, fish, powershell) |
 | `provider.go` | Dependency provider for CLI components |
+
+### `internal/tui`
+
+Interactive TUI dashboard (btop-style), activated via `--tui` flag or `FIBCALC_TUI=true`. Built on the Elm architecture (Model-Update-View) with Bubble Tea.
+
+| File | Responsibility |
+|------|---------------|
+| `doc.go` | Package documentation |
+| `messages.go` | Tea message types (`ProgressMsg`, `ResultMsg`, `TickMsg`, `MemStatsMsg`, etc.) |
+| `styles.go` | btop-inspired dark theme palette with lipgloss (rounded borders, color scheme) |
+| `keymap.go` | Keyboard bindings (`q`, `space`, `r`, arrows, `pgup`/`pgdn`) |
+| `bridge.go` | `TUIProgressReporter` and `TUIResultPresenter` — implements orchestration interfaces |
+| `header.go` | Header sub-model (title, version, elapsed time) |
+| `logs.go` | Scrollable log panel sub-model (viewport, auto-scroll) |
+| `metrics.go` | Runtime metrics sub-model (memory, heap, GC, goroutines, speed) |
+| `chart.go` | Sparkline chart sub-model (braille block characters, circular buffer) |
+| `footer.go` | Footer sub-model (keyboard shortcuts, status indicator) |
+| `model.go` | Root model, `Init()`/`Update()`/`View()`, `Run()` entry point |
 
 ### `internal/calibration`
 
@@ -332,8 +357,9 @@ type ResultPresenter interface {
 
 - Clean Architecture compliance: orchestration no longer imports CLI
 - Improved testability: interfaces can be mocked for unit tests
-- Flexibility: alternative presenters (JSON, GUI) can be easily added
+- Flexibility: alternative presenters (JSON, TUI, GUI) can be easily added
 - `NullProgressReporter` enables quiet mode without conditionals
+- TUI dashboard (`internal/tui`) was added as a second implementation, validating this decoupling
 - Slightly more complex initialization in the app layer
 
 ## Data Flow
@@ -346,9 +372,9 @@ type ResultPresenter interface {
    - Each Calculator.Calculate() delegates to FibCalculator decorator
    - FibCalculator uses CalculateWithObservers() for progress
    - ProgressSubject notifies ChannelObserver → progressChan
-   - ProgressReporter (CLIProgressReporter) displays progress
+   - ProgressReporter (CLIProgressReporter or TUIProgressReporter) displays progress
 5. orchestration.AnalyzeComparisonResults() compares results
-6. ResultPresenter (CLIResultPresenter) formats and displays output
+6. ResultPresenter (CLIResultPresenter or TUIResultPresenter) formats and displays output
 ```
 
 ## Performance Considerations

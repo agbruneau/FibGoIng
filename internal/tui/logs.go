@@ -1,0 +1,141 @@
+package tui
+
+import (
+	"fmt"
+	"strings"
+	"time"
+
+	"github.com/charmbracelet/bubbles/viewport"
+	tea "github.com/charmbracelet/bubbletea"
+
+	"github.com/agbru/fibcalc/internal/cli"
+	"github.com/agbru/fibcalc/internal/orchestration"
+)
+
+// LogsModel manages the scrollable log panel.
+type LogsModel struct {
+	viewport    viewport.Model
+	entries     []string
+	autoScroll  bool
+	width       int
+	height      int
+	algoNames   []string // algorithm names for mapping index -> name
+}
+
+// NewLogsModel creates a new logs panel.
+func NewLogsModel(algoNames []string) LogsModel {
+	vp := viewport.New(40, 10)
+	return LogsModel{
+		viewport:   vp,
+		entries:    make([]string, 0, 64),
+		autoScroll: true,
+		algoNames:  algoNames,
+	}
+}
+
+// SetSize updates the viewport dimensions.
+func (l *LogsModel) SetSize(w, h int) {
+	l.width = w
+	l.height = h
+	l.viewport.Width = w - 2
+	l.viewport.Height = h - 2
+	l.updateContent()
+}
+
+// AddProgressEntry adds a progress log line.
+func (l *LogsModel) AddProgressEntry(msg ProgressMsg) {
+	ts := logTimeStyle.Render(time.Now().Format("15:04:05"))
+	name := l.algoName(msg.CalculatorIndex)
+	algoStr := logAlgoStyle.Render(fmt.Sprintf("%-16s", name))
+
+	var progressStr string
+	if msg.Value >= 1.0 {
+		progressStr = logSuccessStyle.Render("100% OK")
+	} else {
+		progressStr = logProgressStyle.Render(fmt.Sprintf("%5.1f%%", msg.Value*100))
+	}
+
+	entry := fmt.Sprintf("[%s] %s %s", ts, algoStr, progressStr)
+	l.entries = append(l.entries, entry)
+	l.updateContent()
+}
+
+// AddResults adds comparison results to the log.
+func (l *LogsModel) AddResults(results []orchestration.CalculationResult) {
+	l.entries = append(l.entries, "")
+	l.entries = append(l.entries, logAlgoStyle.Render("--- Comparison Summary ---"))
+
+	for _, res := range results {
+		var status string
+		if res.Err != nil {
+			status = logErrorStyle.Render(fmt.Sprintf("FAIL (%v)", res.Err))
+		} else {
+			status = logSuccessStyle.Render("OK")
+		}
+		duration := cli.FormatExecutionDuration(res.Duration)
+		entry := fmt.Sprintf("  %s  %s  %s",
+			logAlgoStyle.Render(fmt.Sprintf("%-16s", res.Name)),
+			metricValueStyle.Render(fmt.Sprintf("%10s", duration)),
+			status)
+		l.entries = append(l.entries, entry)
+	}
+	l.updateContent()
+}
+
+// AddFinalResult adds the final result to the log.
+func (l *LogsModel) AddFinalResult(msg FinalResultMsg) {
+	l.entries = append(l.entries, "")
+	l.entries = append(l.entries, logSuccessStyle.Render("--- Final Result ---"))
+	l.entries = append(l.entries, fmt.Sprintf("  Algorithm: %s", logAlgoStyle.Render(msg.Result.Name)))
+	l.entries = append(l.entries, fmt.Sprintf("  Duration:  %s", metricValueStyle.Render(cli.FormatExecutionDuration(msg.Result.Duration))))
+	if msg.Result.Result != nil {
+		bits := msg.Result.Result.BitLen()
+		l.entries = append(l.entries, fmt.Sprintf("  Bits:      %s", metricValueStyle.Render(fmt.Sprintf("%d", bits))))
+	}
+	l.updateContent()
+}
+
+// AddError adds an error entry to the log.
+func (l *LogsModel) AddError(msg ErrorMsg) {
+	ts := logTimeStyle.Render(time.Now().Format("15:04:05"))
+	entry := fmt.Sprintf("[%s] %s", ts, logErrorStyle.Render(fmt.Sprintf("ERROR: %v", msg.Err)))
+	l.entries = append(l.entries, entry)
+	l.updateContent()
+}
+
+// Update handles viewport keyboard events.
+func (l *LogsModel) Update(msg tea.Msg) {
+	var cmd tea.Cmd
+	l.viewport, cmd = l.viewport.Update(msg)
+	_ = cmd
+
+	// If user scrolled up manually, disable auto-scroll
+	if l.viewport.AtBottom() {
+		l.autoScroll = true
+	} else {
+		l.autoScroll = false
+	}
+}
+
+// View renders the logs panel.
+func (l LogsModel) View() string {
+	return panelStyle.
+		Width(l.width - 2).
+		Height(l.height - 2).
+		Render(l.viewport.View())
+}
+
+func (l *LogsModel) updateContent() {
+	content := strings.Join(l.entries, "\n")
+	l.viewport.SetContent(content)
+	if l.autoScroll {
+		l.viewport.GotoBottom()
+	}
+}
+
+func (l LogsModel) algoName(index int) string {
+	if index >= 0 && index < len(l.algoNames) {
+		return l.algoNames[index]
+	}
+	return fmt.Sprintf("Algo-%d", index)
+}

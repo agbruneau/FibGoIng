@@ -27,7 +27,7 @@ make security       # gosec ./...
 
 **Go Module**: `github.com/agbru/fibcalc` (Go 1.25+)
 
-CLI-only high-performance Fibonacci calculator. Four layers:
+High-performance Fibonacci calculator with CLI and interactive TUI modes. Four layers:
 
 ```
 Entry Point (cmd/fibcalc)
@@ -36,7 +36,7 @@ Orchestration (internal/orchestration)  — parallel execution, result aggregati
     ↓
 Business (internal/fibonacci, internal/bigfft)  — algorithms, FFT multiplication
     ↓
-Presentation (internal/cli)  — progress bars, output formatting
+Presentation (internal/cli, internal/tui)  — CLI output or TUI dashboard
 ```
 
 ### Key Interfaces and Their Relationships
@@ -49,7 +49,7 @@ Presentation (internal/cli)  — progress bars, output formatting
 
 **MultiplicationStrategy** (`internal/fibonacci/strategy.go`): Abstraction for multiply/square operations. Strategies: `SmartStrategy` (selects Karatsuba vs FFT by operand size), `FFTStrategy` (always FFT).
 
-**ProgressReporter / ResultPresenter** (`internal/orchestration/interfaces.go`): Decouple orchestration from presentation. CLI implementations in `internal/cli/presenter.go`. `NullProgressReporter` for quiet mode/testing.
+**ProgressReporter / ResultPresenter** (`internal/orchestration/interfaces.go`): Decouple orchestration from presentation. CLI implementations in `internal/cli/presenter.go`. TUI implementations in `internal/tui/bridge.go`. `NullProgressReporter` for quiet mode/testing.
 
 **ProgressObserver** (`internal/fibonacci/observer.go`): Observer pattern for progress updates. `ProgressSubject` manages observers; `ChannelObserver` bridges to channel-based reporting. `CalculateWithObservers()` is the observer-aware entry point; `Calculate()` wraps it for backward compatibility.
 
@@ -64,6 +64,7 @@ Presentation (internal/cli)  — progress bars, output formatting
 | `internal/bigfft` | `arith_amd64.go`, `arith_amd64.s` | Assembly-optimized FFT (AVX2/AVX-512) |
 | `internal/orchestration` | `orchestrator.go`, `interfaces.go` | Parallel execution via `errgroup` |
 | `internal/cli` | `output.go`, `presenter.go`, `ui.go`, `progress_eta.go` | CLI output, progress display |
+| `internal/tui` | `model.go`, `bridge.go`, `styles.go`, `messages.go` | Interactive TUI dashboard (btop-style, Bubble Tea) |
 | `internal/calibration` | `calibration.go`, `adaptive.go`, `microbench.go` | Auto-tuning thresholds per hardware |
 | `internal/config` | `config.go`, `env.go` | Flag parsing, env vars, validation |
 | `internal/app` | `lifecycle.go`, `version.go` | Context setup (timeout + signals) |
@@ -76,9 +77,9 @@ Presentation (internal/cli)  — progress bars, output formatting
 2. `fibonacci.GlobalFactory()` provides calculators by name
 3. `orchestration.ExecuteCalculations()` runs calculators concurrently via `errgroup`
 4. Each `Calculator.Calculate()` sends `ProgressUpdate` on a channel
-5. `CLIProgressReporter` displays spinner/progress bar
+5. `CLIProgressReporter` or `TUIProgressReporter` displays progress
 6. `orchestration.AnalyzeComparisonResults()` compares results
-7. `CLIResultPresenter` formats and displays output
+7. `CLIResultPresenter` or `TUIResultPresenter` formats and displays output
 
 ## Code Conventions
 
@@ -148,5 +149,8 @@ CLI flags > Environment variables (`FIBCALC_*` prefix) > Defaults. See `.env.exa
 | `github.com/ncw/gmp` | GMP bindings (optional, build tag) |
 | `github.com/golang/mock` | Mock generation for testing |
 | `github.com/leanovate/gopter` | Property-based testing |
+| `github.com/charmbracelet/bubbletea` | TUI framework (Elm architecture) |
+| `github.com/charmbracelet/lipgloss` | TUI styling and layout |
+| `github.com/charmbracelet/bubbles` | TUI components (viewport) |
 
 

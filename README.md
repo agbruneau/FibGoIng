@@ -71,6 +71,7 @@ FibCalc serves as both a practical high-performance tool and a reference impleme
 - **Clean Architecture**: Strict separation of concerns (Core Logic, Orchestration, Interface, Infrastructure) with interface-based decoupling.
 - **Interface-Based Decoupling**: The orchestration layer uses `ProgressReporter` and `ResultPresenter` interfaces to avoid depending on CLI, enabling testability and alternative presentations.
 - **Modern CLI**: Features progress spinners, ETA calculation, formatted output, and colour themes.
+- **Interactive TUI Dashboard**: Optional btop-inspired terminal dashboard (`--tui`) with real-time progress logs, memory metrics, sparkline chart, and keyboard navigation — powered by [Bubble Tea](https://github.com/charmbracelet/bubbletea).
 
 ---
 
@@ -165,6 +166,7 @@ graph TD
 | `internal/calibration` | Auto-tuning logic to find optimal hardware thresholds. |
 | `internal/parallel` | Parallel execution utilities. |
 | `internal/logging` | Structured logging with zerolog adapters. |
+| `internal/tui` | Interactive TUI dashboard (btop-style) powered by Bubble Tea, with real-time logs, metrics, sparkline chart, and keyboard navigation. |
 | `internal/app` | CLI application runner, version info. |
 | `internal/ui` | Color themes, terminal formatting, NO_COLOR environment variable support. |
 | `internal/config` | Configuration parsing, validation, and environment variable support. |
@@ -215,9 +217,52 @@ fibcalc [flags]
 | `-threshold` | | `4096` | Parallelism threshold (bits). |
 | `-fft-threshold` | | `500,000` | FFT multiplication threshold (bits). |
 | `-strassen-threshold` | | `3072` | Strassen algorithm threshold (bits). |
+| `-tui` | | `false` | Launch the interactive TUI dashboard instead of the standard CLI. |
 | `-completion` | | | Generate shell completion script (bash, zsh, fish, powershell). |
 
 > **Note**: Colored output can be disabled by setting the `NO_COLOR` environment variable (see [no-color.org](https://no-color.org/)).
+
+### TUI Dashboard Mode
+
+FibCalc includes an interactive terminal dashboard inspired by [btop](https://github.com/aristocratos/btop). Activate it with `--tui`:
+
+```bash
+fibcalc --tui -n 1000000
+```
+
+```
+┌─────────────────────────────────────────────────────────────────┐
+│  FibGo Monitor                v0.1.0       Elapsed: 0m 12s     │
+├──────────────────────────────────────┬──────────────────────────┤
+│  Calculations Log                    │  Metrics                 │
+│                                      │   Memory:    42.3 MB     │
+│  [12:00:01] Fast Doubling    12.3%   │   Heap:      38.1 MB     │
+│  [12:00:02] Matrix Exp        8.7%   │   GC Runs:   12          │
+│  [12:00:03] FFT Based        15.1%   │   Speed:     0.15 /s     │
+│  [12:00:04] Fast Doubling    34.5%   │   Goroutines: 8          │
+│  ...                                 ├──────────────────────────┤
+│                                      │  Progress Chart          │
+│  [12:00:08] Fast Doubling   100% OK  │                          │
+│  [12:00:09] Matrix Exp      100% OK  │  ▁▂▃▄▅▆▇█▇▆▅▇█          │
+│  [12:00:10] FFT Based       100% OK  │                          │
+│                                      │  avg: 67.8%  ETA: 4s     │
+├──────────────────────────────────────┴──────────────────────────┤
+│  q: Quit   r: Reset   space: Pause/Resume       Status: Running │
+└─────────────────────────────────────────────────────────────────┘
+```
+
+**Keyboard shortcuts:**
+
+| Key | Action |
+|-----|--------|
+| `q` / `Ctrl+C` | Quit (cancels calculations) |
+| `Space` | Pause/Resume display (calculations continue) |
+| `r` | Reset metrics and chart |
+| `Up` / `k` | Scroll logs up |
+| `Down` / `j` | Scroll logs down |
+| `PgUp` / `PgDn` | Fast scroll |
+
+The dashboard shows five panels: header with elapsed time, scrollable calculation logs (60% width), runtime memory metrics, a braille sparkline chart tracking progress, and a footer with status indicator. The TUI uses the same `ProgressReporter`/`ResultPresenter` interfaces as the CLI, ensuring identical calculation behavior.
 
 ### Advanced Examples
 
@@ -235,7 +280,14 @@ Run calibration to find the best parallelism thresholds for your specific CPU an
 fibcalc -calibrate
 ```
 
-**3. Large Number with FFT Tuning**
+**3. Interactive TUI Dashboard**
+Monitor all algorithms in real-time with the btop-style dashboard.
+
+```bash
+fibcalc --tui -n 5000000 -algo all
+```
+
+**4. Large Number with FFT Tuning**
 Force FFT usage for a smaller threshold to test performance on lower-end hardware.
 
 ```bash
@@ -295,6 +347,7 @@ Environment variables can override CLI flags. Priority: CLI flags > Environment 
 | `FIBCALC_VERBOSE` | Enable verbose output | `false` |
 | `FIBCALC_DETAILS` | Display performance details | `false` |
 | `FIBCALC_QUIET` | Enable quiet mode | `false` |
+| `FIBCALC_TUI` | Enable interactive TUI dashboard | `false` |
 | `FIBCALC_CALCULATE` | Display calculated value | `false` |
 | `FIBCALC_OUTPUT` | Output file path | |
 | `FIBCALC_CALIBRATE` | Enable calibration mode | `false` |

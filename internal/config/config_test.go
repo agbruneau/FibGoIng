@@ -328,3 +328,43 @@ func TestVerboseFlagAlias(t *testing.T) {
 		})
 	}
 }
+
+func TestTUIFlag(t *testing.T) {
+	t.Parallel()
+	availableAlgos := []string{"fast", "matrix", "fft"}
+
+	t.Run("--tui flag", func(t *testing.T) {
+		t.Parallel()
+		cfg, err := ParseConfig("test", []string{"-tui"}, io.Discard, availableAlgos)
+		if err != nil {
+			t.Fatalf("ParseConfig failed: %v", err)
+		}
+		if !cfg.TUI {
+			t.Error("TUI should be true when --tui flag is set")
+		}
+	})
+
+	t.Run("default TUI is false", func(t *testing.T) {
+		t.Parallel()
+		cfg, err := ParseConfig("test", []string{}, io.Discard, availableAlgos)
+		if err != nil {
+			t.Fatalf("ParseConfig failed: %v", err)
+		}
+		if cfg.TUI {
+			t.Error("TUI should be false by default")
+		}
+	})
+
+	t.Run("FIBCALC_TUI env override", func(t *testing.T) {
+		os.Setenv("FIBCALC_TUI", "true")
+		defer os.Unsetenv("FIBCALC_TUI")
+
+		cfg, err := ParseConfig("test", []string{}, io.Discard, availableAlgos)
+		if err != nil {
+			t.Fatalf("ParseConfig failed: %v", err)
+		}
+		if !cfg.TUI {
+			t.Error("TUI should be true when FIBCALC_TUI=true")
+		}
+	})
+}

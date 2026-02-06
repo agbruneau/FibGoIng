@@ -16,6 +16,7 @@ import (
 	apperrors "github.com/agbru/fibcalc/internal/errors"
 	"github.com/agbru/fibcalc/internal/fibonacci"
 	"github.com/agbru/fibcalc/internal/orchestration"
+	"github.com/agbru/fibcalc/internal/tui"
 	"github.com/agbru/fibcalc/internal/ui"
 	"github.com/rs/zerolog"
 )
@@ -140,6 +141,11 @@ func (a *Application) Run(ctx context.Context, out io.Writer) int {
 	// Run auto-calibration if enabled
 	a.Config = a.runAutoCalibrationIfEnabled(ctx, out)
 
+	// TUI dashboard mode
+	if a.Config.TUI {
+		return a.runTUI(ctx, out)
+	}
+
 	// Standard CLI calculation mode
 	return a.runCalculate(ctx, out)
 }
@@ -168,6 +174,17 @@ func (a *Application) runAutoCalibrationIfEnabled(ctx context.Context, out io.Wr
 		}
 	}
 	return a.Config
+}
+
+// runTUI launches the interactive TUI dashboard.
+func (a *Application) runTUI(ctx context.Context, _ io.Writer) int {
+	ctx, cancelTimeout := context.WithTimeout(ctx, a.Config.Timeout)
+	defer cancelTimeout()
+	ctx, stopSignals := signal.NotifyContext(ctx, syscall.SIGINT, syscall.SIGTERM)
+	defer stopSignals()
+
+	calculatorsToRun := cli.GetCalculatorsToRun(a.Config, a.Factory)
+	return tui.Run(ctx, calculatorsToRun, a.Config, Version)
 }
 
 // runCalculate orchestrates the execution of the CLI calculation command.

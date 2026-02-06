@@ -171,4 +171,7 @@ func applyBooleanOverrides(config *AppConfig, fs *flag.FlagSet) {
 	if !isFlagSetAny(fs, "calculate", "c") {
 		config.ShowValue = getEnvBool("CALCULATE", config.ShowValue)
 	}
+	if !isFlagSet(fs, "tui") {
+		config.TUI = getEnvBool("TUI", config.TUI)
+	}
 }
