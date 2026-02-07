@@ -18,8 +18,8 @@ func TestNewTransformCache(t *testing.T) {
 	if cache == nil {
 		t.Fatal("NewTransformCache returned nil")
 	}
-	if cache.config.MaxEntries != 128 {
-		t.Errorf("expected MaxEntries=128, got %d", cache.config.MaxEntries)
+	if cache.config.MaxEntries != 256 {
+		t.Errorf("expected MaxEntries=256, got %d", cache.config.MaxEntries)
 	}
 	if cache.config.MinBitLen != 100000 {
 		t.Errorf("expected MinBitLen=100000, got %d", cache.config.MinBitLen)

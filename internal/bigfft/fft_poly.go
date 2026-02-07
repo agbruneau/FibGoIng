@@ -383,8 +383,8 @@ func (p *PolValues) sqr(alloc TempAllocator) (PolValues, error) {
 
 	for i := 0; i < K; i++ {
 		r.Values[i] = bits[i*(n+1) : (i+1)*(n+1)]
-		// Square: multiply p.Values[i] by itself
-		z := buf.Mul(p.Values[i], p.Values[i])
+		// Square: use specialized squaring
+		z := buf.Sqr(p.Values[i])
 		copy(r.Values[i], z)
 	}
 

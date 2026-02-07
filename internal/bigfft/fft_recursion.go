@@ -25,12 +25,39 @@ func getSemaphore() chan struct{} {
 // ParallelFFTRecursionThreshold is the minimum size (in bits of k, where K=2^k)
 // for which FFT recursion should be parallelized. Below this threshold, the
 // overhead of goroutine creation exceeds the benefits of parallelism.
-const ParallelFFTRecursionThreshold uint = 4
+var ParallelFFTRecursionThreshold uint = 4
 
 // MaxParallelFFTDepth limits the maximum depth of parallel recursion to avoid
 // excessive goroutine creation. Once this depth is reached, recursion continues
 // sequentially.
-const MaxParallelFFTDepth uint = 3
+var MaxParallelFFTDepth uint = 3
+
+// FFTParallelismConfig holds the configurable FFT parallelism thresholds.
+type FFTParallelismConfig struct {
+	// RecursionThreshold is the minimum FFT size (as log2) for parallel recursion.
+	RecursionThreshold uint
+	// MaxDepth is the maximum depth of parallel recursion.
+	MaxDepth uint
+}
+
+// SetFFTParallelismConfig updates the FFT parallelism thresholds.
+// This allows runtime calibration of parallelism behavior.
+func SetFFTParallelismConfig(config FFTParallelismConfig) {
+	if config.RecursionThreshold > 0 {
+		ParallelFFTRecursionThreshold = config.RecursionThreshold
+	}
+	if config.MaxDepth > 0 {
+		MaxParallelFFTDepth = config.MaxDepth
+	}
+}
+
+// GetFFTParallelismConfig returns the current FFT parallelism configuration.
+func GetFFTParallelismConfig() FFTParallelismConfig {
+	return FFTParallelismConfig{
+		RecursionThreshold: ParallelFFTRecursionThreshold,
+		MaxDepth:           MaxParallelFFTDepth,
+	}
+}
 
 // fourierRecursiveUnified is the unified recursive FFT function that works with
 // any TempAllocator implementation. This eliminates code duplication between

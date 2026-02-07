@@ -2,6 +2,7 @@ package bigfft
 
 import (
 	"math/big"
+	"math/bits"
 )
 
 // smallMulThreshold is the number of words below which basicMul is used
@@ -204,6 +205,61 @@ func (z fermat) Mul(x, y fermat) fermat {
 	return z
 }
 
+// Sqr computes x*x mod 2^(n*_W)+1. It is optimized compared to Mul(x, x)
+// because:
+//   - For n < smallMulThreshold: basicSqr exploits the symmetry of x*x to
+//     skip roughly half of the partial products.
+//   - For n >= smallMulThreshold: uses the same big.Int pointer for both
+//     operands so that Go's math/big can detect squaring internally.
+func (z fermat) Sqr(x fermat) fermat {
+	n := len(x) - 1
+	if n < smallMulThreshold {
+		z = z[:2*n+2]
+		basicSqr(z, x)
+		z = z[:2*n+1]
+	} else {
+		var xi, zi big.Int
+		xi.SetBits(x)
+		zi.SetBits(z)
+		// Pass &xi for both operands so big.Int.Mul detects squaring
+		zb := zi.Mul(&xi, &xi).Bits()
+		if len(zb) <= n {
+			// Short product.
+			copy(z, zb)
+			for i := len(zb); i < len(z); i++ {
+				z[i] = 0
+			}
+			return z
+		}
+		z = zb
+	}
+	// len(z) is at most 2n+1.
+	if len(z) > 2*n+1 {
+		panic("len(z) > 2n+1")
+	}
+	// Reduce modulo 2^(n*_W)+1: same normalization as Mul
+	c1 := big.Word(0)
+	if len(z) > 2*n {
+		c1 = addVW(z[:n], z[:n], z[2*n])
+	}
+	c2 := big.Word(0)
+	if len(z) >= 2*n {
+		c2 = subVV(z[:n], z[:n], z[n:2*n])
+	} else {
+		m := len(z) - n
+		c2 = subVV(z[:m], z[:m], z[n:])
+		c2 = subVW(z[m:n], z[m:n], c2)
+	}
+	z = z[:n+1]
+	z[n] = c1
+	c := addVW(z, z, c2)
+	if c != 0 {
+		panic("fermat.Sqr: unexpected carry after normalization")
+	}
+	z.norm()
+	return z
+}
+
 // copied from math/big
 //
 // basicMul multiplies x and y and leaves the result in z.
@@ -213,6 +269,40 @@ func basicMul(z, x, y fermat) {
 	for i, d := range y {
 		if d != 0 {
 			z[len(x)+i] = addMulVVW(z[i:i+len(x)], x, d)
+		}
+	}
+}
+
+// basicSqr computes x*x and places the result in z.
+// It exploits the symmetry of squaring: for i != j, the cross-terms
+// x[i]*x[j] appear twice, so we compute them once and double (shift left by 1).
+// Then we add the diagonal terms x[i]*x[i].
+// This saves roughly half the multiplications compared to basicMul(z, x, x).
+func basicSqr(z, x fermat) {
+	n := len(x)
+	clear(z[:2*n])
+
+	// Off-diagonal terms: for each i, accumulate x[i] * x[j] for j > i.
+	// Each iteration computes x[i] * x[i+1..n-1] and places the partial
+	// products into z[2*i+1..i+n-1] with carry into z[i+n].
+	for i := 0; i < n-1; i++ {
+		if x[i] != 0 {
+			// x[i+1:n] has length n-1-i, z[2*i+1:i+n] also has length n-1-i
+			z[i+n] = addMulVVW(z[2*i+1:i+n], x[i+1:n], x[i])
+		}
+	}
+
+	// Double the off-diagonal terms (shift left by 1 bit)
+	shlVU(z[:2*n], z[:2*n], 1)
+
+	// Add diagonal terms: x[i]*x[i]
+	for i := 0; i < n; i++ {
+		if x[i] != 0 {
+			// x[i]*x[i] produces a 2-word result
+			hi, lo := bits.Mul(uint(x[i]), uint(x[i]))
+			c := addVW(z[2*i:2*i+1], z[2*i:2*i+1], big.Word(lo))
+			c = addVW(z[2*i+1:2*n], z[2*i+1:2*n], big.Word(hi)+c)
+			_ = c
 		}
 	}
 }

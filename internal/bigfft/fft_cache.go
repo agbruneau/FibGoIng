@@ -18,7 +18,7 @@ import (
 // TransformCacheConfig holds configuration for the FFT transform cache.
 type TransformCacheConfig struct {
 	// MaxEntries is the maximum number of cached transforms.
-	// Default: 128 entries
+	// Default: 256 entries
 	MaxEntries int
 
 	// MinBitLen is the minimum operand bit length to cache.
@@ -34,7 +34,7 @@ type TransformCacheConfig struct {
 // DefaultTransformCacheConfig returns the default cache configuration.
 func DefaultTransformCacheConfig() TransformCacheConfig {
 	return TransformCacheConfig{
-		MaxEntries: 128,
+		MaxEntries: 256,
 		MinBitLen:  100000,
 		Enabled:    true,
 	}
