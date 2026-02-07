@@ -288,11 +288,17 @@ func TestModel_Update_FinalResultMsg(t *testing.T) {
 	updated, cmd := m.Update(msg)
 	result := updated.(Model)
 
-	if cmd != nil {
-		t.Error("expected no command from final result")
+	if cmd == nil {
+		t.Error("expected a command to compute indicators from final result")
 	}
 	if len(result.logs.entries) == 0 {
 		t.Error("expected logs to have entries after final result")
+	}
+
+	// Execute the command and verify it returns an IndicatorsMsg
+	indicatorsMsg := cmd()
+	if _, ok := indicatorsMsg.(IndicatorsMsg); !ok {
+		t.Errorf("expected IndicatorsMsg, got %T", indicatorsMsg)
 	}
 }
 
@@ -641,10 +647,11 @@ func TestModel_Update_VeryWideTerminal(t *testing.T) {
 }
 
 func TestModel_metricsHeight_SmallTerminal(t *testing.T) {
-	// When height is very small, bodyHeight gets clamped to minBodyHeight
+	// When height is very small, bodyHeight gets clamped to minBodyHeight.
+	// metricsFixedH (8) is capped at bodyHeight*2/3 = 4*2/3 = 2.
 	m := newTestModelWithSize(t, 80, 4)
 	mh := m.metricsHeight()
-	expected := minBodyHeight / 2
+	expected := minBodyHeight * 2 / 3
 	if mh != expected {
 		t.Errorf("expected metricsHeight=%d for small terminal, got %d", expected, mh)
 	}

@@ -13,6 +13,7 @@ import (
 	"github.com/agbru/fibcalc/internal/config"
 	apperrors "github.com/agbru/fibcalc/internal/errors"
 	"github.com/agbru/fibcalc/internal/fibonacci"
+	"github.com/agbru/fibcalc/internal/metrics"
 	"github.com/agbru/fibcalc/internal/orchestration"
 	"github.com/agbru/fibcalc/internal/sysmon"
 )
@@ -52,9 +53,12 @@ func NewModel(parentCtx context.Context, calculators []fibonacci.Calculator, cfg
 
 	ctx, cancel := context.WithCancel(parentCtx)
 
+	logs := NewLogsModel(algoNames)
+	logs.AddExecutionConfig(cfg)
+
 	return Model{
 		header:      NewHeaderModel(version),
-		logs:        NewLogsModel(algoNames),
+		logs:        logs,
 		metrics:     NewMetricsModel(),
 		chart:       NewChartModel(),
 		footer:      NewFooterModel(),
@@ -95,6 +99,9 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			m.logs.AddProgressEntry(msg)
 			m.chart.AddDataPoint(msg.Value, msg.AverageProgress, msg.ETA)
 			m.metrics.UpdateProgress(msg.AverageProgress)
+			// Refresh live indicators from progress data
+			elapsed := time.Since(m.header.startTime)
+			m.metrics.UpdateIndicators(metrics.ComputeLive(m.config.N, msg.AverageProgress, elapsed))
 		}
 		return m, nil
 
@@ -107,6 +114,14 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 	case FinalResultMsg:
 		m.logs.AddFinalResult(msg)
+		// Compute indicators asynchronously to avoid blocking the UI
+		if msg.Result.Result != nil {
+			return m, computeIndicatorsCmd(msg)
+		}
+		return m, nil
+
+	case IndicatorsMsg:
+		m.metrics.UpdateIndicators(msg.Indicators)
 		return m, nil
 
 	case ErrorMsg:
@@ -239,9 +254,10 @@ func (m Model) View() string {
 
 // Layout constants for the TUI dashboard.
 const (
-	headerHeight  = 3
-	footerHeight  = 3
+	headerHeight  = 1
+	footerHeight  = 1
 	minBodyHeight = 4
+	metricsFixedH = 8 // compact: title + up to 4 data rows + borders
 )
 
 func (m *Model) layoutPanels() {
@@ -253,7 +269,10 @@ func (m *Model) layoutPanels() {
 	logsWidth := m.width * 60 / 100
 	rightWidth := m.width - logsWidth
 
-	metricsH := bodyHeight / 2
+	metricsH := metricsFixedH
+	if metricsH > bodyHeight*2/3 {
+		metricsH = bodyHeight * 2 / 3
+	}
 	chartH := bodyHeight - metricsH
 
 	m.header.SetWidth(m.width)
@@ -272,7 +291,11 @@ func (m Model) metricsHeight() int {
 	if bodyHeight < minBodyHeight {
 		bodyHeight = minBodyHeight
 	}
-	return bodyHeight / 2
+	metricsH := metricsFixedH
+	if metricsH > bodyHeight*2/3 {
+		metricsH = bodyHeight * 2 / 3
+	}
+	return metricsH
 }
 
 // Run is the public entry point for the TUI mode.
@@ -338,6 +361,15 @@ func sampleSysStatsCmd() tea.Cmd {
 			CPUPercent: s.CPUPercent,
 			MemPercent: s.MemPercent,
 		}
+	}
+}
+
+// computeIndicatorsCmd returns a tea.Cmd that computes post-calculation
+// indicators asynchronously, ensuring no impact on the UI thread.
+func computeIndicatorsCmd(msg FinalResultMsg) tea.Cmd {
+	return func() tea.Msg {
+		ind := metrics.Compute(msg.Result.Result, msg.N, msg.Result.Duration)
+		return IndicatorsMsg{Indicators: ind}
 	}
 }
 

@@ -2,6 +2,7 @@ package tui
 
 import (
 	"fmt"
+	"runtime"
 	"strings"
 	"time"
 
@@ -9,6 +10,7 @@ import (
 	tea "github.com/charmbracelet/bubbletea"
 
 	"github.com/agbru/fibcalc/internal/cli"
+	"github.com/agbru/fibcalc/internal/config"
 	"github.com/agbru/fibcalc/internal/orchestration"
 )
 
@@ -48,6 +50,30 @@ func (l *LogsModel) SetSize(w, h int) {
 	l.height = h
 	l.viewport.Width = w - 2
 	l.viewport.Height = h - 2
+	l.updateContent()
+}
+
+// AddExecutionConfig adds the execution configuration summary as initial log entries.
+func (l *LogsModel) AddExecutionConfig(cfg config.AppConfig) {
+	l.entries = append(l.entries, logAlgoStyle.Render("--- Execution Configuration ---"))
+	l.entries = append(l.entries, fmt.Sprintf("  Calculating %s with a timeout of %s.",
+		logAlgoStyle.Render(fmt.Sprintf("F(%d)", cfg.N)),
+		metricValueStyle.Render(cfg.Timeout.String())))
+	l.entries = append(l.entries, fmt.Sprintf("  Environment: %s logical processors, Go %s.",
+		metricValueStyle.Render(fmt.Sprintf("%d", runtime.NumCPU())),
+		metricValueStyle.Render(runtime.Version())))
+	l.entries = append(l.entries, fmt.Sprintf("  Optimization thresholds: Parallelism=%s bits, FFT=%s bits.",
+		metricValueStyle.Render(fmt.Sprintf("%d", cfg.Threshold)),
+		metricValueStyle.Render(fmt.Sprintf("%d", cfg.FFTThreshold))))
+
+	var modeDesc string
+	if len(l.algoNames) > 1 {
+		modeDesc = "Parallel comparison of all algorithms"
+	} else if len(l.algoNames) == 1 {
+		modeDesc = fmt.Sprintf("Single calculation with the %s algorithm", logSuccessStyle.Render(l.algoNames[0]))
+	}
+	l.entries = append(l.entries, fmt.Sprintf("  Execution mode: %s.", modeDesc))
+	l.entries = append(l.entries, "")
 	l.updateContent()
 }
 

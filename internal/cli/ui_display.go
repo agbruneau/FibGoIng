@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"github.com/agbru/fibcalc/internal/fibonacci"
+	"github.com/agbru/fibcalc/internal/metrics"
 	"github.com/agbru/fibcalc/internal/ui"
 	"github.com/briandowns/spinner"
 )
@@ -181,9 +182,43 @@ func DisplayResult(result *big.Int, n uint64, duration time.Duration, verbose, d
 
 	if details {
 		displayDetailedAnalysis(out, result, duration)
+		if duration > 0 {
+			displayIndicators(out, metrics.Compute(result, n, duration))
+		}
 	}
 
 	if showValue {
 		displayCalculatedValue(out, result, n, verbose)
 	}
+}
+
+// displayIndicators prints post-calculation indicators of interest.
+// These are computed after the calculation completes, so they have zero
+// impact on the measured execution time.
+func displayIndicators(out io.Writer, ind *metrics.Indicators) {
+	fmt.Fprintf(out, "\n%s--- Indicators of interest ---%s\n", ui.ColorBold(), ui.ColorReset())
+
+	// Performance
+	fmt.Fprintf(out, "Throughput (bits)       : %s%s%s\n",
+		ui.ColorGreen(), metrics.FormatBitsPerSecond(ind.BitsPerSecond), ui.ColorReset())
+	fmt.Fprintf(out, "Throughput (digits)     : %s%s%s\n",
+		ui.ColorGreen(), metrics.FormatDigitsPerSecond(ind.DigitsPerSecond), ui.ColorReset())
+	fmt.Fprintf(out, "Doubling steps          : %s%d%s  (%s%.2f steps/s%s)\n",
+		ui.ColorCyan(), ind.DoublingSteps, ui.ColorReset(),
+		ui.ColorCyan(), ind.StepsPerSecond, ui.ColorReset())
+
+	// Mathematical
+	fmt.Fprintf(out, "Golden ratio deviation  : %s%.4f%%%s\n",
+		ui.ColorMagenta(), ind.GoldenRatioDeviation, ui.ColorReset())
+	fmt.Fprintf(out, "Digital root            : %s%d%s\n",
+		ui.ColorMagenta(), ind.DigitalRoot, ui.ColorReset())
+	fmt.Fprintf(out, "Last 20 digits          : %s%s%s\n",
+		ui.ColorMagenta(), ind.LastDigits, ui.ColorReset())
+
+	parity := "odd"
+	if ind.IsEven {
+		parity = "even"
+	}
+	fmt.Fprintf(out, "Parity                  : %s%s%s\n",
+		ui.ColorMagenta(), parity, ui.ColorReset())
 }

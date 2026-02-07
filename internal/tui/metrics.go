@@ -8,6 +8,7 @@ import (
 	"github.com/charmbracelet/lipgloss"
 
 	"github.com/agbru/fibcalc/internal/cli"
+	"github.com/agbru/fibcalc/internal/metrics"
 )
 
 // MetricsModel displays runtime memory and performance metrics.
@@ -18,6 +19,7 @@ type MetricsModel struct {
 	speed        float64 // progress per second
 	lastProgress float64
 	lastUpdate   time.Time
+	indicators   *metrics.Indicators
 	width        int
 	height       int
 }
@@ -61,6 +63,11 @@ func (m *MetricsModel) UpdateProgress(progress float64) {
 	}
 }
 
+// UpdateIndicators stores the post-calculation indicators.
+func (m *MetricsModel) UpdateIndicators(ind *metrics.Indicators) {
+	m.indicators = ind
+}
+
 // View renders the metrics panel.
 func (m MetricsModel) View() string {
 	colWidth := (m.width - 6) / 2 // two columns with padding
@@ -74,9 +81,23 @@ func (m MetricsModel) View() string {
 		formatMetricCol("Goroutines:", fmt.Sprintf("%d", m.numGoroutine), colWidth),
 	}
 
+	if m.indicators != nil {
+		parity := "odd"
+		if m.indicators.IsEven {
+			parity = "even"
+		}
+		leftCol = append(leftCol,
+			formatMetricCol("Bits/s:", metrics.FormatBitsPerSecond(m.indicators.BitsPerSecond), colWidth),
+			formatMetricCol("Steps:", fmt.Sprintf("%d (%.1f/s)", m.indicators.DoublingSteps, m.indicators.StepsPerSecond), colWidth),
+		)
+		rightCol = append(rightCol,
+			formatMetricCol("Digits/s:", metrics.FormatDigitsPerSecond(m.indicators.DigitsPerSecond), colWidth),
+			formatMetricCol("Parity:", parity, colWidth),
+		)
+	}
+
 	var rows strings.Builder
 	rows.WriteString(metricLabelStyle.Render("  Metrics"))
-	rows.WriteString("\n")
 	for i := range leftCol {
 		rows.WriteString("\n")
 		rows.WriteString(leftCol[i])

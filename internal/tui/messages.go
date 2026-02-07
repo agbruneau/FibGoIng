@@ -3,6 +3,7 @@ package tui
 import (
 	"time"
 
+	"github.com/agbru/fibcalc/internal/metrics"
 	"github.com/agbru/fibcalc/internal/orchestration"
 )
 
@@ -57,6 +58,11 @@ type CalculationCompleteMsg struct {
 type SysStatsMsg struct {
 	CPUPercent float64 // 0.0 .. 100.0
 	MemPercent float64 // 0.0 .. 100.0
+}
+
+// IndicatorsMsg carries post-calculation indicators of interest for display.
+type IndicatorsMsg struct {
+	Indicators *metrics.Indicators
 }
 
 // ContextCancelledMsg signals that the context was cancelled.
