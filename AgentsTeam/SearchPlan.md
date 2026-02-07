@@ -4,6 +4,27 @@ Plan d'exécution pour l'évaluation d'alternatives au système de multiplicatio
 
 ---
 
+## Suivi des tâches
+
+| # | Tâche | Phase | Agent | Dépend de | Statut |
+|---|-------|-------|-------|-----------|--------|
+| 1 | Explorer le code FFT actuel (NTT perspective) | 1 - Exploration | `ntt-researcher` | — | `[ ]` En attente |
+| 2 | Explorer le code de multiplication (Montgomery perspective) | 1 - Exploration | `montgomery-researcher` | — | `[ ]` En attente |
+| 3 | Explorer le code Schönhage-Strassen actuel | 1 - Exploration | `ss-researcher` | — | `[ ]` En attente |
+| 4 | Explorer le code et benchmarks pour revue adversariale | 1 - Exploration | `devils-advocate` | — | `[ ]` En attente |
+| 5 | Produire le rapport de recherche NTT | 2-3 - Recherche & Rapport | `ntt-researcher` | #1 | `[ ]` En attente |
+| 6 | Produire le rapport de recherche Montgomery | 2-3 - Recherche & Rapport | `montgomery-researcher` | #2 | `[ ]` En attente |
+| 7 | Produire le rapport d'optimisation Schönhage-Strassen | 2-3 - Recherche & Rapport | `ss-researcher` | #3 | `[ ]` En attente |
+| 8 | Produire le contre-rapport adversarial | 4 - Revue adversariale | `devils-advocate` | #5, #6, #7 | `[ ]` En attente |
+| 9 | Répondre aux objections NTT | 5 - Réponses | `ntt-researcher` | #8 | `[ ]` En attente |
+| 10 | Répondre aux objections Montgomery | 5 - Réponses | `montgomery-researcher` | #8 | `[ ]` En attente |
+| 11 | Répondre aux objections Schönhage-Strassen | 5 - Réponses | `ss-researcher` | #8 | `[ ]` En attente |
+| 12 | Produire la recommandation finale | 6 - Synthèse | `leader` | #9, #10, #11 | `[ ]` En attente |
+
+**Légende** : `[ ]` En attente · `[~]` En cours · `[x]` Terminé
+
+---
+
 ## 1. Objectifs et périmètre
 
 ### Objectif principal
