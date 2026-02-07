@@ -1,6 +1,8 @@
 package fibonacci
 
 import (
+	"context"
+	"fmt"
 	"math/big"
 
 	"github.com/agbru/fibcalc/internal/bigfft"
@@ -76,7 +78,7 @@ func smartSquare(z, x *big.Int, fftThreshold int) (*big.Int, error) {
 // executeDoublingStepFFT performs the three multiplications of a doubling step
 // while minimizing redundant FFT transforms.
 // It transforms F_k and F_k1 only once and then performs the calculations.
-func executeDoublingStepFFT(s *CalculationState, opts Options, inParallel bool) error {
+func executeDoublingStepFFT(ctx context.Context, s *CalculationState, opts Options, inParallel bool) error {
 	// FK1 = F(k) * (2*F(k+1) - F(k))
 	// F2k1 = F(k+1)^2 + F(k)^2
 
@@ -179,7 +181,7 @@ func executeDoublingStepFFT(s *CalculationState, opts Options, inParallel bool) 
 		return nil
 	}
 
-	// Sequential
+	// Sequential with context checks between operations
 	v1, err := fkPoly.Mul(&t4Poly)
 	if err != nil {
 		return err
@@ -191,6 +193,10 @@ func executeDoublingStepFFT(s *CalculationState, opts Options, inParallel bool) 
 	p1.M = m
 	p1.IntToBigInt(s.T3)
 
+	if err := ctx.Err(); err != nil {
+		return fmt.Errorf("canceled after FFT multiply: %w", err)
+	}
+
 	v2, err := fk1Poly.Sqr()
 	if err != nil {
 		return err
@@ -201,6 +207,10 @@ func executeDoublingStepFFT(s *CalculationState, opts Options, inParallel bool) 
 	}
 	p2.M = m
 	p2.IntToBigInt(s.T1)
+
+	if err := ctx.Err(); err != nil {
+		return fmt.Errorf("canceled after FFT square FK1: %w", err)
+	}
 
 	v3, err := fkPoly.Sqr()
 	if err != nil {

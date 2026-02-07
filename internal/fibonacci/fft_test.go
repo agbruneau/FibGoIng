@@ -1,6 +1,7 @@
 package fibonacci
 
 import (
+	"context"
 	"math/big"
 	"testing"
 )
@@ -26,7 +27,7 @@ func TestExecuteDoublingStepFFT(t *testing.T) {
 			FFTThreshold:      10000, // Low threshold to trigger FFT
 		}
 
-		err := executeDoublingStepFFT(state, opts, false)
+		err := executeDoublingStepFFT(context.Background(), state, opts, false)
 		// FFT execution may succeed or fail depending on implementation details
 		// We're mainly testing that the function doesn't panic and handles errors
 		if err != nil {
@@ -51,7 +52,7 @@ func TestExecuteDoublingStepFFT(t *testing.T) {
 			FFTThreshold:      10000,
 		}
 
-		err := executeDoublingStepFFT(state, opts, true)
+		err := executeDoublingStepFFT(context.Background(), state, opts, true)
 		if err != nil {
 			t.Logf("executeDoublingStepFFT returned error (may be expected): %v", err)
 		}
@@ -74,7 +75,7 @@ func TestExecuteDoublingStepFFT(t *testing.T) {
 			FFTThreshold:      10000,
 		}
 
-		err := executeDoublingStepFFT(state, opts, false)
+		err := executeDoublingStepFFT(context.Background(), state, opts, false)
 		// Should still work even with smaller numbers
 		if err != nil {
 			t.Logf("executeDoublingStepFFT returned error (may be expected): %v", err)

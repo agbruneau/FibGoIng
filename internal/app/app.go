@@ -201,6 +201,7 @@ func (a *Application) runCalculate(ctx context.Context, out io.Writer) int {
 	// Skip verbose output in quiet mode
 	if !a.Config.Quiet {
 		cli.PrintExecutionConfig(a.Config, out)
+		cli.PrintFeasibilityWarning(a.Config, out)
 		cli.PrintExecutionMode(calculatorsToRun, out)
 	}
 

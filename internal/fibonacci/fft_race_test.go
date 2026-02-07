@@ -1,6 +1,7 @@
 package fibonacci
 
 import (
+	"context"
 	"math/big"
 	"sync"
 	"testing"
@@ -42,7 +43,7 @@ func TestExecuteDoublingStepFFT_NoDataRace(t *testing.T) {
 		state.T3 = new(big.Int)
 		state.T4 = new(big.Int)
 
-		err := executeDoublingStepFFT(state, opts, true)
+		err := executeDoublingStepFFT(context.Background(), state, opts, true)
 		if err != nil {
 			t.Logf("executeDoublingStepFFT returned error (may be expected for small test values): %v", err)
 		}
@@ -82,7 +83,7 @@ func TestExecuteDoublingStepFFT_ConcurrentCalls(t *testing.T) {
 			state.T2.Sub(state.T2, state.FK)
 
 			// Run parallel FFT
-			_ = executeDoublingStepFFT(state, opts, true)
+			_ = executeDoublingStepFFT(context.Background(), state, opts, true)
 		}()
 	}
 

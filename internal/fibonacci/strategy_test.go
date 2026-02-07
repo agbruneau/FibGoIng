@@ -1,6 +1,7 @@
 package fibonacci
 
 import (
+	"context"
 	"math/big"
 	"testing"
 )
@@ -309,7 +310,7 @@ func TestKaratsubaStrategy_ExecuteStep(t *testing.T) {
 			FFTThreshold:      1000000,
 		}
 
-		err := strategy.ExecuteStep(state, opts, false)
+		err := strategy.ExecuteStep(context.Background(), state, opts, false)
 		if err != nil {
 			t.Errorf("ExecuteStep() error = %v, want nil", err)
 		}
@@ -334,7 +335,7 @@ func TestKaratsubaStrategy_ExecuteStep(t *testing.T) {
 			FFTThreshold:      1000000,
 		}
 
-		err := strategy.ExecuteStep(state, opts, true)
+		err := strategy.ExecuteStep(context.Background(), state, opts, true)
 		if err != nil {
 			t.Errorf("ExecuteStep() error = %v, want nil", err)
 		}

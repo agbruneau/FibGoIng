@@ -61,14 +61,19 @@ func DisplayProgress(wg *sync.WaitGroup, progressChan <-chan fibonacci.ProgressU
 					spinnerStopped = true
 				}
 
-				// Display final 100% progress permanently by printing directly to output
-				bar := progressBar(1.0, ProgressBarWidth)
+				// Display actual final progress (not hardcoded 100%).
+				// Progress may be less than 100% if calculation was canceled or timed out.
+				finalProgress := state.CalculateAverage()
+				bar := progressBar(finalProgress, ProgressBarWidth)
 				label := "Progress"
 				if numCalculators > 1 {
 					label = "Avg progress"
 				}
-				// Print the final progress line with a newline so it persists
-				fmt.Fprintf(out, "%s: %6.2f%% [%s] ETA: %s\n", label, 100.0, bar, "< 1s")
+				etaStr := "< 1s"
+				if finalProgress < 1.0 {
+					etaStr = "N/A (interrupted)"
+				}
+				fmt.Fprintf(out, "%s: %6.2f%% [%s] ETA: %s\n", label, finalProgress*100, bar, etaStr)
 				return
 			}
 			state.UpdateWithETA(update.CalculatorIndex, update.Value)

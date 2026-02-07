@@ -53,6 +53,7 @@ func NewDoublingFrameworkWithDynamicThresholds(strategy MultiplicationStrategy, 
 // This function encapsulates the parallelization logic to keep ExecuteDoublingLoop clean.
 //
 // Parameters:
+//   - ctx: The context for cancellation checking between sequential multiplications.
 //   - strategy: The multiplication strategy to use.
 //   - s: The calculation state containing operands and temporaries.
 //   - opts: Configuration options for the calculation.
@@ -60,7 +61,7 @@ func NewDoublingFrameworkWithDynamicThresholds(strategy MultiplicationStrategy, 
 //
 // Returns:
 //   - error: An error if any multiplication failed, with context about which operation failed.
-func executeDoublingStepMultiplications(strategy MultiplicationStrategy, s *CalculationState, opts Options, inParallel bool) error {
+func executeDoublingStepMultiplications(ctx context.Context, strategy MultiplicationStrategy, s *CalculationState, opts Options, inParallel bool) error {
 	if inParallel {
 		var wg sync.WaitGroup
 		var ec parallel.ErrorCollector
@@ -106,15 +107,21 @@ func executeDoublingStepMultiplications(strategy MultiplicationStrategy, s *Calc
 		return ec.Err()
 	}
 
-	// Sequential execution
+	// Sequential execution with context checks between multiplications
 	var err error
 	s.T3, err = strategy.Multiply(s.T3, s.FK, s.T4, opts)
 	if err != nil {
 		return fmt.Errorf("multiply FK * T4 failed: %w", err)
 	}
+	if err := ctx.Err(); err != nil {
+		return fmt.Errorf("canceled after multiply: %w", err)
+	}
 	s.T1, err = strategy.Square(s.T1, s.FK1, opts)
 	if err != nil {
 		return fmt.Errorf("square FK1 failed: %w", err)
+	}
+	if err := ctx.Err(); err != nil {
+		return fmt.Errorf("canceled after square FK1: %w", err)
 	}
 	s.T2, err = strategy.Square(s.T2, s.FK, opts)
 	if err != nil {
@@ -203,7 +210,7 @@ func (f *DoublingFramework) ExecuteDoublingLoop(ctx context.Context, reporter Pr
 		if shouldParallel {
 			usedParallel = true
 		}
-		if err := f.strategy.ExecuteStep(s, currentOpts, shouldParallel); err != nil {
+		if err := f.strategy.ExecuteStep(ctx, s, currentOpts, shouldParallel); err != nil {
 			return nil, fmt.Errorf("doubling step failed at bit %d/%d: %w", i, numBits-1, err)
 		}
 

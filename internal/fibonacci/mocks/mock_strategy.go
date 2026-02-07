@@ -5,6 +5,7 @@
 package mocks
 
 import (
+	context "context"
 	big "math/big"
 	reflect "reflect"
 
@@ -36,17 +37,17 @@ func (m *MockMultiplicationStrategy) EXPECT() *MockMultiplicationStrategyMockRec
 }
 
 // ExecuteStep mocks base method.
-func (m *MockMultiplicationStrategy) ExecuteStep(s *fibonacci.CalculationState, opts fibonacci.Options, inParallel bool) error {
+func (m *MockMultiplicationStrategy) ExecuteStep(ctx context.Context, s *fibonacci.CalculationState, opts fibonacci.Options, inParallel bool) error {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "ExecuteStep", s, opts, inParallel)
+	ret := m.ctrl.Call(m, "ExecuteStep", ctx, s, opts, inParallel)
 	ret0, _ := ret[0].(error)
 	return ret0
 }
 
 // ExecuteStep indicates an expected call of ExecuteStep.
-func (mr *MockMultiplicationStrategyMockRecorder) ExecuteStep(s, opts, inParallel interface{}) *gomock.Call {
+func (mr *MockMultiplicationStrategyMockRecorder) ExecuteStep(ctx, s, opts, inParallel interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ExecuteStep", reflect.TypeOf((*MockMultiplicationStrategy)(nil).ExecuteStep), s, opts, inParallel)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ExecuteStep", reflect.TypeOf((*MockMultiplicationStrategy)(nil).ExecuteStep), ctx, s, opts, inParallel)
 }
 
 // Multiply mocks base method.

@@ -6,6 +6,7 @@ package fibonacci
 //go:generate mockgen -source=strategy.go -destination=mocks/mock_strategy.go -package=mocks
 
 import (
+	"context"
 	"fmt"
 	"math/big"
 )
@@ -63,13 +64,14 @@ type MultiplicationStrategy interface {
 	// by reusing temporary results or transformations (e.g., FFT transforms).
 	//
 	// Parameters:
+	//   - ctx: The context for cancellation checking between multiplications.
 	//   - s: The calculation state containing operands and temporaries.
 	//   - opts: Configuration options.
 	//   - inParallel: Whether to execute multiplications in parallel.
 	//
 	// Returns:
 	//   - error: An error if the calculation failed.
-	ExecuteStep(s *CalculationState, opts Options, inParallel bool) error
+	ExecuteStep(ctx context.Context, s *CalculationState, opts Options, inParallel bool) error
 }
 
 // AdaptiveStrategy uses smartMultiply and smartSquare to adaptively choose
@@ -94,13 +96,13 @@ func (s *AdaptiveStrategy) Square(z, x *big.Int, opts Options) (*big.Int, error)
 
 // ExecuteStep performs a doubling step, choosing between standard logic
 // and optimized FFT transform reuse based on operand size.
-func (s *AdaptiveStrategy) ExecuteStep(state *CalculationState, opts Options, inParallel bool) error {
+func (s *AdaptiveStrategy) ExecuteStep(ctx context.Context, state *CalculationState, opts Options, inParallel bool) error {
 	// If operands are large enough for FFT, use specialized reuse logic
 	if opts.FFTThreshold > 0 && state.FK1.BitLen() > opts.FFTThreshold {
-		return executeDoublingStepFFT(state, opts, inParallel)
+		return executeDoublingStepFFT(ctx, state, opts, inParallel)
 	}
 	// Fallback to standard doubling step multiplication
-	return executeDoublingStepMultiplications(s, state, opts, inParallel)
+	return executeDoublingStepMultiplications(ctx, s, state, opts, inParallel)
 }
 
 // FFTOnlyStrategy forces FFT-based multiplication for all operations,
@@ -132,8 +134,8 @@ func (s *FFTOnlyStrategy) Square(z, x *big.Int, opts Options) (*big.Int, error) 
 }
 
 // ExecuteStep performs a doubling step using FFT transform reuse.
-func (s *FFTOnlyStrategy) ExecuteStep(state *CalculationState, opts Options, inParallel bool) error {
-	return executeDoublingStepFFT(state, opts, inParallel)
+func (s *FFTOnlyStrategy) ExecuteStep(ctx context.Context, state *CalculationState, opts Options, inParallel bool) error {
+	return executeDoublingStepFFT(ctx, state, opts, inParallel)
 }
 
 // KaratsubaStrategy forces Karatsuba multiplication (via math/big) for all
@@ -163,6 +165,6 @@ func (s *KaratsubaStrategy) Square(z, x *big.Int, opts Options) (*big.Int, error
 }
 
 // ExecuteStep performs a standard doubling step using Karatsuba multiplication.
-func (s *KaratsubaStrategy) ExecuteStep(state *CalculationState, opts Options, inParallel bool) error {
-	return executeDoublingStepMultiplications(s, state, opts, inParallel)
+func (s *KaratsubaStrategy) ExecuteStep(ctx context.Context, state *CalculationState, opts Options, inParallel bool) error {
+	return executeDoublingStepMultiplications(ctx, s, state, opts, inParallel)
 }
