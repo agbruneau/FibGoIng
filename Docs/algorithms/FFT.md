@@ -175,7 +175,7 @@ if opts.FFTThreshold > 0 {
     minBitLen := s.FK.BitLen()
     if minBitLen > opts.FFTThreshold {
         // FFT will be used - disable parallelism
-        // except if numbers > ParallelFFTThreshold (10M bits)
+        // except if numbers > ParallelFFTThreshold (5M bits)
         return minBitLen > ParallelFFTThreshold
     }
 }
@@ -192,7 +192,7 @@ func (c *FFTBasedCalculator) Name() string {
     return "FFT-Based Doubling"
 }
 
-func (c *FFTBasedCalculator) CalculateCore(ctx context.Context, reporter ProgressReporter,
+func (c *FFTBasedCalculator) CalculateCore(ctx context.Context, reporter ProgressCallback,
     n uint64, opts Options) (*big.Int, error) {
     s := AcquireState()
     defer ReleaseState(s)

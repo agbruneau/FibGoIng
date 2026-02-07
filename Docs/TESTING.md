@@ -209,8 +209,8 @@ Mocks are generated using `go.uber.org/mock` (mockgen) via `//go:generate` direc
 | Interface | Source File | Mock Output |
 |-----------|-------------|-------------|
 | `Calculator` | `internal/fibonacci/calculator.go` | `internal/fibonacci/mocks/mock_calculator.go` |
-| `MultiplicationStrategy` | `internal/fibonacci/strategy.go` | `internal/fibonacci/mocks/mock_strategy.go` |
-| `Generator` | `internal/fibonacci/generator.go` | `internal/fibonacci/mocks/mock_generator.go` |
+| `DoublingStepExecutor` | `internal/fibonacci/strategy.go` | `internal/fibonacci/mocks/mock_strategy.go` |
+| `SequenceGenerator` | `internal/fibonacci/generator.go` | `internal/fibonacci/mocks/mock_generator.go` |
 | `Spinner` | `internal/cli/ui.go` | `internal/cli/mocks/mock_ui.go` |
 
 Regeneration: `go generate ./...` or `make generate-mocks`
@@ -287,9 +287,9 @@ go test -v ./test/e2e/
 | `internal/fibonacci` | `fibonacci_test.go`, `fibonacci_golden_test.go`, `fibonacci_fuzz_test.go`, `fibonacci_property_test.go` | Unit, golden, fuzz, property-based, benchmarks |
 | `internal/bigfft` | `fft_precision_test.go`, `fft_parallel_test.go`, `pool_test.go` | Unit, precision, parallel correctness, pool recycling |
 | `internal/cli` | `output_test.go`, `ui_test.go`, `goldens_test.go`, `progress_eta_test.go` | Unit, golden output, ETA accuracy |
-| `internal/tui` | `model_test.go`, `bridge_test.go`, `header_test.go`, `chart_test.go`, `metrics_test.go` | Unit, sub-model testing, message handling |
-| `internal/orchestration` | `orchestrator_test.go`, `orchestration_spy_test.go` | Integration, spy-based config propagation |
-| `internal/calibration` | `calibration_test.go`, `adaptive_test.go`, `microbench_test.go` | Unit, micro-benchmark validation |
+| `internal/tui` | `model_test.go`, `bridge_test.go`, `header_test.go`, `chart_test.go`, `metrics_test.go`, `sparkline_test.go`, `footer_test.go`, `logs_test.go`, `keymap_test.go`, `cli_flags_test.go` | Unit, sub-model testing, message handling |
+| `internal/orchestration` | `orchestrator_test.go`, `orchestration_spy_test.go`, `calculator_selection_test.go` | Integration, spy-based config propagation, calculator selection |
+| `internal/calibration` | `calibration_test.go`, `calibration_advanced_test.go`, `adaptive_test.go`, `microbench_test.go`, `profile_test.go`, `io_test.go` | Unit, advanced calibration, micro-benchmark validation, profile I/O |
 | `internal/config` | `config_test.go`, `config_exhaustive_test.go`, `env_test.go` | Unit, exhaustive flag combinations, env vars |
 | `internal/errors` | `errors_test.go`, `handler_test.go` | Unit, exit code mapping |
 | `internal/app` | `app_test.go`, `version_test.go` | Unit, lifecycle |

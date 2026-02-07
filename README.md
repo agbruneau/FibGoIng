@@ -5,32 +5,32 @@
 ![Coverage](https://img.shields.io/badge/Coverage-80%25-green?style=for-the-badge)
 ![Status](https://img.shields.io/badge/Status-Production--Ready-success?style=for-the-badge)
 
-**FibCalc** is a state-of-the-art command-line tool and library designed for computing arbitrarily large Fibonacci numbers with extreme speed and efficiency. Written in Go, it leverages advanced algorithmic optimizations—including Fast Doubling, Matrix Exponentiation with Strassen's algorithm, and FFT-based multiplication—to handle indices in the hundreds of millions.
+**FibCalc** is a state-of-the-art command-line tool and library designed for computing arbitrarily large Fibonacci numbers with extreme speed and efficiency. Written in Go, it leverages advanced algorithmic optimizations — including Fast Doubling, Matrix Exponentiation with Strassen's algorithm, and FFT-based multiplication — to handle indices in the hundreds of millions.
 
 > **"The fastest, most over-engineered Fibonacci calculator you will ever use."**
 
 ---
 
-## 📋 Table of Contents
+## Table of Contents
 
-1. [Overview](#-overview)
-2. [Key Features](#-key-features)
-3. [Quick Start](#-quick-start)
-4. [Mathematical Background](#-mathematical-background)
-5. [Architecture](#%EF%B8%8F-architecture)
-6. [Installation](#-installation)
-7. [Usage Guide](#%EF%B8%8F-usage-guide)
-8. [Performance Benchmarks](#-performance-benchmarks)
-9. [Troubleshooting](#-troubleshooting)
-10. [Configuration](#%EF%B8%8F-configuration)
-11. [Development](#-development)
-12. [Contributing](#-contributing)
-13. [License](#-license)
-14. [Acknowledgments](#-acknowledgments)
+1. [Overview](#overview)
+2. [Key Features](#key-features)
+3. [Quick Start](#quick-start)
+4. [Mathematical Background](#mathematical-background)
+5. [Architecture](#architecture)
+6. [Installation](#installation)
+7. [Usage Guide](#usage-guide)
+8. [Performance Benchmarks](#performance-benchmarks)
+9. [Troubleshooting](#troubleshooting)
+10. [Configuration](#configuration)
+11. [Development](#development)
+12. [Contributing](#contributing)
+13. [License](#license)
+14. [Acknowledgments](#acknowledgments)
 
 ---
 
-## 🔭 Overview
+## Overview
 
 FibCalc serves as both a practical high-performance tool and a reference implementation for advanced software engineering patterns in Go. It demonstrates how to handle extreme computational workloads, optimize memory usage via zero-allocation strategies, and structure a clean, testable application.
 
@@ -43,7 +43,7 @@ FibCalc serves as both a practical high-performance tool and a reference impleme
 
 ---
 
-## 🚀 Key Features
+## Key Features
 
 ### Advanced Algorithms
 
@@ -63,19 +63,22 @@ FibCalc serves as both a practical high-performance tool and a reference impleme
 - **Adaptive Parallelism**: Automatically parallelizes recursive branches and matrix operations across CPU cores based on input size and hardware capabilities.
 - **Concurrency Limiting**: Task semaphore limits concurrent goroutines to `runtime.NumCPU()*2`, preventing contention and memory pressure during parallel multiplication.
 - **Optimized Memory Zeroing**: Uses Go 1.21+ `clear()` builtin for efficient slice zeroing in FFT operations.
-- **Auto-Calibration**: Built-in benchmarking tool (`-calibrate`) to empirically determine the optimal parallelism and FFT thresholds for the host machine.
+- **Auto-Calibration**: Built-in benchmarking tool (`-calibrate`) to empirically determine the optimal parallelism and FFT thresholds for the host machine. Adaptive threshold estimation at startup based on CPU core count and architecture.
 - **Atomic Pre-Warming**: Optimized memory pool initialization ensures resources are ready before the first request.
+- **Go Generics**: `executeTasks[T, PT]()` uses generics with pointer constraint pattern to eliminate code duplication between multiplication and squaring task execution.
 
 ### Robust Architecture
 
 - **Clean Architecture**: Strict separation of concerns (Core Logic, Orchestration, Interface, Infrastructure) with interface-based decoupling.
 - **Interface-Based Decoupling**: The orchestration layer uses `ProgressReporter` and `ResultPresenter` interfaces to avoid depending on CLI, enabling testability and alternative presentations.
+- **Strategy + Interface Segregation**: Narrow `Multiplier` interface for basic operations, wider `DoublingStepExecutor` for optimized doubling steps. Three concrete strategies: `AdaptiveStrategy`, `FFTOnlyStrategy`, `KaratsubaStrategy`.
+- **Framework Pattern**: `DoublingFramework` and `MatrixFramework` encapsulate algorithm loops, accepting pluggable strategies.
 - **Modern CLI**: Features progress spinners, ETA calculation, formatted output, and colour themes.
-- **Interactive TUI Dashboard**: Optional btop-inspired terminal dashboard (`--tui`) with real-time progress logs, memory metrics, progress bar with ETA, and keyboard navigation — powered by [Bubble Tea](https://github.com/charmbracelet/bubbletea).
+- **Interactive TUI Dashboard**: Optional btop-inspired terminal dashboard (`--tui`) with real-time progress logs, system memory metrics, progress bar with ETA, sparkline charts, and keyboard navigation — powered by [Bubble Tea](https://github.com/charmbracelet/bubbletea).
 
 ---
 
-## ⚡ Quick Start
+## Quick Start
 
 ```bash
 # Clone the repository
@@ -94,7 +97,7 @@ go test -v -race -cover ./...
 
 ---
 
-## 📐 Mathematical Background
+## Mathematical Background
 
 FibCalc implements several sophisticated mathematical concepts to achieve its performance.
 
@@ -119,7 +122,7 @@ $$
 \begin{pmatrix} F_{n+1} & F_n \\ F_n & F_{n-1} \end{pmatrix} = \begin{pmatrix} 1 & 1 \\ 1 & 0 \end{pmatrix}^n
 $$
 
-For large matrices, FibCalc employs **Strassen's Algorithm**, which reduces the number of multiplications in a $2 \times 2$ matrix product from 8 to 7. While this introduces more additions, it is beneficial when multiplication is significantly more expensive than addition (i.e., for very large `big.Int` values). See [Docs/algorithms/MATRIX.md](Docs/algorithms/MATRIX.md) for details.
+For large matrices, FibCalc employs **Strassen's Algorithm**, which reduces the number of multiplications in a $2 \times 2$ matrix product from 8 to 7. While this introduces more additions, it is beneficial when multiplication is significantly more expensive than addition (i.e., for very large `big.Int` values). Additionally, **symmetric matrix squaring** reduces the squaring operation from 8 to 4 multiplications by exploiting the symmetry of the Fibonacci Q-matrix. See [Docs/algorithms/MATRIX.md](Docs/algorithms/MATRIX.md) for details.
 
 ### 3. FFT-Based Multiplication
 
@@ -135,7 +138,7 @@ This allows calculating numbers with billions of digits feasible. See [Docs/algo
 
 ---
 
-## 🏗️ Architecture
+## Architecture
 
 FibCalc follows **Clean Architecture** principles to ensure modularity and testability.
 
@@ -150,7 +153,9 @@ graph TD
     AlgoFactory --> Matrix[Matrix Exponentiation]
     AlgoFactory --> FFT[FFT-Based]
 
-    Fast & Matrix & FFT --> BigFFT[BigFFT / Math.Big]
+    Fast & Matrix & FFT --> Frameworks[DoublingFramework / MatrixFramework]
+    Frameworks --> Strategies[Multiplier Strategies]
+    Strategies --> BigFFT[BigFFT / Math.Big]
     Fast & Matrix & FFT --> Pool[Memory Pool]
 ```
 
@@ -158,24 +163,27 @@ graph TD
 
 | Component | Responsibility |
 |-----------|----------------|
+| `cmd/fibcalc` | Application entry point. Delegates to `app.New()` and `app.Run()`. |
 | `cmd/generate-golden` | Golden file generator for test data. |
-| `internal/fibonacci` | Core domain logic. Implements the `Calculator` interface and algorithms. |
-| `internal/bigfft` | Specialized FFT arithmetic for `big.Int` with memory pooling. |
-| `internal/orchestration` | Manages concurrent execution, result aggregation, and defines `ProgressReporter`/`ResultPresenter` interfaces for Clean Architecture decoupling. |
-| `internal/cli` | Progress bar, spinner, output formatting (Display*/Format*/Write*), and duration/ETA helpers. |
-| `internal/calibration` | Auto-tuning logic to find optimal hardware thresholds. |
-| `internal/parallel` | Parallel execution utilities. |
-| `internal/logging` | Structured logging with zerolog adapters. |
-| `internal/tui` | Interactive TUI dashboard (btop-style) powered by Bubble Tea, with real-time logs, metrics, progress bar with ETA, and keyboard navigation. |
-| `internal/app` | CLI application runner, version info. |
-| `internal/ui` | Color themes, terminal formatting, NO_COLOR environment variable support. |
-| `internal/config` | Configuration parsing, validation, and environment variable support. |
-| `internal/errors` | Custom error types with standardized exit codes. |
-| `internal/testutil` | Shared test utilities and helpers. |
+| `internal/fibonacci` | Core domain logic. Algorithms (`FastDoubling`, `MatrixExponentiation`, `FFTBased`), frameworks, interfaces, strategies, observer pattern, state pooling, dynamic thresholds, sequence generation. |
+| `internal/bigfft` | Specialized FFT arithmetic for `big.Int`: Fermat number operations, FFT core and recursion, polynomial operations, thread-safe LRU transform cache, bump allocator, memory pool with pre-warming, memory estimation. |
+| `internal/orchestration` | Concurrent calculator execution via `errgroup`, result aggregation and comparison, calculator selection. Defines `ProgressReporter`/`ResultPresenter` interfaces for Clean Architecture decoupling. |
+| `internal/cli` | Progress bar with ETA, spinner, output formatting (Display\*/Format\*/Write\*/Print\*), shell completion (bash/zsh/fish/powershell), duration helpers. |
+| `internal/tui` | Interactive TUI dashboard (btop-style) powered by Bubble Tea: model (Elm architecture), header/footer panels, scrollable logs, runtime metrics, progress chart with sparklines, bridge adapters for orchestration interfaces. |
+| `internal/calibration` | Auto-tuning: full calibration mode, adaptive hardware-based threshold estimation, micro-benchmarks, calibration profile persistence (JSON). |
+| `internal/config` | Configuration parsing (`flag`), environment variable overrides (`FIBCALC_*` prefix), custom colored usage, validation. |
+| `internal/app` | Application lifecycle, command dispatching (completion/calibration/TUI/CLI modes), version info with ldflags injection. |
+| `internal/errors` | Custom error types (`ConfigError`, `CalculationError`) with standardized exit codes (0-4, 130). |
+| `internal/parallel` | `ErrorCollector` for thread-safe first-error aggregation across goroutines. |
+| `internal/format` | Duration and number formatting utilities shared by CLI and TUI (thousand separators, ETA display). |
+| `internal/metrics` | Performance indicators: bits/s, digits/s, doubling steps/s, mathematical properties of results. |
+| `internal/sysmon` | System-wide CPU and memory monitoring via gopsutil (used by TUI metrics panel). |
+| `internal/ui` | Color themes, terminal formatting, `NO_COLOR` environment variable support. |
+| `internal/testutil` | Shared test utilities (ANSI escape code stripping). |
 
 ---
 
-## 📦 Installation
+## Installation
 
 Requires **Go 1.25** or later.
 
@@ -191,7 +199,7 @@ go build -o fibcalc ./cmd/fibcalc
 
 ---
 
-## 🛠️ Usage Guide
+## Usage Guide
 
 ### Command Synopsis
 
@@ -214,11 +222,14 @@ fibcalc [flags]
 | `-auto-calibrate` | | `false` | Quick automatic calibration at startup. |
 | `-calibration-profile` | | | Path to calibration profile file. |
 | `-timeout` | | `5m` | Maximum calculation time (e.g. "10s", "1h"). |
-| `-threshold` | | `4096` | Parallelism threshold (bits). |
-| `-fft-threshold` | | `500,000` | FFT multiplication threshold (bits). |
-| `-strassen-threshold` | | `3072` | Strassen algorithm threshold (bits). |
+| `-threshold` | | `0` (auto) | Parallelism threshold (bits). 0 = hardware-adaptive. |
+| `-fft-threshold` | | `0` (auto) | FFT multiplication threshold (bits). 0 = hardware-adaptive. |
+| `-strassen-threshold` | | `0` (auto) | Strassen algorithm threshold (bits). 0 = hardware-adaptive. |
 | `-tui` | | `false` | Launch the interactive TUI dashboard instead of the standard CLI. |
 | `-completion` | | | Generate shell completion script (bash, zsh, fish, powershell). |
+| `--version` | `-V` | | Display version information. |
+
+> **Note**: Threshold defaults of `0` trigger automatic hardware-adaptive estimation based on CPU core count and architecture. Static defaults used by the algorithm internals: parallelism = 4,096 bits, FFT = 500,000 bits, Strassen = 3,072 bits.
 
 > **Note**: Colored output can be disabled by setting the `NO_COLOR` environment variable (see [no-color.org](https://no-color.org/)).
 
@@ -262,7 +273,7 @@ fibcalc --tui -n 1000000
 | `Down` / `j` | Scroll logs down |
 | `PgUp` / `PgDn` | Fast scroll |
 
-The dashboard shows five panels: header with elapsed time, scrollable calculation logs (60% width), runtime memory metrics, a progress bar with ETA tracking, and a footer with status indicator. The TUI uses the same `ProgressReporter`/`ResultPresenter` interfaces as the CLI, ensuring identical calculation behavior.
+The dashboard shows five panels: header with elapsed time, scrollable calculation logs (60% width), runtime memory metrics, a progress bar with ETA tracking and sparkline chart, and a footer with status indicator. The TUI uses the same `ProgressReporter`/`ResultPresenter` interfaces as the CLI, ensuring identical calculation behavior.
 
 ### Advanced Examples
 
@@ -294,15 +305,25 @@ Force FFT usage for a smaller threshold to test performance on lower-end hardwar
 fibcalc -n 5000000 -algo fast -fft-threshold 100000
 ```
 
+**5. Shell Completion**
+Generate completion scripts for your shell.
+
+```bash
+fibcalc -completion bash > /etc/bash_completion.d/fibcalc
+fibcalc -completion zsh > ~/.zsh/completions/_fibcalc
+fibcalc -completion fish > ~/.config/fish/completions/fibcalc.fish
+fibcalc -completion powershell >> $PROFILE
+```
+
 ---
 
-## 📊 Performance Benchmarks
+## Performance Benchmarks
 
 FibCalc is optimized for speed. Below is a summary of performance characteristics on a high-end workstation (Intel Core Ultra 9 275HX, 24 cores).
 
 | Index ($N$) | Fast Doubling | Matrix Exp. | FFT-Based | Result (digits) |
 | :--- | :--- | :--- | :--- | :--- |
-| **10,000** | 120µs | 180µs | 280µs | 2,090 |
+| **10,000** | 120us | 180us | 280us | 2,090 |
 | **1,000,000** | ~3ms | 55ms | 45ms | 208,988 |
 | **10,000,000** | ~60ms | 750ms | 600ms | 2,089,877 |
 | **100,000,000** | 30s | 42s | 33s | 20,898,764 |
@@ -318,7 +339,7 @@ FibCalc is optimized for speed. Below is a summary of performance characteristic
 
 ---
 
-## 🔧 Troubleshooting
+## Troubleshooting
 
 Common issues and their solutions.
 
@@ -332,18 +353,18 @@ For very large $N$, the calculation might exceed the default 5-minute timeout.
 
 ---
 
-## ⚙️ Configuration
+## Configuration
 
-Environment variables can override CLI flags. Priority: CLI flags > Environment variables > Defaults.
+Environment variables can override CLI flags. Priority: CLI flags > Environment variables > Adaptive hardware estimation > Static defaults.
 
 | Variable | Description | Default |
 |----------|-------------|---------|
 | `FIBCALC_N` | Fibonacci index to calculate | 100,000,000 |
 | `FIBCALC_ALGO` | Algorithm (`fast`, `matrix`, `fft`, `all`) | `all` |
 | `FIBCALC_TIMEOUT` | Calculation timeout | `5m` |
-| `FIBCALC_THRESHOLD` | Parallelism threshold (bits) | 4096 |
-| `FIBCALC_FFT_THRESHOLD` | FFT multiplication threshold (bits) | 500,000 |
-| `FIBCALC_STRASSEN_THRESHOLD` | Strassen algorithm threshold (bits) | 3072 |
+| `FIBCALC_THRESHOLD` | Parallelism threshold (bits) | 0 (auto) |
+| `FIBCALC_FFT_THRESHOLD` | FFT multiplication threshold (bits) | 0 (auto) |
+| `FIBCALC_STRASSEN_THRESHOLD` | Strassen algorithm threshold (bits) | 0 (auto) |
 | `FIBCALC_VERBOSE` | Enable verbose output | `false` |
 | `FIBCALC_DETAILS` | Display performance details | `false` |
 | `FIBCALC_QUIET` | Enable quiet mode | `false` |
@@ -357,7 +378,7 @@ Environment variables can override CLI flags. Priority: CLI flags > Environment 
 
 ---
 
-## 💻 Development
+## Development
 
 ### Prerequisites
 - Go 1.25+
@@ -371,40 +392,79 @@ go test -v -short ./...                                # Skip slow tests
 go test -v -run TestFastDoubling ./internal/fibonacci/  # Run a single test
 go test -bench=. -benchmem ./internal/fibonacci/        # Run benchmarks
 go test -fuzz=FuzzFastDoubling ./internal/fibonacci/    # Run fuzz tests
-go generate ./...                                       # Regenerate mocks
 ```
 
 If `make` is available, Makefile targets are also provided:
 
 ```bash
-make test        # go test -v -race -cover ./...
-make lint        # golangci-lint run ./...
-make check       # format + lint + test
-make coverage    # Generate coverage report (coverage.html)
-make benchmark   # Run performance benchmarks
+make test           # go test -v -race -cover ./...
+make lint           # golangci-lint run ./...
+make check          # format + lint + test
+make coverage       # Generate coverage report (coverage.html)
+make benchmark      # Run performance benchmarks
+make pgo-profile    # Generate CPU profile for PGO
+make build-pgo      # Build with Profile-Guided Optimization
+make build-all      # Build for all platforms (Linux, Windows, macOS)
+make pgo-rebuild    # Full PGO workflow (profile + build)
 ```
 
 ### Project Structure
-- `cmd/generate-golden/`: Golden file generator for test data.
-- `internal/`: Private application code (algorithms, CLI, orchestration, etc.).
-- `Docs/`: Detailed documentation ([Architecture](Docs/ARCHITECTURE.md), [Performance](Docs/PERFORMANCE.md), [Algorithms](Docs/algorithms/), [Design Patterns](Docs/DESIGN_PATTERNS.md), [Build](Docs/BUILD.md), [Testing](Docs/TESTING.md), [Calibration](Docs/CALIBRATION.md), [TUI Guide](Docs/TUI_GUIDE.md)).
+
+```
+fibcalc/
+├── cmd/
+│   ├── fibcalc/             # CLI entry point
+│   └── generate-golden/     # Golden test data generator
+├── internal/
+│   ├── fibonacci/           # Core algorithms, interfaces, strategies, frameworks
+│   ├── bigfft/              # FFT multiplication, caching, bump allocator
+│   ├── orchestration/       # Concurrent execution, result analysis
+│   ├── cli/                 # CLI output, progress, completion
+│   ├── tui/                 # Interactive TUI dashboard (Bubble Tea)
+│   ├── calibration/         # Auto-tuning, micro-benchmarks, profiles
+│   ├── config/              # Configuration parsing, env vars
+│   ├── app/                 # Application lifecycle, version
+│   ├── errors/              # Custom error types, exit codes
+│   ├── parallel/            # Concurrent error aggregation
+│   ├── format/              # Duration/number formatting (shared CLI/TUI)
+│   ├── metrics/             # Performance indicators
+│   ├── sysmon/              # System CPU/memory monitoring
+│   ├── ui/                  # Color themes, NO_COLOR support
+│   └── testutil/            # Shared test utilities
+├── Docs/                    # Documentation
+│   ├── ARCHITECTURE.md
+│   ├── PERFORMANCE.md
+│   ├── DESIGN_PATTERNS.md
+│   ├── BUILD.md
+│   ├── TESTING.md
+│   ├── CALIBRATION.md
+│   ├── TUI_GUIDE.md
+│   └── algorithms/          # Algorithm deep dives
+├── test/
+│   └── e2e/                 # End-to-end CLI integration tests
+├── .golangci.yml            # Linter configuration (22 linters)
+├── .env.example             # Environment variable reference
+├── Makefile                 # Build, test, lint, PGO targets
+└── CLAUDE.md                # AI assistant guidance
+```
 
 ---
 
-## 🤝 Contributing
+## Contributing
 
 Contributions are welcome! Please read [CONTRIBUTING.md](CONTRIBUTING.md) for details on our code of conduct, and the process for submitting pull requests.
 
 ---
 
-## 📄 License
+## License
 
 This project is licensed under the Apache License 2.0 - see the [LICENSE](LICENSE) file for details.
 
 ---
 
-## 🙏 Acknowledgments
+## Acknowledgments
 
 - The Go team for the `math/big` package.
 - The open-source community for the underlying FFT research.
+- The [Charm](https://charm.sh/) team for Bubble Tea, Lipgloss, and Bubbles.
 - All contributors who have optimized these algorithms over the years.

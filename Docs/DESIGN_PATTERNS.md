@@ -56,11 +56,14 @@ Key methods:
 | `Register(observer)` | Adds an observer. Nil observers are ignored. |
 | `Unregister(observer)` | Removes an observer by identity comparison. |
 | `Notify(calcIndex, progress)` | Notifies all observers under a read lock. |
-| `AsProgressReporter(calcIndex)` | Returns a `ProgressReporter` closure that calls `Notify`. |
+| `AsProgressCallback(calcIndex)` | Returns a `ProgressCallback` closure that calls `Notify`. |
+| `Freeze(calcIndex)` | Creates a lock-free snapshot of observers, returns a `ProgressCallback`. Used in hot loops. |
 
-`AsProgressReporter` bridges the observer world to the functional `ProgressReporter`
-type expected by `coreCalculator.CalculateCore()`, allowing legacy algorithm code to
-report progress without knowing about observers.
+`AsProgressCallback` bridges the observer world to the functional `ProgressCallback`
+type expected by `coreCalculator.CalculateCore()`, allowing algorithm code to
+report progress without knowing about observers. `Freeze()` takes a snapshot of
+the observer list so the callback can notify without acquiring any locks --
+essential for performance-critical calculation loops.
 
 ### Concrete Observers
 
@@ -116,7 +119,8 @@ classDiagram
         +Register(observer ProgressObserver)
         +Unregister(observer ProgressObserver)
         +Notify(calcIndex int, progress float64)
-        +AsProgressReporter(calcIndex int) ProgressReporter
+        +AsProgressCallback(calcIndex int) ProgressCallback
+        +Freeze(calcIndex int) ProgressCallback
     }
 
     class ChannelObserver {
@@ -153,22 +157,34 @@ without modifying their doubling-step logic.
 
 For the 3-tier multiplication threshold system, see [algorithms/FFT.md](algorithms/FFT.md).
 
-### Interface
+### Interfaces
+
+The Strategy pattern uses Interface Segregation (ISP) with two levels:
 
 ```go
 // internal/fibonacci/strategy.go
 
-type MultiplicationStrategy interface {
+// Narrow interface: consumers that only need Multiply/Square
+type Multiplier interface {
     Multiply(z, x, y *big.Int, opts Options) (*big.Int, error)
     Square(z, x *big.Int, opts Options) (*big.Int, error)
     Name() string
-    ExecuteStep(s *CalculationState, opts Options, inParallel bool) error
 }
+
+// Wide interface: adds doubling-step-aware execution
+type DoublingStepExecutor interface {
+    Multiplier
+    ExecuteStep(ctx context.Context, s *CalculationState, opts Options, inParallel bool) error
+}
+
+// Deprecated type alias preserved for backward compatibility
+type MultiplicationStrategy = DoublingStepExecutor
 ```
 
 `ExecuteStep` is a specialized method that performs a complete fast-doubling step. This
 allows strategies like `FFTOnlyStrategy` to reuse FFT transforms across the two
-multiplications in a single step, avoiding redundant forward transforms.
+multiplications in a single step, avoiding redundant forward transforms. The `ctx`
+parameter enables cancellation checking between multiplications.
 
 ### Concrete Strategies
 
@@ -183,11 +199,11 @@ multiplications in a single step, avoiding redundant forward transforms.
 ```go
 // internal/fibonacci/strategy.go
 
-func (s *AdaptiveStrategy) ExecuteStep(state *CalculationState, opts Options, inParallel bool) error {
+func (s *AdaptiveStrategy) ExecuteStep(ctx context.Context, state *CalculationState, opts Options, inParallel bool) error {
     if opts.FFTThreshold > 0 && state.FK1.BitLen() > opts.FFTThreshold {
-        return executeDoublingStepFFT(state, opts, inParallel)
+        return executeDoublingStepFFT(ctx, state, opts, inParallel)
     }
-    return executeDoublingStepMultiplications(s, state, opts, inParallel)
+    return executeDoublingStepMultiplications(ctx, s, state, opts, inParallel)
 }
 ```
 
@@ -311,7 +327,7 @@ type Calculator interface {
 
 // Internal interface for pure algorithm implementations
 type coreCalculator interface {
-    CalculateCore(ctx context.Context, reporter ProgressReporter,
+    CalculateCore(ctx context.Context, reporter ProgressCallback,
         n uint64, opts Options) (*big.Int, error)
     Name() string
 }
@@ -513,8 +529,9 @@ type fftState struct {
 
 `CalculationState` and `matrixState` pools in `internal/fibonacci/` recycle the
 `big.Int` temporaries used during fast-doubling and matrix exponentiation steps.
-A `MaxPooledBitLen` cap (4M bits) prevents excessively large objects from being
-retained in the pool.
+A `MaxPooledBitLen` cap (100M bits, ~12.5 MB) prevents excessively large objects from being
+retained in the pool. This limit was increased from 4M to allow pooling of intermediate
+results for large Fibonacci calculations (e.g., F(10^8)).
 
 ### BumpAllocator (internal/bigfft/bump.go)
 
@@ -571,7 +588,7 @@ Calculate()                                   [Decorator]
             |         +-- acquireWordSlice()     [Object Pooling]
             |         +-- AcquireBumpAllocator() [Object Pooling]
             |
-            +-- reporter(progress)               [Observer: via AsProgressReporter]
+            +-- reporter(progress)               [Observer: via Freeze()]
                  |
                  +-- subject.Notify()            [Observer]
                       |
@@ -613,8 +630,8 @@ CLIProgressReporter.DisplayProgress()   -- Interface adapter consumes channel
 
 | Pattern | Location | Key Types | Purpose |
 |---------|----------|-----------|---------|
-| Observer | `internal/fibonacci/observer.go`, `observers.go` | `ProgressObserver`, `ProgressSubject`, `ChannelObserver`, `LoggingObserver`, `NoOpObserver` | Decouple algorithms from progress consumers |
-| Strategy | `internal/fibonacci/strategy.go` | `MultiplicationStrategy`, `AdaptiveStrategy`, `FFTOnlyStrategy`, `KaratsubaStrategy` | Swap multiplication algorithms at runtime |
+| Observer | `internal/fibonacci/observer.go`, `observers.go` | `ProgressObserver`, `ProgressSubject` (with `Freeze()`), `ChannelObserver`, `LoggingObserver`, `NoOpObserver` | Decouple algorithms from progress consumers |
+| Strategy | `internal/fibonacci/strategy.go` | `Multiplier`, `DoublingStepExecutor`, `AdaptiveStrategy`, `FFTOnlyStrategy`, `KaratsubaStrategy` | Swap multiplication algorithms at runtime |
 | Factory + Registry | `internal/fibonacci/registry.go` | `CalculatorFactory`, `DefaultFactory`, `GlobalFactory()` | Lazy creation, caching, and dynamic registration of calculators |
 | Decorator | `internal/fibonacci/calculator.go` | `Calculator`, `coreCalculator`, `FibCalculator` | Add small-N fast path, observer bridging, pool warming around core algorithms |
 | Ports and Adapters | `internal/orchestration/interfaces.go`, `internal/cli/presenter.go`, `internal/tui/bridge.go` | `ProgressReporter`, `ResultPresenter`, `CLIProgressReporter`, `TUIProgressReporter`, `programRef` | Decouple orchestration from CLI/TUI presentation |

@@ -98,24 +98,24 @@ Business core of the application. Contains algorithm implementations, the factor
 |------|---------------|
 | `calculator.go` | `Calculator` and `coreCalculator` interfaces, `FibCalculator` decorator |
 | `registry.go` | `CalculatorFactory` interface, `DefaultFactory` with lazy creation and caching |
-| `strategy.go` | `MultiplicationStrategy` interface, `AdaptiveStrategy`, `FFTOnlyStrategy`, `KaratsubaStrategy` |
+| `strategy.go` | `Multiplier` (narrow) and `DoublingStepExecutor` (wide) interfaces, `MultiplicationStrategy` (deprecated alias); `AdaptiveStrategy`, `FFTOnlyStrategy`, `KaratsubaStrategy` |
 | `observer.go` | `ProgressObserver` interface, `ProgressSubject` (observable) |
 | `observers.go` | Observer implementations: `ChannelObserver`, `LoggingObserver`, `NoOpObserver` |
 | `options.go` | `Options` struct for calculation configuration |
 | `constants.go` | Performance tuning constants and thresholds |
 | `threshold_types.go` | Threshold type definitions |
 | `dynamic_threshold.go` | Runtime threshold adjustment logic |
-| `fastdoubling.go` | `OptimizedFastDoubling` algorithm implementation |
+| `fastdoubling.go` | `OptimizedFastDoubling` algorithm implementation, `CalculationState` type and pool |
 | `doubling_framework.go` | `DoublingFramework` — shared iteration framework for doubling-based algorithms |
 | `matrix.go` | `MatrixExponentiation` algorithm implementation |
 | `matrix_framework.go` | `MatrixFramework` — shared framework for matrix-based algorithms |
 | `matrix_ops.go` | Matrix multiplication and squaring operations |
-| `matrix_types.go` | `Matrix2x2` type definition |
+| `matrix_types.go` | `matrix` type (2x2), `matrixState` pool type |
 | `fft_based.go` | `FFTBasedCalculator` — forces FFT for all multiplications |
 | `fft.go` | `smartMultiply` / `smartSquare` — 2-tier multiplication selection (FFT or standard math/big) |
-| `progress.go` | Progress calculation utilities (`CalcTotalWork`, `ReportStepProgress`) |
-| `common.go` | Task semaphore, shared utilities |
-| `generator.go` | `Generator` interface for Fibonacci sequence generation |
+| `progress.go` | `ProgressCallback` type, progress utilities (`CalcTotalWork`, `ReportStepProgress`) |
+| `common.go` | Task semaphore, `MaxPooledBitLen`, `executeTasks` generics, `executeMixedTasks` |
+| `generator.go` | `SequenceGenerator` interface for Fibonacci sequence generation |
 | `generator_iterative.go` | Iterative generator implementation |
 | `testing.go` | Test helpers and utilities |
 | `calculator_gmp.go` | GMP calculator, auto-registers via `init()` (build tag: `gmp`) |
@@ -183,6 +183,7 @@ Interactive TUI dashboard (btop-style), activated via `--tui` flag or `FIBCALC_T
 | `logs.go` | Scrollable log panel sub-model (viewport, auto-scroll) |
 | `metrics.go` | Runtime metrics sub-model (memory, heap, GC, goroutines, speed) |
 | `chart.go` | Progress bar and ETA display sub-model |
+| `sparkline.go` | Sparkline visualization for progress chart |
 | `footer.go` | Footer sub-model (keyboard shortcuts, status indicator) |
 | `model.go` | Root model, `Init()`/`Update()`/`View()`, `Run()` entry point, layout (60/40 split) |
 
@@ -215,7 +216,7 @@ Centralized error handling.
 
 | File | Responsibility |
 |------|---------------|
-| `errors.go` | Custom error types: `ConfigError`, `CalculationError`, `ServerError`, `ValidationError` |
+| `errors.go` | Custom error types: `ConfigError`, `CalculationError` |
 | `handler.go` | Error handler with standardized exit codes (0=success, 1=generic, 2=timeout, 3=mismatch, 4=config, 130=canceled) |
 
 ### `internal/app`
@@ -224,9 +225,9 @@ Application lifecycle management.
 
 | File | Responsibility |
 |------|---------------|
-| `app.go` | Application initialization |
-| `lifecycle.go` | `SetupContext()` (timeout), `SetupSignals()` (SIGINT/SIGTERM) |
+| `app.go` | Application initialization and lifecycle (`SetupContext`, signal handling) |
 | `version.go` | Version information |
+| `doc.go` | Package documentation |
 
 ### `internal/ui`
 
@@ -253,7 +254,7 @@ type Calculator interface {
 
 ```go
 type coreCalculator interface {
-    CalculateCore(ctx context.Context, reporter ProgressReporter,
+    CalculateCore(ctx context.Context, reporter ProgressCallback,
         n uint64, opts Options) (*big.Int, error)
     Name() string
 }
@@ -271,15 +272,26 @@ type CalculatorFactory interface {
 }
 ```
 
-### MultiplicationStrategy
+### Multiplier (narrow)
 
 ```go
-type MultiplicationStrategy interface {
+type Multiplier interface {
     Multiply(z, x, y *big.Int, opts Options) (*big.Int, error)
     Square(z, x *big.Int, opts Options) (*big.Int, error)
     Name() string
-    ExecuteStep(state *CalculationState, opts Options) error
 }
+```
+
+### DoublingStepExecutor (wide)
+
+```go
+type DoublingStepExecutor interface {
+    Multiplier
+    ExecuteStep(ctx context.Context, s *CalculationState, opts Options, inParallel bool) error
+}
+
+// MultiplicationStrategy is a deprecated type alias for DoublingStepExecutor.
+type MultiplicationStrategy = DoublingStepExecutor
 ```
 
 ### ProgressObserver
@@ -347,7 +359,7 @@ type ResultPresenter interface {
 
 - Optimal performance according to calculation size
 - Avoids CPU saturation for small N
-- Parallelism disabled when FFT is used (FFT already saturates CPU), re-enabled above 10M bits
+- Parallelism disabled when FFT is used (FFT already saturates CPU), re-enabled above 5M bits (`ParallelFFTThreshold`)
 
 ### ADR-004: Interface-Based Decoupling (Orchestration → CLI)
 
@@ -372,7 +384,7 @@ type ResultPresenter interface {
 3. fibonacci.GlobalFactory() provides calculators by name
 4. orchestration.ExecuteCalculations() runs calculators concurrently via errgroup
    - Each Calculator.Calculate() delegates to FibCalculator decorator
-   - FibCalculator uses CalculateWithObservers() for progress
+   - FibCalculator uses CalculateWithObservers() with Freeze() for lock-free progress
    - ProgressSubject notifies ChannelObserver → progressChan
    - ProgressReporter (CLIProgressReporter or TUIProgressReporter) displays progress
 5. orchestration.AnalyzeComparisonResults() compares results

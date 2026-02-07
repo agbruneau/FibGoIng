@@ -23,7 +23,7 @@ var taskSemaphoreOnce sync.Once
 // (bigfft/fft_recursion.go, NumCPU goroutines). When both are active, up to
 // NumCPU*3 goroutines may be active simultaneously. This is mitigated by
 // ShouldParallelizeMultiplication() which disables Fibonacci-level parallelism
-// when FFT is active (except for operands > ParallelFFTThreshold = 10M bits).
+// when FFT is active (except for operands > ParallelFFTThreshold = 5M bits).
 func getTaskSemaphore() chan struct{} {
 	taskSemaphoreOnce.Do(func() {
 		taskSemaphore = make(chan struct{}, runtime.NumCPU()*2)

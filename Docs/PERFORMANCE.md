@@ -97,7 +97,7 @@ The three main multiplications in the Fast Doubling algorithm can be parallelize
 
 - **Activation threshold**: `ParallelThreshold` (default: 4096 bits)
 - **Disabled with FFT**: Parallelism is disabled when FFT is used as FFT already saturates the CPU
-- **Parallel FFT threshold**: Re-enabled above 10,000,000 bits
+- **Parallel FFT threshold**: Re-enabled above 5,000,000 bits (`ParallelFFTThreshold`)
 
 ### 4. Strassen Algorithm
 

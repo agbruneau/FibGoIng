@@ -101,7 +101,7 @@ func PrecomputePowers4(numBits int) []float64 {
 **Signature**:
 ```go
 func ReportStepProgress(
-    progressReporter ProgressReporter,
+    progressReporter ProgressCallback,
     lastReported *float64,
     totalWork float64,
     workDone float64,
@@ -153,7 +153,7 @@ func ReportStepProgress(
 ### 4. Callback Type
 
 ```go
-type ProgressReporter func(progress float64)
+type ProgressCallback func(progress float64)
 ```
 
 - `progress`: Normalized value from 0.0 to 1.0
@@ -163,7 +163,7 @@ type ProgressReporter func(progress float64)
 ### Usage Example
 
 ```go
-func ExecuteCalculation(ctx context.Context, reporter ProgressReporter, n uint64) (*big.Int, error) {
+func ExecuteCalculation(ctx context.Context, reporter ProgressCallback, n uint64) (*big.Int, error) {
     numBits := bits.Len64(n)
 
     // Initialization
@@ -311,13 +311,13 @@ func CalcTotalWork3(numBits int) float64 {
 }
 ```
 
-## Progress Reporting Interface
+## Progress Callback Interface
 
 ### Definition
 
 ```go
 // Callback type for progress reporting
-type ProgressReporter func(progress float64)
+type ProgressCallback func(progress float64)
 ```
 
 ### Usage in Calculation
@@ -328,7 +328,12 @@ reporter := func(progress float64) {
     fmt.Printf("Progress: %.2f%%\n", progress*100)
 }
 
-// Option 2: Send on a channel (for asynchronous UI)
+// Option 2: Via observer pattern (used by FibCalculator)
+subject := NewProgressSubject()
+subject.Register(NewChannelObserver(progressChan))
+reporter := subject.Freeze(calcIndex)  // Lock-free snapshot
+
+// Option 3: Send on a channel (for asynchronous UI)
 progressChan := make(chan ProgressUpdate, 10)
 reporter := func(progress float64) {
     select {

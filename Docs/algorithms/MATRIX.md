@@ -122,7 +122,7 @@ func (c *MatrixExponentiation) Name() string {
     return "Matrix Exponentiation (O(log n), Parallel, Zero-Alloc)"
 }
 
-func (c *MatrixExponentiation) CalculateCore(ctx context.Context, reporter ProgressReporter,
+func (c *MatrixExponentiation) CalculateCore(ctx context.Context, reporter ProgressCallback,
     n uint64, opts Options) (*big.Int, error) {
     state := acquireMatrixState()
     defer releaseMatrixState(state)

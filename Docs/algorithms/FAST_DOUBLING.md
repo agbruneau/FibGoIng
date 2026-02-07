@@ -149,11 +149,11 @@ func FastDoublingSimple(n uint64) (*big.Int, *big.Int) {
 
 ### 1. DoublingFramework with Strategy Pattern
 
-The recursive version is converted to an iterative `DoublingFramework` that accepts a pluggable `MultiplicationStrategy`:
+The recursive version is converted to an iterative `DoublingFramework` that accepts a pluggable `DoublingStepExecutor`:
 
 ```go
 type DoublingFramework struct {
-    strategy         MultiplicationStrategy
+    strategy         DoublingStepExecutor
     dynamicThreshold *DynamicThresholdManager
 }
 
@@ -180,25 +180,31 @@ state := AcquireState()
 defer ReleaseState(state)
 ```
 
-Objects exceeding `MaxPooledBitLen` (4M bits) are left for GC rather than returned to the pool.
+Objects exceeding `MaxPooledBitLen` (100M bits) are left for GC rather than returned to the pool.
 
 ### 3. Parallel Multiplication via Strategy
 
-The `MultiplicationStrategy.ExecuteStep` method performs the three multiplications required for a doubling step. The strategy decides whether to parallelize based on the `ParallelThreshold` in `Options`:
+The `DoublingStepExecutor.ExecuteStep` method performs the three multiplications required for a doubling step. The strategy decides whether to parallelize based on the `ParallelThreshold` in `Options`:
 
 ```go
-type MultiplicationStrategy interface {
+// Narrow interface for basic operations
+type Multiplier interface {
     Multiply(z, x, y *big.Int, opts Options) (*big.Int, error)
     Square(z, x *big.Int, opts Options) (*big.Int, error)
     Name() string
-    ExecuteStep(state *CalculationState, opts Options) error
+}
+
+// Wide interface with optimized doubling step
+type DoublingStepExecutor interface {
+    Multiplier
+    ExecuteStep(ctx context.Context, s *CalculationState, opts Options, inParallel bool) error
 }
 ```
 
 Parallelism considerations:
 - **Activation threshold**: `ParallelThreshold` (default: 4096 bits)
 - **Disabled with FFT**: FFT already saturates CPU cores
-- **Re-enabled for very large numbers**: Above `ParallelFFTThreshold` (10,000,000 bits)
+- **Re-enabled for very large numbers**: Above `ParallelFFTThreshold` (5,000,000 bits)
 
 ### 4. 3-Tier Adaptive Multiplication
 
