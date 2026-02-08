@@ -145,16 +145,6 @@ func (c ChartModel) sparklineWidth() int {
 	return w
 }
 
-func (c ChartModel) renderSparklineLine(label string, buf *RingBuffer, style lipgloss.Style) string {
-	pct := buf.Last()
-	pctStr := metricValueStyle.Render(fmt.Sprintf("%5.1f%%", pct))
-	sparkStr := style.Render(RenderSparkline(buf.Slice()))
-	return fmt.Sprintf("  %s  %s  %s",
-		metricLabelStyle.Render(label),
-		pctStr,
-		sparkStr)
-}
-
 // renderBrailleSection renders CPU and MEM sparkline indicators.
 func (c ChartModel) renderBrailleSection() string {
 	var b strings.Builder
