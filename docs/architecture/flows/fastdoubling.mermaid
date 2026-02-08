@@ -1,0 +1,71 @@
+flowchart LR
+    subgraph Input["Input Processing"]
+        A1[Calculate n] --> A2{n <= 93?}
+        A2 -->|Yes| A3[Iterative uint64<br/>Fast Path]
+        A2 -->|No| A4[Create ProgressSubject]
+        A4 --> A5[Register ChannelObserver]
+        A5 --> A6[Get Options & Strategy]
+    end
+
+    subgraph Strategy["Strategy Selection"]
+        A6 --> B1{Which calculator?}
+        B1 -->|fast| B2[AdaptiveStrategy<br/>auto math/big vs FFT]
+        B1 -->|fft| B3[FFTOnlyStrategy<br/>always FFT]
+        B1 -->|gmp| B4[GMP Fast Doubling<br/>standalone]
+    end
+
+    subgraph Framework["DoublingFramework.ExecuteDoublingLoop"]
+        B2 --> C1[Get bit length of n]
+        B3 --> C1
+        C1 --> C2[Iterate bits MSB to LSB]
+        C2 --> C3{Current bit}
+        C3 -->|0: Doubling Step| C4["a' = a(2b - a)<br/>b' = a² + b²"]
+        C3 -->|1: Doubling + Step| C5["a' = a² + b²<br/>b' = b(2a + b)"]
+    end
+
+    subgraph Multiply["Multiplication Decision"]
+        C4 --> D1{Operand size}
+        C5 --> D1
+        D1 -->|< FFTThreshold| D2[math/big Karatsuba]
+        D1 -->|>= FFTThreshold| D3[FFT Multiplication]
+        D1 -->|>= ParallelThreshold<br/>& bits > 5M| D4[Parallel FFT<br/>via goroutines]
+    end
+
+    subgraph FFTPipeline["FFT Multiplication Pipeline"]
+        D3 --> E1[Compute fftSize]
+        E1 --> E2[BumpAllocator.Alloc]
+        E2 --> E3[polyFromNat]
+        E3 --> E4{Cache hit?}
+        E4 -->|Yes| E5[TransformCached<br/>LRU lookup]
+        E4 -->|No| E6[Forward FFT Transform]
+        E5 --> E7[Pointwise Fermat Multiply]
+        E6 --> E7
+        E7 --> E8[Inverse FFT Transform]
+        E8 --> E9[IntTo: poly to big.Int]
+    end
+
+    subgraph Parallel["Parallel Execution"]
+        D4 --> F1[Acquire Task Semaphore<br/>NumCPU x 2]
+        F1 --> F2[executeTasks generic]
+        F2 --> F3[Launch goroutines]
+        F3 --> F4[Acquire FFT Semaphore<br/>NumCPU]
+        F4 --> E1
+    end
+
+    subgraph Result["Result Extraction"]
+        D2 --> G1[Update state a, b]
+        E9 --> G1
+        G1 --> G2{More bits?}
+        G2 -->|Yes| C2
+        G2 -->|No| G3[Zero-Copy Result Steal]
+        G3 --> G4[Return to Pool]
+        G4 --> G5[Return big.Int result]
+    end
+
+    style Input fill:#e1f5fe
+    style Strategy fill:#f3e5f5
+    style Framework fill:#fff3e0
+    style Multiply fill:#e8f5e9
+    style FFTPipeline fill:#fce4ec
+    style Parallel fill:#e0f2f1
+    style Result fill:#f5f5f5

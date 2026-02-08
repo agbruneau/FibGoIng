@@ -1,0 +1,68 @@
+flowchart LR
+    subgraph Entry["Entry Point"]
+        A1[main.go] --> A2[app.New]
+        A2 --> A3[app.Run]
+    end
+
+    subgraph Dispatch["Mode Dispatch (Priority Order)"]
+        A3 --> B1{Completion?}
+        B1 -->|Yes| B1a[Generate Shell Completion]
+        B1 -->|No| B2{Calibrate?}
+        B2 -->|Yes| B2a[Run Full Calibration]
+        B2 -->|No| B3{Auto-calibrate?}
+        B3 -->|Yes| B3a[Quick Calibration]
+        B3 -->|No| B4{TUI mode?}
+        B4 -->|Yes| B4a[Launch TUI]
+        B4 -->|No| B5[CLI Mode]
+    end
+
+    subgraph Config["Configuration Resolution"]
+        B5 --> C1[ParseConfig]
+        C1 --> C2[LoadCachedCalibration]
+        C2 --> C3{Profile found?}
+        C3 -->|Yes| C4[Apply Calibrated Thresholds]
+        C3 -->|No| C5[Adaptive Hardware Estimation]
+        C4 --> C6[Build Options]
+        C5 --> C6
+    end
+
+    subgraph Calc["Calculation Pipeline"]
+        C6 --> D1[GetCalculatorsToRun]
+        D1 --> D2{Single calculator?}
+        D2 -->|Yes| D3[Direct Calculate]
+        D2 -->|No| D4[errgroup Parallel Execute]
+        D3 --> D5[Result]
+        D4 --> D5
+    end
+
+    subgraph Progress["Progress Reporting"]
+        D3 -.->|ChannelObserver| E1[CLIProgressReporter]
+        D4 -.->|ChannelObserver| E1
+        E1 --> E2[Spinner + Progress Bar + ETA]
+    end
+
+    subgraph Output["Result Presentation"]
+        D5 --> F1{Multiple results?}
+        F1 -->|Yes| F2[AnalyzeComparisonResults]
+        F1 -->|No| F3[PresentResult]
+        F2 --> F3
+        F3 --> F4[CLIResultPresenter]
+        F4 --> F5[Formatted Output to stdout]
+    end
+
+    subgraph ErrorHandling["Error Handling"]
+        D5 -->|Error| G1{Error Type}
+        G1 -->|Timeout| G2[Exit 2]
+        G1 -->|Mismatch| G3[Exit 3]
+        G1 -->|Config| G4[Exit 4]
+        G1 -->|Canceled| G5[Exit 130]
+        G1 -->|Generic| G6[Exit 1]
+    end
+
+    style Entry fill:#e1f5fe
+    style Dispatch fill:#f3e5f5
+    style Config fill:#fff3e0
+    style Calc fill:#e8f5e9
+    style Progress fill:#fce4ec
+    style Output fill:#e0f2f1
+    style ErrorHandling fill:#ffebee

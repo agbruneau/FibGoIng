@@ -1,0 +1,144 @@
+classDiagram
+    direction TB
+
+    %% ── Computation Interfaces ──
+
+    class Calculator {
+        <<interface>>
+        calculator.go:21
+        +Calculate(ctx, n, opts) *big.Int, error
+        +Name() string
+    }
+
+    class coreCalculator {
+        <<interface>>
+        calculator.go:48
+        +CalculateCore(ctx, n, opts, subject) *big.Int, error
+        +Name() string
+    }
+
+    class CalculatorFactory {
+        <<interface>>
+        registry.go:15
+        +Create(name) Calculator, error
+        +Available() []string
+    }
+
+    class Multiplier {
+        <<interface>>
+        strategy.go:29
+        +Multiply(a, b, alloc) *big.Int
+        +Square(a, alloc) *big.Int
+        +Name() string
+    }
+
+    class DoublingStepExecutor {
+        <<interface>>
+        strategy.go:65
+        +Multiply(a, b, alloc) *big.Int
+        +Square(a, alloc) *big.Int
+        +ExecuteStep(state, isOne, alloc)
+        +Name() string
+    }
+
+    class SequenceGenerator {
+        <<interface>>
+        generator.go:30
+        +Next(ctx) *big.Int, error
+        +Current() *big.Int
+        +Index() int
+    }
+
+    %% ── Observation Interfaces ──
+
+    class ProgressObserver {
+        <<interface>>
+        observer.go:16
+        +OnProgress(step, total, bitLen)
+        +OnComplete(result, duration)
+    }
+
+    class ProgressReporter {
+        <<interface>>
+        interfaces.go:19
+        +ReportProgress(name, step, total, bitLen)
+        +ReportStart(name)
+        +ReportComplete(name, duration)
+    }
+
+    class ResultPresenter {
+        <<interface>>
+        interfaces.go:58
+        +PresentResult(result, n, duration, name)
+        +PresentComparison(results)
+        +PresentError(err)
+    }
+
+    %% ── Allocation Interfaces ──
+
+    class TempAllocator {
+        <<interface>>
+        allocator.go:10
+        +Get(n) *big.Int
+        +Put(x *big.Int)
+    }
+
+    %% ── Interface Segregation ──
+
+    DoublingStepExecutor --|> Multiplier : extends (ISP)
+
+    %% ── Implementations ──
+
+    class FibCalculator {
+        calculator.go:58
+    }
+    class DefaultFactory {
+        registry.go:37
+    }
+    class AdaptiveStrategy {
+        strategy.go:96
+    }
+    class FFTOnlyStrategy {
+        strategy.go:127
+    }
+    class KaratsubaStrategy {
+        strategy.go:161
+    }
+    class ChannelObserver {
+        observers.go:19
+    }
+    class LoggingObserver {
+        observers.go:67
+    }
+    class NoOpObserver {
+        observers.go:126
+    }
+    class CLIProgressReporter {
+        presenter.go:18
+    }
+    class TUIProgressReporter {
+        bridge.go:32
+    }
+    class NullProgressReporter {
+        interfaces.go:44
+    }
+    class BumpAllocator {
+        bump.go:27
+    }
+    class PoolAllocator {
+        allocator.go:39
+    }
+
+    Calculator <|.. FibCalculator
+    CalculatorFactory <|.. DefaultFactory
+    DoublingStepExecutor <|.. AdaptiveStrategy
+    DoublingStepExecutor <|.. FFTOnlyStrategy
+    DoublingStepExecutor <|.. KaratsubaStrategy
+    ProgressObserver <|.. ChannelObserver
+    ProgressObserver <|.. LoggingObserver
+    ProgressObserver <|.. NoOpObserver
+    ProgressReporter <|.. CLIProgressReporter
+    ProgressReporter <|.. TUIProgressReporter
+    ProgressReporter <|.. NullProgressReporter
+    TempAllocator <|.. BumpAllocator
+    TempAllocator <|.. PoolAllocator

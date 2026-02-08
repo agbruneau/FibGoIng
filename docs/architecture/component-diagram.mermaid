@@ -1,0 +1,188 @@
+classDiagram
+    direction LR
+
+    class Calculator {
+        <<interface>>
+        +Calculate(ctx, n, opts) *big.Int, error
+        +Name() string
+    }
+
+    class coreCalculator {
+        <<interface>>
+        +CalculateCore(ctx, n, opts, subject) *big.Int, error
+        +Name() string
+    }
+
+    class FibCalculator {
+        -core coreCalculator
+        +Calculate(ctx, n, opts) *big.Int, error
+        +CalculateWithObservers(ctx, n, opts, subject) *big.Int, error
+        +Name() string
+    }
+
+    class CalculatorFactory {
+        <<interface>>
+        +Create(name) Calculator, error
+        +Available() []string
+    }
+
+    class DefaultFactory {
+        -calculators map
+        -mu sync.RWMutex
+        +Register(name, creator)
+        +Create(name) Calculator, error
+        +Available() []string
+    }
+
+    class Multiplier {
+        <<interface>>
+        +Multiply(a, b, alloc) *big.Int
+        +Square(a, alloc) *big.Int
+        +Name() string
+    }
+
+    class DoublingStepExecutor {
+        <<interface>>
+        +Multiply(a, b, alloc) *big.Int
+        +Square(a, alloc) *big.Int
+        +ExecuteStep(state, isOne, alloc)
+        +Name() string
+    }
+
+    class AdaptiveStrategy {
+        -fftThreshold int
+        +Multiply(a, b, alloc) *big.Int
+        +Square(a, alloc) *big.Int
+        +ExecuteStep(state, isOne, alloc)
+    }
+
+    class FFTOnlyStrategy {
+        +Multiply(a, b, alloc) *big.Int
+        +Square(a, alloc) *big.Int
+        +ExecuteStep(state, isOne, alloc)
+    }
+
+    class KaratsubaStrategy {
+        +Multiply(a, b, alloc) *big.Int
+        +Square(a, alloc) *big.Int
+        +ExecuteStep(state, isOne, alloc)
+    }
+
+    class DoublingFramework {
+        -strategy DoublingStepExecutor
+        -opts Options
+        +ExecuteDoublingLoop(ctx, n, subject) *big.Int, error
+    }
+
+    class MatrixFramework {
+        -multiplier Multiplier
+        -opts Options
+        +ExecuteMatrixLoop(ctx, n, subject) *big.Int, error
+    }
+
+    class ProgressObserver {
+        <<interface>>
+        +OnProgress(step, total, bitLen)
+        +OnComplete(result, duration)
+    }
+
+    class ProgressSubject {
+        -observers []ProgressObserver
+        -frozen []ProgressObserver
+        +Register(observer)
+        +Freeze()
+        +NotifyProgress(step, total, bitLen)
+        +NotifyComplete(result, duration)
+    }
+
+    class ChannelObserver {
+        -ch chan ProgressUpdate
+    }
+
+    class LoggingObserver {
+        -logger zerolog.Logger
+    }
+
+    class NoOpObserver {
+    }
+
+    class ProgressReporter {
+        <<interface>>
+        +ReportProgress(name, step, total, bitLen)
+        +ReportStart(name)
+        +ReportComplete(name, duration)
+    }
+
+    class ResultPresenter {
+        <<interface>>
+        +PresentResult(result, n, duration, name)
+        +PresentComparison(results)
+        +PresentError(err)
+    }
+
+    class TempAllocator {
+        <<interface>>
+        +Get(n) *big.Int
+        +Put(x *big.Int)
+    }
+
+    class BumpAllocator {
+        -arena []big.Int
+        -pos int
+        +Alloc(n) *big.Int
+        +Reset()
+    }
+
+    class PoolAllocator {
+        +Get(n) *big.Int
+        +Put(x *big.Int)
+    }
+
+    class TransformCache {
+        -entries map
+        -config TransformCacheConfig
+        +Get(key) *Transform, bool
+        +Put(key, transform)
+    }
+
+    class DynamicThresholdManager {
+        -metrics []IterationMetric
+        -ringPos int
+        +RecordIteration(bitLen, dur, usedFFT, usedParallel)
+        +ShouldUseFFT(bitLen) bool
+        +ShouldParallelize(bitLen) bool
+    }
+
+    class Options {
+        +ParallelThreshold int
+        +FFTThreshold int
+        +StrassenThreshold int
+        +DynamicThresholds bool
+    }
+
+    Calculator <|.. FibCalculator
+    coreCalculator <|.. FibCalculator : wraps
+    CalculatorFactory <|.. DefaultFactory
+    Multiplier <|.. AdaptiveStrategy
+    Multiplier <|.. FFTOnlyStrategy
+    Multiplier <|.. KaratsubaStrategy
+    DoublingStepExecutor <|.. AdaptiveStrategy
+    DoublingStepExecutor <|.. FFTOnlyStrategy
+    DoublingStepExecutor <|.. KaratsubaStrategy
+    DoublingStepExecutor --|> Multiplier : extends
+    ProgressObserver <|.. ChannelObserver
+    ProgressObserver <|.. LoggingObserver
+    ProgressObserver <|.. NoOpObserver
+    TempAllocator <|.. BumpAllocator
+    TempAllocator <|.. PoolAllocator
+
+    DoublingFramework --> DoublingStepExecutor : uses
+    DoublingFramework --> Options : configured by
+    DoublingFramework --> ProgressSubject : reports to
+    MatrixFramework --> Multiplier : uses
+    MatrixFramework --> Options : configured by
+    FibCalculator --> ProgressSubject : creates
+    ProgressSubject --> ProgressObserver : notifies
+    DefaultFactory --> FibCalculator : creates
+    DoublingFramework --> DynamicThresholdManager : optional
+    AdaptiveStrategy --> TransformCache : optional

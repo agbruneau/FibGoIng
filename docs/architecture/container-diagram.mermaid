@@ -1,0 +1,30 @@
+C4Container
+    title Container Diagram — FibCalc (C4 Level 2)
+
+    Person(user, "User")
+
+    Container_Boundary(fibcalc, "FibCalc Application") {
+        Container(entry, "Entry Point", "cmd/fibcalc", "main.go — delegates to app.New() and app.Run()")
+        Container(app, "Application Core", "internal/app", "Lifecycle management, mode dispatching")
+        Container(config, "Configuration", "internal/config", "Flag parsing, env var overrides, validation")
+        Container(orch, "Orchestration", "internal/orchestration", "Parallel execution via errgroup, result analysis")
+        Container(fib, "Fibonacci Algorithms", "internal/fibonacci", "Fast Doubling, Matrix, FFT-based, GMP calculators")
+        Container(bigfft, "FFT Multiplication", "internal/bigfft", "Schonhage-Strassen FFT, Fermat arithmetic, caching")
+        Container(cli, "CLI Presentation", "internal/cli", "Spinner, progress bar, ETA, result formatting")
+        Container(tui, "TUI Presentation", "internal/tui", "Bubble Tea Elm architecture, dashboard panels")
+        Container(calib, "Calibration", "internal/calibration", "Benchmarking, threshold estimation, profile persistence")
+        Container(support, "Support Packages", "internal/*", "errors, format, metrics, parallel, sysmon, ui, testutil")
+    }
+
+    Rel(user, entry, "Invokes")
+    Rel(entry, app, "Delegates to")
+    Rel(app, config, "Parses configuration")
+    Rel(app, calib, "Loads/runs calibration")
+    Rel(app, orch, "Dispatches calculation")
+    Rel(app, cli, "CLI mode presentation")
+    Rel(app, tui, "TUI mode presentation")
+    Rel(orch, fib, "Creates and runs calculators")
+    Rel(fib, bigfft, "FFT multiplication")
+    Rel(orch, cli, "Progress reporting")
+    Rel(orch, tui, "Progress reporting")
+    Rel(calib, fib, "Benchmarks algorithms")

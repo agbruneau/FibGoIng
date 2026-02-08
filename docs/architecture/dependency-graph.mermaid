@@ -1,0 +1,75 @@
+flowchart LR
+    subgraph Entry["Entry Point"]
+        main["cmd/fibcalc<br/>main.go"]
+    end
+
+    subgraph Core["Application Core"]
+        app["internal/app<br/>Lifecycle & Dispatch"]
+        config["internal/config<br/>Flag Parsing & Env"]
+    end
+
+    subgraph Orchestration["Orchestration Layer"]
+        orch["internal/orchestration<br/>Parallel Execution"]
+    end
+
+    subgraph Business["Business Logic"]
+        fib["internal/fibonacci<br/>Algorithms & Frameworks"]
+        bigfft["internal/bigfft<br/>FFT Multiplication"]
+        calib["internal/calibration<br/>Benchmarking & Tuning"]
+    end
+
+    subgraph Presentation["Presentation Layer"]
+        cli["internal/cli<br/>CLI Output"]
+        tui["internal/tui<br/>TUI Dashboard"]
+    end
+
+    subgraph Support["Support Packages (Leaf Nodes)"]
+        errors["internal/errors"]
+        format["internal/format"]
+        metrics["internal/metrics"]
+        parallel["internal/parallel"]
+        sysmon["internal/sysmon"]
+        ui["internal/ui"]
+        testutil["internal/testutil"]
+    end
+
+    main --> app
+    app --> config
+    app --> orch
+    app --> cli
+    app --> tui
+    app --> calib
+    app --> fib
+    app --> errors
+    app --> format
+
+    orch --> fib
+    orch --> errors
+    orch --> parallel
+
+    calib --> fib
+    calib --> bigfft
+    calib --> config
+    calib --> errors
+    calib --> format
+    calib --> metrics
+
+    fib --> bigfft
+    fib --> errors
+
+    cli --> format
+    cli --> errors
+    cli --> metrics
+    cli --> ui
+
+    tui --> format
+    tui --> metrics
+    tui --> sysmon
+    tui --> ui
+
+    style Entry fill:#e1f5fe
+    style Core fill:#f3e5f5
+    style Orchestration fill:#fff3e0
+    style Business fill:#e8f5e9
+    style Presentation fill:#fce4ec
+    style Support fill:#f5f5f5

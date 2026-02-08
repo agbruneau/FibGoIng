@@ -1,0 +1,62 @@
+flowchart LR
+    subgraph Init["TUI Initialization"]
+        A1[app.Run] --> A2[tea.NewProgram]
+        A2 --> A3[Model.Init]
+        A3 --> A4[tickCmd 500ms]
+        A3 --> A5[startCalculationCmd]
+        A3 --> A6[watchContextCmd]
+    end
+
+    subgraph Bridge["Bridge Layer"]
+        B1[TUIProgressReporter] --> B2[programRef]
+        B3[TUIResultPresenter] --> B2
+        B2 --> B4[tea.Program.Send]
+    end
+
+    subgraph Messages["Message Types"]
+        B4 --> M1[ProgressMsg]
+        B4 --> M2[ComparisonResultsMsg]
+        B4 --> M3[FinalResultMsg]
+        B4 --> M4[ErrorMsg]
+        B4 --> M5[CalculationCompleteMsg]
+        A4 --> M6[TickMsg]
+        M6 --> M7[MemStatsMsg]
+        M6 --> M8[SysStatsMsg]
+        M6 --> M9[IndicatorsMsg]
+        A6 --> M10[ContextCancelledMsg]
+    end
+
+    subgraph Update["Model.Update (Elm Architecture)"]
+        M1 --> U1[Update Progress State]
+        M2 --> U2[Store Comparison Results]
+        M3 --> U3[Store Final Result]
+        M4 --> U4[Store Error]
+        M5 --> U5[Mark Complete]
+        M6 --> U6[Refresh Metrics]
+        M10 --> U7[Handle Cancellation]
+        U1 --> U8{Generation Guard}
+        U8 -->|Stale| U9[Reject Message]
+        U8 -->|Current| U10[Apply Update]
+    end
+
+    subgraph View["Model.View (Panel Layout)"]
+        U10 --> V1[Header Panel<br/>1 row: title + elapsed]
+        U10 --> V2[Footer Panel<br/>1 row: keys + status]
+        U10 --> V3[Logs Panel<br/>60% left: scrollable log]
+        U10 --> V4[Metrics Panel<br/>7 rows right top: mem/GC/goroutines]
+        U10 --> V5[Chart Panel<br/>remaining right: progress sparkline]
+    end
+
+    subgraph KeyBindings["Key Bindings"]
+        K1[q / Ctrl+C] --> K2[Quit]
+        K3[Space] --> K4[Pause/Resume]
+        K5[r] --> K6[Restart Calculation]
+        K7[Up/Down] --> K8[Scroll Logs]
+    end
+
+    style Init fill:#e1f5fe
+    style Bridge fill:#f3e5f5
+    style Messages fill:#fff3e0
+    style Update fill:#e8f5e9
+    style View fill:#fce4ec
+    style KeyBindings fill:#f5f5f5

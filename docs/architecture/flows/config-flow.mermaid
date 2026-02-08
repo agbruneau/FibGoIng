@@ -1,0 +1,69 @@
+flowchart LR
+    subgraph Sources["Configuration Sources (Priority Order)"]
+        S1[1. CLI Flags<br/>--parallel-threshold, etc.]
+        S2[2. Environment Variables<br/>FIBCALC_* prefix]
+        S3[3. Cached Calibration Profile<br/>~/.fibcalc_calibration.json]
+        S4[4. Adaptive Hardware Estimation<br/>CPU cores, architecture]
+        S5[5. Static Defaults<br/>constants.go]
+    end
+
+    subgraph Parse["Flag & Env Parsing"]
+        S1 --> P1[config.ParseConfig]
+        S2 --> P1
+        P1 --> P2[flag.Parse]
+        P2 --> P3[applyEnvOverrides]
+        P3 --> P4[validateConfig]
+        P4 --> P5[AppConfig struct]
+    end
+
+    subgraph Calibration["Calibration Resolution"]
+        P5 --> C1{--calibrate flag?}
+        C1 -->|Yes| C2[Full Calibration Mode<br/>runner.go]
+        C1 -->|No| C3{--auto-calibrate?}
+        C3 -->|Yes| C4[Quick Micro-benchmarks<br/>microbench.go]
+        C3 -->|No| C5[LoadCachedCalibration]
+        C5 --> C6{Valid profile?}
+        C6 -->|Yes, matching CPU/arch| C7[Apply Calibrated Thresholds]
+        C6 -->|No or stale| C8[Adaptive Estimation]
+    end
+
+    subgraph Adaptive["Adaptive Threshold Estimation"]
+        C8 --> D1[EstimateOptimalParallelThreshold<br/>by CPU core count]
+        C8 --> D2[EstimateOptimalFFTThreshold<br/>by architecture]
+        C8 --> D3[EstimateOptimalStrassenThreshold<br/>by CPU core count]
+    end
+
+    subgraph Options["Options Construction"]
+        C7 --> E1[fibonacci.Options]
+        D1 --> E1
+        D2 --> E1
+        D3 --> E1
+        E1 --> E2[normalizeOptions]
+        E2 --> E3{Any zero values?}
+        E3 -->|Yes| E4[Fill from constants.go<br/>ParallelThreshold=4096<br/>FFTThreshold=500K<br/>StrassenThreshold=3072]
+        E3 -->|No| E5[Options ready]
+        E4 --> E5
+    end
+
+    subgraph Dynamic["Runtime Dynamic Adjustment"]
+        E5 --> F1[DynamicThresholdManager]
+        F1 --> F2[Ring buffer<br/>20 IterationMetric entries]
+        F2 --> F3[Check every 5 iterations]
+        F3 --> F4[15% hysteresis band]
+        F4 --> F5[Adjust FFT/Parallel<br/>thresholds at runtime]
+    end
+
+    subgraph Profile["Calibration Profile"]
+        C2 --> G1[JSON profile]
+        C4 --> G1
+        G1 --> G2[Save to<br/>~/.fibcalc_calibration.json]
+        G2 --> G3[Validated against<br/>CPU / arch / word-size]
+    end
+
+    style Sources fill:#e1f5fe
+    style Parse fill:#f3e5f5
+    style Calibration fill:#fff3e0
+    style Adaptive fill:#e8f5e9
+    style Options fill:#fce4ec
+    style Dynamic fill:#e0f2f1
+    style Profile fill:#f5f5f5

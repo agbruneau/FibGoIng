@@ -1,0 +1,66 @@
+flowchart LR
+    subgraph Input["FFT Multiplication Input"]
+        A1[mulFFT / sqrFFT] --> A2[Compute fftSize<br/>next power of 2]
+        A2 --> A3[Select Allocator]
+    end
+
+    subgraph Alloc["Memory Allocation"]
+        A3 --> B1{Allocator type}
+        B1 -->|BumpAllocator| B2[O&#40;1&#41; pointer bump<br/>zero fragmentation]
+        B1 -->|PoolAllocator| B3[sync.Pool get<br/>amortized O&#40;1&#41;]
+        B2 --> B4[Allocate poly coefficients]
+        B3 --> B4
+    end
+
+    subgraph Convert["Polynomial Conversion"]
+        B4 --> C1[polyFromNat<br/>big.Int to polynomial]
+        C1 --> C2[Split into W-bit limbs]
+        C2 --> C3[Each limb becomes<br/>Fermat-ring element]
+    end
+
+    subgraph ForwardFFT["Forward FFT Transform"]
+        C3 --> D1{Cache lookup}
+        D1 -->|Hit| D2[TransformCached<br/>LRU cache return]
+        D1 -->|Miss| D3[fourier recursive<br/>Cooley-Tukey butterfly]
+        D3 --> D4[Store in LRU cache]
+        D2 --> D5[Transformed coefficients]
+        D4 --> D5
+    end
+
+    subgraph Pointwise["Pointwise Multiplication"]
+        D5 --> E1[For each coefficient]
+        E1 --> E2[Fermat ring multiply<br/>mod 2^k + 1]
+        E2 --> E3{CPU features?}
+        E3 -->|amd64 + AVX2| E4[Assembly addVV/subVV<br/>via go:linkname]
+        E3 -->|Generic| E5[Pure Go arithmetic]
+        E4 --> E6[Product coefficients]
+        E5 --> E6
+    end
+
+    subgraph InverseFFT["Inverse FFT Transform"]
+        E6 --> F1[inverseFourier<br/>reverse butterfly]
+        F1 --> F2[Scale by 1/N]
+        F2 --> F3[Carry propagation]
+    end
+
+    subgraph Output["Result Conversion"]
+        F3 --> G1[IntTo<br/>polynomial to big.Int]
+        G1 --> G2[Reassemble limbs]
+        G2 --> G3[Return big.Int product]
+    end
+
+    subgraph Cache["Transform Cache Details"]
+        H1[LRU eviction policy]
+        H2[Thread-safe RWMutex]
+        H3[Configurable max entries]
+        H4[15-30% speedup for<br/>iterative algorithms]
+    end
+
+    style Input fill:#e1f5fe
+    style Alloc fill:#f3e5f5
+    style Convert fill:#fff3e0
+    style ForwardFFT fill:#e8f5e9
+    style Pointwise fill:#fce4ec
+    style InverseFFT fill:#e0f2f1
+    style Output fill:#f5f5f5
+    style Cache fill:#fffde7
