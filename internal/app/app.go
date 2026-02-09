@@ -196,6 +196,29 @@ func (a *Application) runCalculate(ctx context.Context, out io.Writer) int {
 		return a.runLastDigits(ctx, out)
 	}
 
+	// Memory budget validation
+	if a.Config.MemoryLimit != "" {
+		limit, err := fibonacci.ParseMemoryLimit(a.Config.MemoryLimit)
+		if err != nil {
+			fmt.Fprintf(out, "Invalid --memory-limit: %v\n", err)
+			return apperrors.ExitErrorConfig
+		}
+		est := fibonacci.EstimateMemoryUsage(a.Config.N)
+		if est.TotalBytes > limit {
+			fmt.Fprintf(out, "Estimated memory %s exceeds limit %s.\n",
+				fibonacci.FormatMemoryEstimate(est),
+				a.Config.MemoryLimit)
+			if a.Config.LastDigits == 0 {
+				fmt.Fprintf(out, "Consider using --last-digits K for O(K) memory usage.\n")
+			}
+			return apperrors.ExitErrorConfig
+		}
+		if !a.Config.Quiet {
+			fmt.Fprintf(out, "Memory estimate: %s (limit: %s)\n",
+				fibonacci.FormatMemoryEstimate(est), a.Config.MemoryLimit)
+		}
+	}
+
 	// Setup lifecycle (timeout + signals)
 	ctx, cancelTimeout := context.WithTimeout(ctx, a.Config.Timeout)
 	defer cancelTimeout()

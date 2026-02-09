@@ -150,6 +150,9 @@ func applyStringOverrides(config *AppConfig, fs *flag.FlagSet) {
 	if !isFlagSet(fs, "calibration-profile") {
 		config.CalibrationProfile = getEnvString("CALIBRATION_PROFILE", config.CalibrationProfile)
 	}
+	if !isFlagSet(fs, "memory-limit") {
+		config.MemoryLimit = getEnvString("MEMORY_LIMIT", config.MemoryLimit)
+	}
 }
 
 func applyBooleanOverrides(config *AppConfig, fs *flag.FlagSet) {
