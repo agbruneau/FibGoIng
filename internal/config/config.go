@@ -74,6 +74,12 @@ type AppConfig struct {
 	// LastDigits, if > 0, computes only the last K decimal digits of F(N).
 	// Uses O(K) memory via modular arithmetic.
 	LastDigits int
+	// MemoryLimit, if set, specifies the maximum memory budget for calculation.
+	// Accepts human-readable formats like "8G", "512M", "1024K".
+	// The application warns and exits if the estimated memory exceeds this limit.
+	MemoryLimit string
+	// GCControl sets the GC control mode ("auto", "aggressive", "disabled").
+	GCControl string
 }
 
 // Validate checks the semantic consistency of the configuration parameters.
@@ -158,6 +164,8 @@ func ParseConfig(programName string, args []string, errorWriter io.Writer, avail
 	fs.BoolVar(&config.ShowValue, "c", false, "Display the calculated value (shorthand).")
 	fs.BoolVar(&config.TUI, "tui", false, "Launch interactive TUI dashboard.")
 	fs.IntVar(&config.LastDigits, "last-digits", 0, "Compute only the last K decimal digits (uses O(K) memory).")
+	fs.StringVar(&config.MemoryLimit, "memory-limit", "", "Maximum memory budget (e.g., 8G, 512M). Warns if estimate exceeds limit.")
+	fs.StringVar(&config.GCControl, "gc-control", "auto", "GC control during calculation (auto, aggressive, disabled).")
 	setCustomUsage(fs)
 
 	if err := fs.Parse(args); err != nil {

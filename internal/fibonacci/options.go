@@ -33,6 +33,9 @@ type Options struct {
 	// DynamicAdjustmentInterval is the number of iterations between threshold checks.
 	// If 0, uses the default (5 iterations). Only used when EnableDynamicThresholds is true.
 	DynamicAdjustmentInterval int
+	// GCMode controls the garbage collector during calculation.
+	// Valid values: "auto" (default), "aggressive", "disabled".
+	GCMode string
 }
 
 // normalizeOptions returns a copy of opts with default values filled in for zero values.

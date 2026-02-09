@@ -135,6 +135,15 @@ func (c *FibCalculator) Calculate(ctx context.Context, progressChan chan<- Progr
 //   - *big.Int: The calculated Fibonacci number.
 //   - error: An error if one occurred.
 func (c *FibCalculator) CalculateWithObservers(ctx context.Context, subject *ProgressSubject, calcIndex int, n uint64, opts Options) (result *big.Int, err error) {
+	// GC control for large calculations
+	gcMode := opts.GCMode
+	if gcMode == "" {
+		gcMode = "auto"
+	}
+	gcCtrl := NewGCController(gcMode, n)
+	gcCtrl.Begin()
+	defer gcCtrl.End()
+
 	start := time.Now()
 	defer func() {
 		duration := time.Since(start).Seconds()
