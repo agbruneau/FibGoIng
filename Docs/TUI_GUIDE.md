@@ -3,8 +3,8 @@
 Interactive terminal dashboard inspired by btop, built on Bubble Tea (Elm architecture).
 Activated via the `--tui` flag or the `FIBCALC_TUI=true` environment variable.
 
-For architectural context, see [ARCHITECTURE.md](ARCHITECTURE.md).
-For the bridge pattern and interface-based decoupling, see [DESIGN_PATTERNS.md](DESIGN_PATTERNS.md).
+For architectural context, see [Architecture](architecture/README.md).
+For the bridge pattern and interface-based decoupling, see [Design Patterns](architecture/patterns/design-patterns.md).
 
 ---
 
@@ -383,7 +383,7 @@ func Run(ctx context.Context, calculators []fibonacci.Calculator,
 
 ## Cross-References
 
-- [DESIGN_PATTERNS.md](DESIGN_PATTERNS.md) -- Observer and interface-based decoupling patterns
-- [ARCHITECTURE.md](ARCHITECTURE.md) -- Presentation Layer and ADR-004
+- [Design Patterns](architecture/patterns/design-patterns.md) -- Observer and interface-based decoupling patterns
+- [Architecture](architecture/README.md) -- Presentation Layer and ADR-004
 - [algorithms/PROGRESS_BAR_ALGORITHM.md](algorithms/PROGRESS_BAR_ALGORITHM.md) -- Progress calculation math
 - [BUILD.md](BUILD.md) -- `--tui` flag and `FIBCALC_TUI` env var

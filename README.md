@@ -21,7 +21,7 @@
 6. [Installation](#installation)
 7. [Usage Guide](#usage-guide)
 8. [Performance Benchmarks](#performance-benchmarks)
-9. [Formal Verification](#formal-verification)
+9. [Testing](#testing)
 10. [Troubleshooting](#troubleshooting)
 11. [Configuration](#configuration)
 12. [Development](#development)
@@ -64,18 +64,8 @@ FibCalc serves as both a practical high-performance tool and a reference impleme
 - **Runtime-Configurable FFT Parallelism**: FFT recursion parallelism thresholds (`ParallelFFTRecursionThreshold`, `MaxParallelFFTDepth`) can be tuned at runtime via `SetFFTParallelismConfig()` for hardware-specific optimization.
 - **Adaptive Parallelism**: Automatically parallelizes recursive branches and matrix operations across CPU cores based on input size and hardware capabilities.
 - **Concurrency Limiting**: Task semaphore limits concurrent goroutines to `runtime.NumCPU()*2`, preventing contention and memory pressure during parallel multiplication.
-- **Optimized Memory Zeroing**: Uses Go 1.21+ `clear()` builtin for efficient slice zeroing in FFT operations.
 - **Auto-Calibration**: Built-in benchmarking tool (`-calibrate`) to empirically determine the optimal parallelism and FFT thresholds for the host machine. Adaptive threshold estimation at startup based on CPU core count and architecture.
-- **Atomic Pre-Warming**: Optimized memory pool initialization ensures resources are ready before the first request.
 - **Go Generics**: `executeTasks[T, PT]()` uses generics with pointer constraint pattern to eliminate code duplication between multiplication and squaring task execution.
-
-### Formal Verification (Planned)
-
-> **Note**: The formal verification suite (`formal/coq/`, `formal/tla/`) is planned but not yet implemented. The specifications below describe the intended design.
-
-- **Coq Proofs** (planned): Machine-checked mathematical proofs of Fast Doubling identities and Fermat ring normalization correctness.
-- **TLA+ Specifications** (planned): Formal models of the orchestration state machine and dual semaphore interaction.
-- **Fuzz Testing**: 4 fuzz targets in `internal/fibonacci/` with cross-algorithm consistency validation and mathematical identity verification (`FuzzFastDoublingConsistency`, `FuzzFFTBasedConsistency`, `FuzzFibonacciIdentities`, `FuzzProgressMonotonicity`).
 
 ### Robust Architecture
 
@@ -175,21 +165,23 @@ graph TD
 |-----------|----------------|
 | `cmd/fibcalc` | Application entry point. Delegates to `app.New()` and `app.Run()`. |
 | `cmd/generate-golden` | Golden file generator for test data. |
-| `internal/fibonacci` | Core domain logic. Algorithms (`FastDoubling`, `MatrixExponentiation`, `FFTBased`), frameworks, interfaces, strategies (ISP: `Multiplier`/`DoublingStepExecutor`), observer pattern, state pooling, dynamic thresholds, runtime Strassen configuration (`Set/GetDefaultStrassenThreshold`), sequence generation. |
-| `internal/bigfft` | Specialized FFT arithmetic for `big.Int`: Fermat ring arithmetic (Z/(2^k+1)) with optimized `smallMulThreshold`, FFT core and recursion with runtime-configurable parallelism (`FFTParallelismConfig`), polynomial operations, thread-safe LRU transform cache, bump allocator, memory pool with pre-warming, memory estimation. |
-| `internal/orchestration` | Concurrent calculator execution via `errgroup`, result aggregation and comparison, calculator selection. Defines `ProgressReporter`/`ResultPresenter` interfaces for Clean Architecture decoupling. |
-| `internal/cli` | Progress bar with ETA, spinner, output formatting (Display\*/Format\*/Write\*/Print\*), shell completion (bash/zsh/fish/powershell), duration helpers. |
-| `internal/tui` | Interactive TUI dashboard (btop-style) powered by Bubble Tea: model (Elm architecture), header/footer panels, scrollable logs, runtime metrics, progress chart with sparklines, bridge adapters for orchestration interfaces. |
+| `internal/fibonacci` | Core domain logic. Algorithms (`FastDoubling`, `MatrixExponentiation`, `FFTBased`), frameworks, interfaces, strategies (ISP: `Multiplier`/`DoublingStepExecutor`), observer pattern, state pooling, dynamic thresholds, sequence generation. |
+| `internal/bigfft` | Specialized FFT arithmetic for `big.Int`: Fermat ring arithmetic, FFT core and recursion with runtime-configurable parallelism, polynomial operations, thread-safe LRU transform cache, bump allocator, memory pool with pre-warming. |
+| `internal/orchestration` | Concurrent calculator execution via `errgroup`, result aggregation and comparison, calculator selection. Defines `ProgressReporter`/`ResultPresenter` interfaces. |
+| `internal/cli` | Progress bar with ETA, spinner, output formatting (Display\*/Format\*/Write\*/Print\*), shell completion (bash/zsh/fish/powershell). |
+| `internal/tui` | Interactive TUI dashboard (btop-style) powered by Bubble Tea: model (Elm architecture), header/footer panels, scrollable logs, runtime metrics, progress chart with sparklines. |
 | `internal/calibration` | Auto-tuning: full calibration mode, adaptive hardware-based threshold estimation, micro-benchmarks, calibration profile persistence (JSON). |
-| `internal/config` | Configuration parsing (`flag`), environment variable overrides (`FIBCALC_*` prefix), custom colored usage, validation. |
+| `internal/config` | Configuration parsing (`flag`), environment variable overrides (`FIBCALC_*` prefix), validation. |
 | `internal/app` | Application lifecycle, command dispatching (completion/calibration/TUI/CLI modes), version info with ldflags injection. |
 | `internal/errors` | Custom error types (`ConfigError`, `CalculationError`) with standardized exit codes (0-4, 130). |
 | `internal/parallel` | `ErrorCollector` for thread-safe first-error aggregation across goroutines. |
-| `internal/format` | Duration and number formatting utilities shared by CLI and TUI (thousand separators, ETA display). |
-| `internal/metrics` | Performance indicators: bits/s, digits/s, doubling steps/s, mathematical properties of results. |
+| `internal/format` | Duration and number formatting utilities shared by CLI and TUI. |
+| `internal/metrics` | Performance indicators: bits/s, digits/s, doubling steps/s. |
 | `internal/sysmon` | System-wide CPU and memory monitoring via gopsutil (used by TUI metrics panel). |
-| `internal/ui` | Color themes, terminal formatting, `NO_COLOR` environment variable support. |
+| `internal/ui` | Color themes, terminal formatting, `NO_COLOR` support. |
 | `internal/testutil` | Shared test utilities (ANSI escape code stripping). |
+
+> **Full architecture documentation**: [Docs/architecture/README.md](Docs/architecture/README.md) | [Design Patterns](Docs/architecture/patterns/design-patterns.md)
 
 ---
 
@@ -349,9 +341,18 @@ FibCalc is optimized for speed. Below is a summary of performance characteristic
 
 ---
 
-## Formal Verification
+## Testing
 
-> **Note**: The Coq proofs and TLA+ specifications described in the Key Features section are planned but not yet implemented. The `formal/` directory does not yet exist. The fuzz testing and concurrency verification below are active and functional.
+### Test Suite
+
+The project has 80%+ test coverage with multiple testing strategies:
+
+```bash
+go test -v -race -cover ./...                          # All tests with race detector
+go test -v -short ./...                                # Skip slow tests
+go test -v -run TestFastDoubling ./internal/fibonacci/  # Single test by name
+go test -bench=. -benchmem ./internal/fibonacci/        # Benchmarks
+```
 
 ### Fuzz Testing
 
@@ -368,6 +369,14 @@ FibCalc is optimized for speed. Below is a summary of performance characteristic
 go test -fuzz=FuzzFastDoublingConsistency -fuzztime=30s ./internal/fibonacci/
 go test -fuzz=FuzzFFTBasedConsistency -fuzztime=1m ./internal/fibonacci/
 ```
+
+### Golden File Tests
+
+Golden reference values in `internal/fibonacci/testdata/fibonacci_golden.json` are generated by `cmd/generate-golden` and used to validate algorithm correctness across all implementations.
+
+### E2E Tests
+
+End-to-end CLI integration tests in `test/e2e/` validate the full application lifecycle.
 
 > **Full testing guide**: [Docs/TESTING.md](Docs/TESTING.md)
 
@@ -417,8 +426,7 @@ Environment variables can override CLI flags. Priority: CLI flags > Environment 
 ### Prerequisites
 - Go 1.25+
 - golangci-lint (optional, for linting)
-- Coq 8.18+ (optional, planned for formal proofs — not yet implemented)
-- TLA+ Toolbox or `tlc` (optional, planned for concurrency models — not yet implemented)
+- gosec (optional, for security audits)
 
 ### Key Commands
 
@@ -428,21 +436,34 @@ go test -v -short ./...                                # Skip slow tests
 go test -v -run TestFastDoubling ./internal/fibonacci/  # Run a single test
 go test -bench=. -benchmem ./internal/fibonacci/        # Run benchmarks
 go test -fuzz=FuzzFastDoubling ./internal/fibonacci/    # Run fuzz tests
-go test -fuzz=FuzzFFTBasedConsistency -fuzztime=1m ./internal/fibonacci/  # Run FFT consistency fuzz
 ```
 
-If `make` is available, Makefile targets are also provided:
+### Makefile Targets
+
+If `make` is available:
 
 ```bash
+make build          # Build binary to ./build/fibcalc (uses PGO if profile exists)
 make test           # go test -v -race -cover ./...
+make test-short     # go test -v -short ./...
 make lint           # golangci-lint run ./...
+make format         # Format Go code (go fmt + gofmt -s)
 make check          # format + lint + test
 make coverage       # Generate coverage report (coverage.html)
 make benchmark      # Run performance benchmarks
+make security       # gosec ./...
+make clean          # Remove build artifacts
+make build-all      # Build for Linux, Windows, macOS
 make pgo-profile    # Generate CPU profile for PGO
 make build-pgo      # Build with Profile-Guided Optimization
-make build-all      # Build for all platforms (Linux, Windows, macOS)
 make pgo-rebuild    # Full PGO workflow (profile + build)
+make run            # Build and run with default settings
+make run-fast       # Quick run with small n value
+make run-calibrate  # Run calibration mode
+make install        # Install binary to $GOPATH/bin
+make install-tools  # Install golangci-lint and gosec
+make tidy           # Tidy go.mod and go.sum
+make help           # Display all available targets
 ```
 
 ### Project Structure
@@ -468,9 +489,7 @@ fibcalc/
 │   ├── sysmon/              # System CPU/memory monitoring
 │   ├── ui/                  # Color themes, NO_COLOR support
 │   └── testutil/            # Shared test utilities
-├── Docs/                    # Documentation
-│   ├── ARCHITECTURE.md      # → Redirect to architecture/README.md
-│   ├── DESIGN_PATTERNS.md   # → Redirect to architecture/patterns/
+├── Docs/
 │   ├── PERFORMANCE.md
 │   ├── BUILD.md
 │   ├── TESTING.md
@@ -478,10 +497,10 @@ fibcalc/
 │   ├── TUI_GUIDE.md
 │   ├── algorithms/          # Algorithm deep dives
 │   └── architecture/        # Consolidated architecture docs
-│       ├── README.md         # Architecture hub (source of truth)
-│       ├── flows/            # Execution flow documentation
-│       ├── patterns/         # Design pattern catalog
-│       └── validation/       # Architecture validation reports
+│       ├── README.md        # Architecture hub (source of truth)
+│       ├── flows/           # Execution flow documentation
+│       ├── patterns/        # Design pattern catalog
+│       └── validation/      # Architecture validation reports
 ├── test/
 │   └── e2e/                 # End-to-end CLI integration tests
 ├── .golangci.yml            # Linter configuration (24 linters)

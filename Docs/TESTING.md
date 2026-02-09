@@ -372,6 +372,6 @@ When implementing a new `coreCalculator`:
 
 ## Cross-References
 
-- [ARCHITECTURE.md](ARCHITECTURE.md) for package structure and interface definitions
+- [Architecture](architecture/README.md) for package structure and interface definitions
 - [PERFORMANCE.md](PERFORMANCE.md) for benchmark reference data and profiling guidance
 - [algorithms/](algorithms/) for detailed algorithm documentation

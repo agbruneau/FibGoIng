@@ -331,10 +331,8 @@ Documentation files:
 | File                       | Purpose                         |
 | -------------------------- | ------------------------------- |
 | `README.md`                | Main project documentation      |
-| `Docs/ARCHITECTURE.md`     | Architecture details            |
-| `Docs/PERFORMANCE.md`      | Performance tuning              |
-| `Docs/SECURITY.md`         | Security policy                 |
-| `Docs/TROUBLESHOOTING.md`  | Common issues and solutions     |
+| `Docs/architecture/README.md` | Architecture hub (source of truth) |
+| `Docs/PERFORMANCE.md`        | Performance tuning                 |
 
 ## Reporting Issues
 
@@ -359,7 +357,7 @@ Describe:
 
 ### Security Issues
 
-For security vulnerabilities, please see [SECURITY.md](Docs/SECURITY.md) for responsible disclosure procedures.
+For security vulnerabilities, please open a private issue or contact the maintainers directly.
 
 ---
 

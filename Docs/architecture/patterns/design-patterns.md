@@ -4,7 +4,7 @@ This document catalogs the twelve design patterns used in the FibGo codebase,
 their motivations, key types, source locations, and how they interact during
 a calculation.
 
-For architectural context and ADRs, see [../../ARCHITECTURE.md](../../ARCHITECTURE.md).
+For architectural context and ADRs, see [Architecture](../README.md).
 
 ---
 
@@ -461,7 +461,7 @@ into different frameworks without code duplication.
 The orchestration layer defines two interfaces that act as ports. The CLI and TUI
 packages provide adapter implementations, ensuring that business logic never imports
 presentation packages. This follows Clean Architecture principles (see
-[../../ARCHITECTURE.md](../../ARCHITECTURE.md)).
+[Architecture](../README.md)).
 
 ### Interfaces (Ports)
 
