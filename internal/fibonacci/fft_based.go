@@ -48,6 +48,20 @@ func (c *FFTBasedCalculator) CalculateCore(ctx context.Context, reporter Progres
 	s := AcquireState()
 	defer ReleaseState(s)
 
+	// Pre-size all big.Int buffers based on expected result size.
+	// F(n) has approximately n * log2(φ) ≈ n * 0.69424 bits.
+	if n > 1000 {
+		estimatedBits := int(float64(n) * 0.69424)
+		estimatedWords := (estimatedBits + 63) / 64
+		preSizeBigInt(s.FK, estimatedWords)
+		preSizeBigInt(s.FK1, estimatedWords)
+		s.FK.SetInt64(0)
+		s.FK1.SetInt64(1)
+		preSizeBigInt(s.T1, estimatedWords)
+		preSizeBigInt(s.T2, estimatedWords)
+		preSizeBigInt(s.T3, estimatedWords)
+	}
+
 	// Use framework with FFT-only strategy
 	strategy := &FFTOnlyStrategy{}
 	framework := NewDoublingFramework(strategy)

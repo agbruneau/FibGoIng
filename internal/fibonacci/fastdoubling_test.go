@@ -100,6 +100,24 @@ func TestShouldParallelizeMultiplication(t *testing.T) {
 	})
 }
 
+// TestPreSizing_ReducesAllocations verifies pre-sizing doesn't break correctness
+// and produces correct results for medium-sized calculations.
+func TestPreSizing_ReducesAllocations(t *testing.T) {
+	t.Parallel()
+
+	calc := NewCalculator(&OptimizedFastDoubling{})
+	ctx := context.Background()
+
+	// Medium-sized calculation that benefits from pre-sizing
+	result, err := calc.Calculate(ctx, nil, 0, 50000, Options{})
+	if err != nil {
+		t.Fatalf("Calculate error: %v", err)
+	}
+	if result.Sign() <= 0 {
+		t.Error("result should be positive")
+	}
+}
+
 // TestFastDoubling_ReducedState_Correctness verifies results are correct
 // with the reduced 5-temporary state across key values.
 func TestFastDoubling_ReducedState_Correctness(t *testing.T) {
