@@ -94,21 +94,22 @@ func (fd *OptimizedFastDoubling) CalculateCore(ctx context.Context, reporter Pro
 	s := AcquireState()
 	defer ReleaseState(s)
 
-	// Pre-size all big.Int buffers based on expected result size.
-	// F(n) has approximately n * log2(φ) ≈ n * 0.69424 bits.
-	// Pre-sizing avoids repeated reallocation during the doubling loop.
+	// Create arena for contiguous memory allocation.
+	// Pre-size all big.Int buffers from the arena to avoid per-buffer
+	// GC tracking and reduce memory fragmentation.
+	arena := NewCalculationArena(n)
 	if n > 1000 {
 		estimatedBits := int(float64(n) * 0.69424)
 		estimatedWords := (estimatedBits + 63) / 64
-		// Pre-size FK/FK1 (note: preSizeBigInt resets value to 0, so re-init after)
-		preSizeBigInt(s.FK, estimatedWords)
-		preSizeBigInt(s.FK1, estimatedWords)
+		arena.PreSizeFromArena(s.FK, estimatedWords)
+		arena.PreSizeFromArena(s.FK1, estimatedWords)
 		s.FK.SetInt64(0)
 		s.FK1.SetInt64(1)
-		preSizeBigInt(s.T1, estimatedWords)
-		preSizeBigInt(s.T2, estimatedWords)
-		preSizeBigInt(s.T3, estimatedWords)
+		arena.PreSizeFromArena(s.T1, estimatedWords)
+		arena.PreSizeFromArena(s.T2, estimatedWords)
+		arena.PreSizeFromArena(s.T3, estimatedWords)
 	}
+	_ = arena // arena's backing block lives until the function returns
 
 	// Normalize options to ensure consistent default threshold handling
 	normalizedOpts := normalizeOptions(opts)
