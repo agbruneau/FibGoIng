@@ -25,48 +25,18 @@ Ce PRD couvre l'intégralité des aspects du portage :
 
 ## Table des Matières
 
-- [Phase 1 : Fondations & Analyse des exigences](#phase-1--fondations--analyse-des-exigences)
-  - [T1.1 — Vision et critères de succès](#t11--raffinement-de-la-vision-et-critères-de-succès)
-  - [T1.2 — Analyse des lacunes documentée](#t12--analyse-des-lacunes-documentée)
-  - [T1.3 — Guide approfondi des idiomes Rust](#t13--guide-approfondi-des-idiomes-rust)
-  - [T1.4 — Matrice d'évaluation des dépendances](#t14--matrice-dévaluation-des-dépendances)
-  - [T1.5 — Registre de risques par composant](#t15--registre-de-risques-par-composant)
-  - [T1.6 — Plan de validation croisée Go/Rust](#t16--plan-de-validation-croisée-gorust)
-  - [T1.7 — Baselines de performance et détection de régression](#t17--baselines-de-performance-et-détection-de-régression)
-  - [T1.8 — Exigences non fonctionnelles](#t18--exigences-non-fonctionnelles)
-  - [T1.9 — Matrice de cross-compilation détaillée](#t19--matrice-de-cross-compilation-détaillée)
-  - [T1.10 — Revue de compatibilité des licences](#t110--revue-de-compatibilité-des-licences)
-  - [T1.11 — Timeline de migration raffinée](#t111--timeline-de-migration-raffinée)
-  - [T1.12 — Spécification CLAUDE.md pour le projet Rust](#t112--spécification-claudemd-pour-le-projet-rust)
+- [Phase 1 : Fondations &amp; Analyse des exigences](#phase-1--fondations--analyse-des-exigences)
 - [Phase 2 : Spécifications algorithmiques détaillées](#phase-2--spécifications-algorithmiques-détaillées)
-  - [T2.1 — Fast Doubling : itération bit-à-bit](#t21--fast-doubling--itération-bit-à-bit-et-transitions-détat)
-  - [T2.2 — Fast Doubling : logique de parallélisation](#t22--fast-doubling--logique-de-parallélisation)
-  - [T2.3 — Matrix Exponentiation : gestion d'état](#t23--matrix-exponentiation--gestion-détat-et-pooling)
-  - [T2.4 — Strassen : logique de basculement](#t24--strassen--logique-de-basculement-et-fallback)
-  - [T2.5 — FFT : sélection des paramètres](#t25--fft--sélection-des-paramètres)
-  - [T2.6 — Arithmétique de Fermat](#t26--arithmétique-de-fermat)
-  - [T2.7 — FFT : structure récursive](#t27--fft--structure-récursive-et-cas-de-base)
-  - [T2.8 — Opérations polynomiales](#t28--opérations-polynomiales-pour-fft)
-  - [T2.9 — Réutilisation de transformée FFT](#t29--réutilisation-de-transformée-fft-pour-le-squaring)
-  - [T2.10 — Stratégie adaptative](#t210--stratégie-adaptative--logique-de-sélection)
-  - [T2.11 — Fast Doubling modulaire](#t211--fast-doubling-modulaire)
-  - [T2.12 — Fast path itératif](#t212--fast-path-itératif)
-  - [T2.13 — Retour de résultat zero-copy](#t213--retour-de-résultat-zero-copy)
-  - [T2.14 — Comparaison inter-algorithmes](#t214--méthodologie-de-comparaison-inter-algorithmes)
-  - [T2.15 — Générateur de séquence](#t215--générateur-de-séquence-et-optimisation-skip)
-  - [T2.16 — Sélection de calculateur](#t216--sélection-de-calculateur-depuis-la-config)
-  - [T2.17 — Preuves de correction](#t217--preuves-de-correction-algorithmique)
-  - [T2.18 — Carte de couverture de tests](#t218--carte-de-couverture-de-tests-par-algorithme)
-- [Phase 3 : Système Observer & suivi de progression](#phase-3--système-observer--suivi-de-progression)
-- [Phase 4 : Gestion mémoire & concurrence](#phase-4--gestion-mémoire--concurrence)
-- [Phase 5 : Seuils dynamiques & calibration](#phase-5--seuils-dynamiques--calibration)
+- [Phase 3 : Système Observer &amp; suivi de progression](#phase-3--système-observer--suivi-de-progression)
+- [Phase 4 : Gestion mémoire &amp; concurrence](#phase-4--gestion-mémoire--concurrence)
+- [Phase 5 : Seuils dynamiques &amp; calibration](#phase-5--seuils-dynamiques--calibration)
 - [Phase 6 : Spécification détaillée du TUI](#phase-6--spécification-détaillée-du-tui)
-- [Phase 7 : Intégration, tests & finalisation](#phase-7--intégration-tests--finalisation)
-- [Résumé & Dépendances critiques](#résumé--dépendances-critiques)
+- [Phase 7 : Intégration, tests &amp; finalisation](#phase-7--intégration-tests--finalisation)
+- [Résumé &amp; Dépendances critiques](#résumé--dépendances-critiques)
 
 ---
 
-# PRD — Phase 1 : Fondations & Analyse des exigences
+# Phase 1 : Fondations & Analyse des exigences
 
 > **Projet** : Portage de FibGo (Go) vers Rust — Calculateur Fibonacci haute performance
 > **Version** : 1.0
@@ -86,57 +56,57 @@ Le projet cible une parité fonctionnelle complète : trois algorithmes (Fast Do
 
 #### O1 — Parité fonctionnelle complète
 
-| # | Critère | Méthode de vérification | Seuil |
-|---|---------|------------------------|-------|
+| #    | Critère                                                                         | Méthode de vérification                              | Seuil                         |
+| ---- | -------------------------------------------------------------------------------- | ------------------------------------------------------ | ----------------------------- |
 | O1.1 | Les 3 algorithmes (fast, matrix, fft) produisent des résultats identiques à Go | Validation croisée sur golden files (27 valeurs de N) | 100% des golden tests passent |
-| O1.2 | Toutes les options CLI sont supportées (22 flags documentés) | Tests E2E sur chaque flag avec sortie comparée | 22/22 flags opérationnels |
-| O1.3 | Le mode TUI interactif fonctionne avec les 6 raccourcis clavier | Test manuel + tests unitaires du modèle Elm | 6/6 raccourcis fonctionnels |
-| O1.4 | Le mode `--last-digits K` fonctionne pour N arbitrairement grands | Test avec N=10^10, K=100, comparaison avec Go | Résultats identiques |
-| O1.5 | Shell completion (bash, zsh, fish, powershell) opérationnelle | Génération + validation syntaxique par shell | 4/4 shells supportés |
+| O1.2 | Toutes les options CLI sont supportées (22 flags documentés)                   | Tests E2E sur chaque flag avec sortie comparée        | 22/22 flags opérationnels    |
+| O1.3 | Le mode TUI interactif fonctionne avec les 6 raccourcis clavier                  | Test manuel + tests unitaires du modèle Elm           | 6/6 raccourcis fonctionnels   |
+| O1.4 | Le mode `--last-digits K` fonctionne pour N arbitrairement grands              | Test avec N=10^10, K=100, comparaison avec Go          | Résultats identiques         |
+| O1.5 | Shell completion (bash, zsh, fish, powershell) opérationnelle                   | Génération + validation syntaxique par shell         | 4/4 shells supportés         |
 
 #### O2 — Performance égale ou supérieure
 
-| # | Critère | Méthode de vérification | Seuil |
-|---|---------|------------------------|-------|
-| O2.1 | Fast Doubling F(10M) ≤ temps Go de référence | Benchmark `criterion` vs baseline Go | ≤ 2.1s (ref AMD Ryzen 9) |
-| O2.2 | Empreinte mémoire (RSS) ≤ Go pour chaque N testé | Mesure RSS via `/proc/self/status` ou `sysinfo` | RSS_Rust ≤ RSS_Go × 1.05 |
-| O2.3 | Temps de démarrage (cold start) < 50ms | Mesure `time` sur 100 exécutions | p99 < 50ms |
-| O2.4 | Aucune régression >5% sur les 18 benchmarks de référence | Suite `criterion` avec comparaison statistique | Pas de régression >5% (p < 0.05) |
+| #    | Critère                                                    | Méthode de vérification                           | Seuil                             |
+| ---- | ----------------------------------------------------------- | --------------------------------------------------- | --------------------------------- |
+| O2.1 | Fast Doubling F(10M) ≤ temps Go de référence             | Benchmark `criterion` vs baseline Go              | ≤ 2.1s (ref AMD Ryzen 9)         |
+| O2.2 | Empreinte mémoire (RSS) ≤ Go pour chaque N testé         | Mesure RSS via `/proc/self/status` ou `sysinfo` | RSS_Rust ≤ RSS_Go × 1.05        |
+| O2.3 | Temps de démarrage (cold start) < 50ms                     | Mesure `time` sur 100 exécutions                 | p99 < 50ms                        |
+| O2.4 | Aucune régression >5% sur les 18 benchmarks de référence | Suite `criterion` avec comparaison statistique    | Pas de régression >5% (p < 0.05) |
 
 #### O3 — Qualité du code et sécurité mémoire
 
-| # | Critère | Méthode de vérification | Seuil |
-|---|---------|------------------------|-------|
-| O3.1 | Zéro bloc `unsafe` hors FFI GMP et linkage SIMD | Audit `cargo geiger` | ≤ 5 blocs unsafe, tous documentés |
-| O3.2 | Couverture de tests ≥ 75% | `cargo tarpaulin` | ≥ 75% lignes couvertes |
-| O3.3 | Aucun warning clippy en mode `pedantic` | `cargo clippy -- -W clippy::pedantic` | 0 warnings |
-| O3.4 | Aucune vulnérabilité connue dans les dépendances | `cargo audit` | 0 vulnérabilités |
-| O3.5 | Complexité cyclomatique < 15 par fonction | Analyse statique (clippy / cognitive complexity) | Max 15 par fonction |
+| #    | Critère                                            | Méthode de vérification                        | Seuil                               |
+| ---- | --------------------------------------------------- | ------------------------------------------------ | ----------------------------------- |
+| O3.1 | Zéro bloc `unsafe` hors FFI GMP et linkage SIMD  | Audit `cargo geiger`                           | ≤ 5 blocs unsafe, tous documentés |
+| O3.2 | Couverture de tests ≥ 75%                          | `cargo tarpaulin`                              | ≥ 75% lignes couvertes             |
+| O3.3 | Aucun warning clippy en mode `pedantic`           | `cargo clippy -- -W clippy::pedantic`          | 0 warnings                          |
+| O3.4 | Aucune vulnérabilité connue dans les dépendances | `cargo audit`                                  | 0 vulnérabilités                  |
+| O3.5 | Complexité cyclomatique < 15 par fonction          | Analyse statique (clippy / cognitive complexity) | Max 15 par fonction                 |
 
 #### O4 — Portabilité multi-plateforme
 
-| # | Critère | Méthode de vérification | Seuil |
-|---|---------|------------------------|-------|
-| O4.1 | Compilation réussie sur 5 target triples | CI matrix (voir T1.9) | 5/5 targets compilent |
-| O4.2 | Tests passent sur Linux x86_64, macOS arm64, Windows x86_64 | CI multi-plateforme | 100% tests passent sur 3 OS |
-| O4.3 | Binaire statiquement lié (pas de dépendance dynamique, hors GMP) | `ldd` / `otool -L` | 0 dépendances dynamiques (mode pure-Rust) |
+| #    | Critère                                                           | Méthode de vérification | Seuil                                      |
+| ---- | ------------------------------------------------------------------ | ------------------------- | ------------------------------------------ |
+| O4.1 | Compilation réussie sur 5 target triples                          | CI matrix (voir T1.9)     | 5/5 targets compilent                      |
+| O4.2 | Tests passent sur Linux x86_64, macOS arm64, Windows x86_64        | CI multi-plateforme       | 100% tests passent sur 3 OS                |
+| O4.3 | Binaire statiquement lié (pas de dépendance dynamique, hors GMP) | `ldd` / `otool -L`    | 0 dépendances dynamiques (mode pure-Rust) |
 
 #### O5 — Expérience développeur
 
-| # | Critère | Méthode de vérification | Seuil |
-|---|---------|------------------------|-------|
-| O5.1 | `cargo build --release` complète en < 120s | Mesure sur CI (machine standard) | < 120s |
-| O5.2 | Documentation rustdoc complète pour tous les modules publics | `cargo doc --no-deps` sans warning | 0 items publics non documentés |
-| O5.3 | CLAUDE.md Rust opérationnel et testé | Validation par agent IA (Claude Code) | Agent peut build + test sans aide |
-| O5.4 | Ajout d'un nouvel algorithme en < 30 minutes | Mesure de temps avec guide | Trait `Calculator` + register < 30min |
+| #    | Critère                                                      | Méthode de vérification             | Seuil                                   |
+| ---- | ------------------------------------------------------------- | ------------------------------------- | --------------------------------------- |
+| O5.1 | `cargo build --release` complète en < 120s                 | Mesure sur CI (machine standard)      | < 120s                                  |
+| O5.2 | Documentation rustdoc complète pour tous les modules publics | `cargo doc --no-deps` sans warning  | 0 items publics non documentés         |
+| O5.3 | CLAUDE.md Rust opérationnel et testé                        | Validation par agent IA (Claude Code) | Agent peut build + test sans aide       |
+| O5.4 | Ajout d'un nouvel algorithme en < 30 minutes                  | Mesure de temps avec guide            | Trait `Calculator` + register < 30min |
 
 #### O6 — Maintenabilité et écosystème
 
-| # | Critère | Méthode de vérification | Seuil |
-|---|---------|------------------------|-------|
-| O6.1 | Structure Cargo workspace avec ≤ 5 crates | Inspection `Cargo.toml` | ≤ 5 crates |
-| O6.2 | Toutes les dépendances ont une licence compatible Apache-2.0 | `cargo deny check licenses` | 0 incompatibilités |
-| O6.3 | CI/CD opérationnelle (build, test, lint, audit, release) | GitHub Actions workflow | Pipeline complète verte |
+| #    | Critère                                                      | Méthode de vérification     | Seuil                    |
+| ---- | ------------------------------------------------------------- | ----------------------------- | ------------------------ |
+| O6.1 | Structure Cargo workspace avec ≤ 5 crates                    | Inspection `Cargo.toml`     | ≤ 5 crates              |
+| O6.2 | Toutes les dépendances ont une licence compatible Apache-2.0 | `cargo deny check licenses` | 0 incompatibilités      |
+| O6.3 | CI/CD opérationnelle (build, test, lint, audit, release)     | GitHub Actions workflow       | Pipeline complète verte |
 
 ---
 
@@ -146,23 +116,23 @@ Le projet cible une parité fonctionnelle complète : trois algorithmes (Fast Do
 
 Le PRD existant (`PRD-Claude 1.md`, ~1280 lignes) présente 15 lacunes identifiées lors de l'audit comparatif avec le code source Go (102 fichiers, 17 packages).
 
-| # | Lacune | Impact | Priorité | Section PRD cible | Stratégie de résolution |
-|---|--------|--------|----------|-------------------|------------------------|
-| L1 | Pas de mapping fichier-par-fichier Go → Rust | **Critique** — Un développeur ne sait pas où commencer | P0 | T7.1 | Tableau exhaustif 100+ fichiers avec crate destination |
-| L2 | Documentation algorithmique superficielle (pas de pseudocode d'itération bit-à-bit, swaps de pointeurs) | **Critique** — Portage impossible sans compréhension du flux exact | P0 | T2.1–T2.4 | Pseudocode détaillé + diagrammes de machine à états |
-| L3 | Détails FFT manquants (arithmétique Fermat, récursion, sélection de paramètres, polynômes) | **Critique** — Le moteur FFT est le composant le plus complexe (~1500 LoC) | P0 | T2.5–T2.9 | Spécification mathématique + pseudocode par fonction |
-| L4 | Système Observer non spécifié (Freeze() lock-free, modèle géométrique, pré-calcul puissances de 4) | **Élevé** — Affecte la progression et l'UX du TUI | P1 | T3.1–T3.10 | Diagramme UML + spécification Freeze + formules |
-| L5 | Seuils dynamiques non détaillés (ring buffer, hystérésis, algorithme d'ajustement) | **Élevé** — Affecte l'auto-tuning des performances | P1 | T5.1–T5.4 | Pseudocode complet + constantes + analyse de stabilité |
-| L6 | Pas de design alternatif Arena/GC Controller pour Rust (pas de GC en Rust) | **Élevé** — Le GC Controller Go n'a pas d'équivalent direct | P1 | T4.1–T4.2 | Analyse RAII + mapping bumpalo + stratégie d'allocation |
-| L7 | Spécification TUI lacunaire (filtrage par génération, programRef, ring buffer sparklines) | **Élevé** — TUI = composant le plus visible pour l'utilisateur | P1 | T6.1–T6.10 | Catalogue des 11 types de messages + layout adaptatif |
-| L8 | Mapping idiomatique Go→Rust superficiel (au-delà des correspondances de surface) | **Élevé** — Risque de code "Go écrit en Rust" | P1 | T1.3 | Guide avec snippets côte-à-côte + notes de performance |
-| L9 | Pas de critères d'acceptation par fonctionnalité | **Moyen** — Impossible de valider la complétion | P1 | T1.1 | Matrice O1-O6 avec critères testables |
-| L10 | Pas d'évaluation comparative des dépendances | **Moyen** — Risque de mauvais choix (perf, licence, maturité) | P1 | T1.4 | Matrice décisionnelle multi-critères |
-| L11 | Pas de plan de validation croisée Go/Rust | **Moyen** — Impossible de garantir la correction | P1 | T1.6 | Protocole N × algo avec golden files + diff automatique |
-| L12 | Pas de registre de risques par composant | **Moyen** — Surprises lors du portage | P2 | T1.5 | Registre structuré avec mitigation |
-| L13 | Pas de diagrammes de flux de données pour Rust | **Moyen** — Architecture Rust invisible | P2 | T7.3 | 5 DFD avec frontières de crates et ownership |
-| L14 | Pas de spécification CLAUDE.md pour le projet Rust | **Faible** — Affecte l'outillage IA uniquement | P2 | T1.12 | Miroir structurel du CLAUDE.md Go |
-| L15 | Pas de stratégie de détection de régression de performance | **Moyen** — Régressions silencieuses après refactoring | P1 | T1.7 | Baselines criterion + seuils d'alerte statistiques |
+| #   | Lacune                                                                                                    | Impact                                                                            | Priorité | Section PRD cible | Stratégie de résolution                                 |
+| --- | --------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------- | --------- | ----------------- | --------------------------------------------------------- |
+| L1  | Pas de mapping fichier-par-fichier Go → Rust                                                             | **Critique** — Un développeur ne sait pas où commencer                   | P0        | T7.1              | Tableau exhaustif 100+ fichiers avec crate destination    |
+| L2  | Documentation algorithmique superficielle (pas de pseudocode d'itération bit-à-bit, swaps de pointeurs) | **Critique** — Portage impossible sans compréhension du flux exact        | P0        | T2.1–T2.4        | Pseudocode détaillé + diagrammes de machine à états   |
+| L3  | Détails FFT manquants (arithmétique Fermat, récursion, sélection de paramètres, polynômes)          | **Critique** — Le moteur FFT est le composant le plus complexe (~1500 LoC) | P0        | T2.5–T2.9        | Spécification mathématique + pseudocode par fonction    |
+| L4  | Système Observer non spécifié (Freeze() lock-free, modèle géométrique, pré-calcul puissances de 4) | **Élevé** — Affecte la progression et l'UX du TUI                        | P1        | T3.1–T3.10       | Diagramme UML + spécification Freeze + formules          |
+| L5  | Seuils dynamiques non détaillés (ring buffer, hystérésis, algorithme d'ajustement)                    | **Élevé** — Affecte l'auto-tuning des performances                       | P1        | T5.1–T5.4        | Pseudocode complet + constantes + analyse de stabilité   |
+| L6  | Pas de design alternatif Arena/GC Controller pour Rust (pas de GC en Rust)                                | **Élevé** — Le GC Controller Go n'a pas d'équivalent direct             | P1        | T4.1–T4.2        | Analyse RAII + mapping bumpalo + stratégie d'allocation  |
+| L7  | Spécification TUI lacunaire (filtrage par génération, programRef, ring buffer sparklines)              | **Élevé** — TUI = composant le plus visible pour l'utilisateur           | P1        | T6.1–T6.10       | Catalogue des 11 types de messages + layout adaptatif     |
+| L8  | Mapping idiomatique Go→Rust superficiel (au-delà des correspondances de surface)                        | **Élevé** — Risque de code "Go écrit en Rust"                           | P1        | T1.3              | Guide avec snippets côte-à-côte + notes de performance |
+| L9  | Pas de critères d'acceptation par fonctionnalité                                                        | **Moyen** — Impossible de valider la complétion                           | P1        | T1.1              | Matrice O1-O6 avec critères testables                    |
+| L10 | Pas d'évaluation comparative des dépendances                                                            | **Moyen** — Risque de mauvais choix (perf, licence, maturité)             | P1        | T1.4              | Matrice décisionnelle multi-critères                    |
+| L11 | Pas de plan de validation croisée Go/Rust                                                                | **Moyen** — Impossible de garantir la correction                           | P1        | T1.6              | Protocole N × algo avec golden files + diff automatique  |
+| L12 | Pas de registre de risques par composant                                                                  | **Moyen** — Surprises lors du portage                                      | P2        | T1.5              | Registre structuré avec mitigation                       |
+| L13 | Pas de diagrammes de flux de données pour Rust                                                           | **Moyen** — Architecture Rust invisible                                    | P2        | T7.3              | 5 DFD avec frontières de crates et ownership             |
+| L14 | Pas de spécification CLAUDE.md pour le projet Rust                                                       | **Faible** — Affecte l'outillage IA uniquement                             | P2        | T1.12             | Miroir structurel du CLAUDE.md Go                         |
+| L15 | Pas de stratégie de détection de régression de performance                                             | **Moyen** — Régressions silencieuses après refactoring                   | P1        | T1.7              | Baselines criterion + seuils d'alerte statistiques        |
 
 ### 1.2.2 Priorisation
 
@@ -231,6 +201,7 @@ pub trait Calculator: Send + Sync {
 ```
 
 **Notes** :
+
 - `Send + Sync` requis pour le passage entre threads (Go le garantit implicitement)
 - `&dyn ProgressObserver` remplace le channel Go pour le reporting de progression
 - `Result<T, E>` remplace le pattern `(T, error)` de Go
@@ -269,6 +240,7 @@ let result2 = res2?;
 ```
 
 **Notes** :
+
 - `rayon::join` est la correspondance directe du fork-join 2 voies
 - Pour 3+ tâches parallèles : `rayon::scope` avec `s.spawn`
 - Le pool de threads rayon est dimensionné automatiquement (nombre de cœurs)
@@ -316,6 +288,7 @@ impl ProgressObserver for ChannelObserver {
 ```
 
 **Notes** :
+
 - `crossbeam::channel::bounded(cap)` ≡ `make(chan T, cap)`
 - `crossbeam::channel::unbounded()` ≡ `make(chan T)` avec tampon illimité
 - `try_send` ≡ `select { case ch <- v: default: }`
@@ -353,6 +326,7 @@ let arena = Bump::with_capacity(estimated_size);
 ```
 
 **Notes** :
+
 - En Rust, `sync.Pool` n'est pas nécessaire car il n'y a pas de GC
 - Pour les `BigUint` temporaires volumineux : `bumpalo::Bump` pour l'allocation en bloc
 - Pour le cas FFT avec réutilisation intensive : un pool `crossbeam::queue::ArrayQueue<T>` peut être utile
@@ -398,6 +372,7 @@ for bit in (0..msb - 1).rev() {
 ```
 
 **Notes** :
+
 - `Ordering::Relaxed` suffit car l'annulation n'a pas besoin de garanties de visibilité immédiate
 - Pour le timeout : `std::time::Instant::now().elapsed() > timeout`
 - Pas d'équivalent exact du `context.WithTimeout` — combiner annulation + vérification temporelle
@@ -464,6 +439,7 @@ impl FibError {
 ```
 
 **Notes** :
+
 - `?` opérateur remplace `if err != nil { return err }`
 - `thiserror` génère les implémentations `Display` et `Error`
 - `anyhow` pour les erreurs dans le code applicatif (main, CLI)
@@ -556,6 +532,7 @@ let bits = a.bits() as usize;
 ```
 
 **Notes de performance** :
+
 - `num-bigint` utilise Karatsuba internement pour les grands nombres
 - Pour les performances FFT, il faudra implémenter notre propre multiplication FFT ou utiliser `rug`
 - `rug` (bindings GMP) offre les meilleures performances brutes mais nécessite libgmp (LGPL)
@@ -675,24 +652,24 @@ pub fn add_vv(z: &mut [u64], x: &[u64], y: &[u64]) -> u64 {
 
 ### 1.3.14 Tableau récapitulatif des correspondances
 
-| Pattern Go | Idiome Rust | Crate(s) | Notes perf |
-|-----------|------------|----------|-----------|
-| `interface{}` | `dyn Trait` / `impl Trait` | — | Dispatch dynamique vs statique |
-| `goroutine` + `errgroup` | `rayon::join` / `rayon::scope` | `rayon` | Pool de threads work-stealing |
-| `chan T` | `crossbeam::channel` | `crossbeam` | Plus performant que `std::sync::mpsc` |
-| `sync.Pool` | Stack allocation / `bumpalo` | `bumpalo` | Pas de GC → pas besoin de pool |
-| `context.Context` | `CancellationToken` / `Arc<AtomicBool>` | `tokio-util` | Relaxed ordering suffit |
-| `(T, error)` | `Result<T, E>` | `thiserror` | Propagation avec `?` |
-| `sync.RWMutex` | `parking_lot::RwLock` | `parking_lot` | ~30% plus rapide que std |
-| `big.Int` | `BigUint` / `rug::Integer` | `num-bigint` / `rug` | rug = GMP (LGPL) |
-| `go:build tag` | `#[cfg(feature = "x")]` | Cargo features | Compilation conditionnelle |
-| `go:linkname` asm | `std::arch::x86_64` | — | Intrinsèques natifs |
-| `init()` auto-register | `inventory::submit!` | `inventory` | Enregistrement statique |
-| `sync.Once` | `std::sync::OnceLock` | — | Initialisation paresseuse |
-| `defer` | `Drop` trait / `scopeguard` | `scopeguard` | RAII automatique |
-| `select {}` multi-channel | `crossbeam::select!` | `crossbeam` | Macro de sélection |
-| `go fmt` | `rustfmt` | — | Formatage automatique |
-| `golangci-lint` | `cargo clippy` | — | Linting statique |
+| Pattern Go                   | Idiome Rust                                 | Crate(s)                 | Notes perf                              |
+| ---------------------------- | ------------------------------------------- | ------------------------ | --------------------------------------- |
+| `interface{}`              | `dyn Trait` / `impl Trait`              | —                       | Dispatch dynamique vs statique          |
+| `goroutine` + `errgroup` | `rayon::join` / `rayon::scope`          | `rayon`                | Pool de threads work-stealing           |
+| `chan T`                   | `crossbeam::channel`                      | `crossbeam`            | Plus performant que `std::sync::mpsc` |
+| `sync.Pool`                | Stack allocation /`bumpalo`               | `bumpalo`              | Pas de GC → pas besoin de pool         |
+| `context.Context`          | `CancellationToken` / `Arc<AtomicBool>` | `tokio-util`           | Relaxed ordering suffit                 |
+| `(T, error)`               | `Result<T, E>`                            | `thiserror`            | Propagation avec `?`                  |
+| `sync.RWMutex`             | `parking_lot::RwLock`                     | `parking_lot`          | ~30% plus rapide que std                |
+| `big.Int`                  | `BigUint` / `rug::Integer`              | `num-bigint` / `rug` | rug = GMP (LGPL)                        |
+| `go:build tag`             | `#[cfg(feature = "x")]`                   | Cargo features           | Compilation conditionnelle              |
+| `go:linkname` asm          | `std::arch::x86_64`                       | —                       | Intrinsèques natifs                    |
+| `init()` auto-register     | `inventory::submit!`                      | `inventory`            | Enregistrement statique                 |
+| `sync.Once`                | `std::sync::OnceLock`                     | —                       | Initialisation paresseuse               |
+| `defer`                    | `Drop` trait / `scopeguard`             | `scopeguard`           | RAII automatique                        |
+| `select {}` multi-channel  | `crossbeam::select!`                      | `crossbeam`            | Macro de sélection                     |
+| `go fmt`                   | `rustfmt`                                 | —                       | Formatage automatique                   |
+| `golangci-lint`            | `cargo clippy`                            | —                       | Linting statique                        |
 
 ---
 
@@ -700,99 +677,99 @@ pub fn add_vv(z: &mut [u64], x: &[u64], y: &[u64]) -> u64 {
 
 ### 1.4.1 Arithmétique grands nombres
 
-| Critère | `num-bigint` | `rug` (GMP) | `ibig` |
-|---------|-------------|-------------|--------|
-| **Performance Karatsuba** | Bonne (natif Rust) | Excellente (asm optimisé C/asm) | Bonne |
-| **Performance FFT mult.** | Absente (Karatsuba max) | Excellente (GMP FFT natif) | Partielle |
-| **Sécurité mémoire** | Pure Rust, 100% safe | FFI C, blocs `unsafe` requis | Pure Rust |
-| **Ergonomie API** | Bonne, traits std | Très bonne, opérateurs natifs | Bonne |
-| **Maturité** | Très mature (>10 ans) | Très mature (GMP = 1991) | Jeune (2021) |
-| **Licence** | MIT/Apache-2.0 | LGPL-3.0 (via GMP) | MIT/Apache-2.0 |
-| **Cross-compilation** | Triviale | Difficile (nécessite libgmp) | Triviale |
-| **Taille binaire** | Faible | Élevée (+libgmp) | Faible |
-| **Recommandation** | **Défaut (pure-Rust)** | **Feature optionnelle "gmp"** | Alternative possible |
+| Critère                        | `num-bigint`                | `rug` (GMP)                       | `ibig`             |
+| ------------------------------- | ----------------------------- | ----------------------------------- | -------------------- |
+| **Performance Karatsuba** | Bonne (natif Rust)            | Excellente (asm optimisé C/asm)    | Bonne                |
+| **Performance FFT mult.** | Absente (Karatsuba max)       | Excellente (GMP FFT natif)          | Partielle            |
+| **Sécurité mémoire**   | Pure Rust, 100% safe          | FFI C, blocs `unsafe` requis      | Pure Rust            |
+| **Ergonomie API**         | Bonne, traits std             | Très bonne, opérateurs natifs     | Bonne                |
+| **Maturité**             | Très mature (>10 ans)        | Très mature (GMP = 1991)           | Jeune (2021)         |
+| **Licence**               | MIT/Apache-2.0                | LGPL-3.0 (via GMP)                  | MIT/Apache-2.0       |
+| **Cross-compilation**     | Triviale                      | Difficile (nécessite libgmp)       | Triviale             |
+| **Taille binaire**        | Faible                        | Élevée (+libgmp)                  | Faible               |
+| **Recommandation**        | **Défaut (pure-Rust)** | **Feature optionnelle "gmp"** | Alternative possible |
 
 **Décision** : `num-bigint` par défaut + notre propre FFT multiplication (portage du module `bigfft`). Feature `gmp` optionnelle via `rug` pour les performances maximales.
 
 ### 1.4.2 TUI / Interface terminale
 
-| Critère | `ratatui` | `cursive` | `tui-realm` |
-|---------|----------|----------|-------------|
-| **Architecture** | Immediate mode (Elm-like) | Widget-based | Component-based |
-| **Compatibilité Bubble Tea** | **Excellente** — même paradigme Elm | Faible — modèle différent | Moyenne |
-| **Sparklines / Graphiques** | Oui (widgets natifs) | Non (plugin nécessaire) | Oui |
-| **Écosystème** | Très actif (>8K stars) | Mature (>3K stars) | Petit |
-| **Backend** | crossterm (cross-platform) | pancurses/crossterm | crossterm |
-| **Licence** | MIT | MIT | MIT |
-| **Recommandation** | **Retenu** | Rejeté | Rejeté |
+| Critère                            | `ratatui`                                 | `cursive`                  | `tui-realm`   |
+| ----------------------------------- | ------------------------------------------- | ---------------------------- | --------------- |
+| **Architecture**              | Immediate mode (Elm-like)                   | Widget-based                 | Component-based |
+| **Compatibilité Bubble Tea** | **Excellente** — même paradigme Elm | Faible — modèle différent | Moyenne         |
+| **Sparklines / Graphiques**   | Oui (widgets natifs)                        | Non (plugin nécessaire)     | Oui             |
+| **Écosystème**              | Très actif (>8K stars)                     | Mature (>3K stars)           | Petit           |
+| **Backend**                   | crossterm (cross-platform)                  | pancurses/crossterm          | crossterm       |
+| **Licence**                   | MIT                                         | MIT                          | MIT             |
+| **Recommandation**            | **Retenu**                            | Rejeté                      | Rejeté         |
 
 **Décision** : `ratatui` avec backend `crossterm`. La correspondance architecturale avec Bubble Tea (Init/Update/View) facilitera le portage du TUI.
 
 ### 1.4.3 CLI / Parsing d'arguments
 
-| Critère | `clap` (derive) | `argh` | `structopt` |
-|---------|----------------|--------|-------------|
-| **Ergonomie** | Excellente (dérivation macro) | Bonne | Intégré à clap |
-| **Completion shells** | Oui (clap_complete) | Non | Via clap |
-| **Validation** | Riche (types, ranges, conflicts) | Basique | Via clap |
-| **Maturité** | Standard de facto | Google, minimaliste | Déprécié (→ clap) |
-| **Taille binaire** | ~200KB | ~50KB | N/A |
-| **Licence** | MIT/Apache-2.0 | BSD-3 | MIT/Apache-2.0 |
-| **Recommandation** | **Retenu** | Rejeté | Déprécié |
+| Critère                    | `clap` (derive)                | `argh`            | `structopt`         |
+| --------------------------- | -------------------------------- | ------------------- | --------------------- |
+| **Ergonomie**         | Excellente (dérivation macro)   | Bonne               | Intégré à clap     |
+| **Completion shells** | Oui (clap_complete)              | Non                 | Via clap              |
+| **Validation**        | Riche (types, ranges, conflicts) | Basique             | Via clap              |
+| **Maturité**         | Standard de facto                | Google, minimaliste | Déprécié (→ clap) |
+| **Taille binaire**    | ~200KB                           | ~50KB               | N/A                   |
+| **Licence**           | MIT/Apache-2.0                   | BSD-3               | MIT/Apache-2.0        |
+| **Recommandation**    | **Retenu**                 | Rejeté             | Déprécié           |
 
 **Décision** : `clap` avec dérivation + `clap_complete` pour les shell completions.
 
 ### 1.4.4 Concurrence et parallélisme
 
-| Critère | `rayon` | `crossbeam` | `tokio` |
-|---------|---------|------------|---------|
-| **Modèle** | Data-parallel, work-stealing | Primitives bas niveau | Async I/O runtime |
-| **Cas d'usage FibCalc** | Multiplication parallèle | Channels, scoped threads | Event loop TUI (optionnel) |
-| **Overhead** | Faible (pool de threads) | Minimal | Élevé (runtime async) |
-| **Recommandation** | **Calculs CPU-bound** | **Communication inter-threads** | **Non retenu pour le calcul** |
+| Critère                      | `rayon`                    | `crossbeam`                         | `tokio`                           |
+| ----------------------------- | ---------------------------- | ------------------------------------- | ----------------------------------- |
+| **Modèle**             | Data-parallel, work-stealing | Primitives bas niveau                 | Async I/O runtime                   |
+| **Cas d'usage FibCalc** | Multiplication parallèle    | Channels, scoped threads              | Event loop TUI (optionnel)          |
+| **Overhead**            | Faible (pool de threads)     | Minimal                               | Élevé (runtime async)             |
+| **Recommandation**      | **Calculs CPU-bound**  | **Communication inter-threads** | **Non retenu pour le calcul** |
 
 **Décision** : `rayon` pour le parallélisme computationnel + `crossbeam` pour les channels. Tokio n'est pas nécessaire pour un calculateur CPU-bound synchrone.
 
 ### 1.4.5 Allocation mémoire
 
-| Critère | `bumpalo` | `typed-arena` | `std alloc` |
-|---------|----------|--------------|-------------|
-| **Modèle** | Bump pointer, reset en bloc | Typed arena, drop individuel | General purpose |
-| **Correspondance Go** | `BumpAllocator` (bigfft) | `CalculationArena` | `sync.Pool` |
-| **Performance** | O(1) alloc, excellent cache | O(1) alloc | O(log n) alloc |
-| **Recommandation** | **FFT temporaires** | **États de calcul** | **Défaut** |
+| Critère                    | `bumpalo`                 | `typed-arena`              | `std alloc`     |
+| --------------------------- | --------------------------- | ---------------------------- | ----------------- |
+| **Modèle**           | Bump pointer, reset en bloc | Typed arena, drop individuel | General purpose   |
+| **Correspondance Go** | `BumpAllocator` (bigfft)  | `CalculationArena`         | `sync.Pool`     |
+| **Performance**       | O(1) alloc, excellent cache | O(1) alloc                   | O(log n) alloc    |
+| **Recommandation**    | **FFT temporaires**   | **États de calcul**   | **Défaut** |
 
 ### 1.4.6 Logging
 
-| Critère | `tracing` | `log` + `env_logger` | `slog` |
-|---------|----------|---------------------|--------|
-| **Structuré** | Oui (spans + events) | Basique | Oui |
-| **Correspondance zerolog** | Excellente | Moyenne | Bonne |
-| **Performance** | Excellente (quand désactivé) | Bonne | Bonne |
-| **Recommandation** | **Retenu** | Rejeté | Rejeté |
+| Critère                         | `tracing`                    | `log` + `env_logger` | `slog` |
+| -------------------------------- | ------------------------------ | ------------------------ | -------- |
+| **Structuré**             | Oui (spans + events)           | Basique                  | Oui      |
+| **Correspondance zerolog** | Excellente                     | Moyenne                  | Bonne    |
+| **Performance**            | Excellente (quand désactivé) | Bonne                    | Bonne    |
+| **Recommandation**         | **Retenu**               | Rejeté                  | Rejeté  |
 
 ### 1.4.7 Tests et benchmarks
 
-| Crate | Rôle | Correspondance Go |
-|-------|------|-------------------|
-| `criterion` | Benchmarks statistiques | `go test -bench` |
-| `proptest` | Property-based testing | `gopter` |
-| `cargo-fuzz` / `libfuzzer` | Fuzz testing | `go test -fuzz` |
-| `insta` | Snapshot/golden testing | Golden file tests |
-| `assert_cmd` + `predicates` | Tests E2E CLI | `test/e2e` |
+| Crate                           | Rôle                   | Correspondance Go  |
+| ------------------------------- | ----------------------- | ------------------ |
+| `criterion`                   | Benchmarks statistiques | `go test -bench` |
+| `proptest`                    | Property-based testing  | `gopter`         |
+| `cargo-fuzz` / `libfuzzer`  | Fuzz testing            | `go test -fuzz`  |
+| `insta`                       | Snapshot/golden testing | Golden file tests  |
+| `assert_cmd` + `predicates` | Tests E2E CLI           | `test/e2e`       |
 
 ### 1.4.8 Autres dépendances
 
-| Crate | Rôle | Correspondance Go |
-|-------|------|-------------------|
-| `thiserror` | Dérivation d'erreurs | `internal/errors` |
-| `anyhow` | Erreurs contextuelles (binaire) | `fmt.Errorf` wrapping |
-| `serde` + `serde_json` | Sérialisation JSON (profils calibration) | `encoding/json` |
-| `parking_lot` | Mutexes performants | `sync.Mutex` / `sync.RWMutex` |
-| `sysinfo` | Métriques système (CPU, RAM) | `gopsutil/v4` |
-| `indicatif` | Spinners et barres de progression CLI | `briandowns/spinner` |
-| `console` | Détection NO_COLOR, styles | `fatih/color` |
-| `num-traits` | Traits numériques | implicite dans `math/big` |
+| Crate                      | Rôle                                     | Correspondance Go                 |
+| -------------------------- | ----------------------------------------- | --------------------------------- |
+| `thiserror`              | Dérivation d'erreurs                     | `internal/errors`               |
+| `anyhow`                 | Erreurs contextuelles (binaire)           | `fmt.Errorf` wrapping           |
+| `serde` + `serde_json` | Sérialisation JSON (profils calibration) | `encoding/json`                 |
+| `parking_lot`            | Mutexes performants                       | `sync.Mutex` / `sync.RWMutex` |
+| `sysinfo`                | Métriques système (CPU, RAM)            | `gopsutil/v4`                   |
+| `indicatif`              | Spinners et barres de progression CLI     | `briandowns/spinner`            |
+| `console`                | Détection NO_COLOR, styles               | `fatih/color`                   |
+| `num-traits`             | Traits numériques                        | implicite dans `math/big`       |
 
 ---
 
@@ -800,23 +777,23 @@ pub fn add_vv(z: &mut [u64], x: &[u64], y: &[u64]) -> u64 {
 
 ### 1.5.1 Risques par module
 
-| Module | Risque | Prob. | Impact | Mitigation |
-|--------|--------|-------|--------|------------|
-| **bigfft (FFT)** | R1 : La multiplication FFT sur nombres de Fermat n'a pas d'équivalent Rust existant | Élevée | **Critique** | Portage manuel du module bigfft Go (~1500 LoC). Prioriser ce module en Phase 2. |
-| **bigfft (FFT)** | R2 : Performance de la FFT Rust inférieure à Go (go:linkname vers asm math/big) | Moyenne | **Élevé** | Utiliser `std::arch` intrinsèques SIMD + benchmarks comparatifs dès le portage |
-| **bigfft (FFT)** | R3 : Le cache LRU FFT thread-safe est complexe à porter avec les bons lifetimes | Moyenne | **Moyen** | Utiliser `dashmap` ou `parking_lot::RwLock<LruCache>` pour simplifier |
-| **fibonacci (algorithmes)** | R4 : Les opérations in-place sur BigUint sont moins idiomatiques qu'en Go | Moyenne | **Moyen** | Utiliser `MulAssign`, `AddAssign` + `std::mem::replace` pour le zero-copy |
-| **fibonacci (algorithmes)** | R5 : Le seuil de basculement FFT peut différer entre Go et Rust | Élevée | **Moyen** | Calibration Rust indépendante dès Phase 5, ne pas copier les seuils Go |
-| **fibonacci (Observer)** | R6 : Le mécanisme Freeze() lock-free est difficile à implémenter sans GC | Moyenne | **Moyen** | Utiliser `Arc<Vec<Box<dyn Observer>>>` avec snapshot atomique via `ArcSwap` |
-| **fibonacci (dynamic thresh.)** | R7 : Le ring buffer avec hystérésis est sensible au timing Rust (différent de Go) | Faible | **Faible** | Les constantes d'hystérésis (15%) sont robustes, ajuster empiriquement |
-| **tui** | R8 : Le mapping Bubble Tea → ratatui nécessite un redesign du cycle de messages | Élevée | **Élevé** | Prototyper le TUI tôt (Phase 6) avec un spike architectural |
-| **tui** | R9 : Les sparklines Braille nécessitent un widget custom dans ratatui | Faible | **Faible** | ratatui a un widget Sparkline natif, adapter si nécessaire |
-| **orchestration** | R10 : errgroup → rayon::scope a une sémantique légèrement différente (panic vs error) | Moyenne | **Moyen** | Utiliser `std::panic::catch_unwind` + conversion en Result |
-| **config** | R11 : Le parsing de flags Go (`flag` package) ne mappe pas 1:1 sur clap | Faible | **Faible** | clap est plus puissant, adaptation straightforward |
-| **calibration** | R12 : Les micro-benchmarks Rust ont un overhead différent de Go | Moyenne | **Moyen** | Utiliser `criterion` en mode automatique, ne pas comparer les valeurs absolues cross-langage |
-| **bigfft (SIMD)** | R13 : Les routines asm amd64 via go:linkname n'ont pas d'équivalent direct | Moyenne | **Élevé** | Implémenter via `std::arch::x86_64` intrinsèques ou laisser LLVM auto-vectoriser |
-| **gmp (feature)** | R14 : La crate `rug` (GMP bindings) est LGPL, ce qui peut être incompatible | Faible | **Élevé** | Documenter la contrainte LGPL. Feature optionnelle uniquement. Alternative : `gmp-mpfr-sys` avec linking statique |
-| **global** | R15 : La taille du portage (~15K LoC Go → ~20K LoC Rust estimé) crée un risque de dérive | Moyenne | **Élevé** | Migration incrémentale phase par phase avec validation croisée à chaque étape |
+| Module                                | Risque                                                                                       | Prob.    | Impact             | Mitigation                                                                                                         |
+| ------------------------------------- | -------------------------------------------------------------------------------------------- | -------- | ------------------ | ------------------------------------------------------------------------------------------------------------------ |
+| **bigfft (FFT)**                | R1 : La multiplication FFT sur nombres de Fermat n'a pas d'équivalent Rust existant         | Élevée | **Critique** | Portage manuel du module bigfft Go (~1500 LoC). Prioriser ce module en Phase 2.                                    |
+| **bigfft (FFT)**                | R2 : Performance de la FFT Rust inférieure à Go (go:linkname vers asm math/big)            | Moyenne  | **Élevé**  | Utiliser `std::arch` intrinsèques SIMD + benchmarks comparatifs dès le portage                                 |
+| **bigfft (FFT)**                | R3 : Le cache LRU FFT thread-safe est complexe à porter avec les bons lifetimes             | Moyenne  | **Moyen**    | Utiliser `dashmap` ou `parking_lot::RwLock<LruCache>` pour simplifier                                          |
+| **fibonacci (algorithmes)**     | R4 : Les opérations in-place sur BigUint sont moins idiomatiques qu'en Go                   | Moyenne  | **Moyen**    | Utiliser `MulAssign`, `AddAssign` + `std::mem::replace` pour le zero-copy                                    |
+| **fibonacci (algorithmes)**     | R5 : Le seuil de basculement FFT peut différer entre Go et Rust                             | Élevée | **Moyen**    | Calibration Rust indépendante dès Phase 5, ne pas copier les seuils Go                                           |
+| **fibonacci (Observer)**        | R6 : Le mécanisme Freeze() lock-free est difficile à implémenter sans GC                  | Moyenne  | **Moyen**    | Utiliser `Arc<Vec<Box<dyn Observer>>>` avec snapshot atomique via `ArcSwap`                                    |
+| **fibonacci (dynamic thresh.)** | R7 : Le ring buffer avec hystérésis est sensible au timing Rust (différent de Go)         | Faible   | **Faible**   | Les constantes d'hystérésis (15%) sont robustes, ajuster empiriquement                                           |
+| **tui**                         | R8 : Le mapping Bubble Tea → ratatui nécessite un redesign du cycle de messages            | Élevée | **Élevé**  | Prototyper le TUI tôt (Phase 6) avec un spike architectural                                                       |
+| **tui**                         | R9 : Les sparklines Braille nécessitent un widget custom dans ratatui                       | Faible   | **Faible**   | ratatui a un widget Sparkline natif, adapter si nécessaire                                                        |
+| **orchestration**               | R10 : errgroup → rayon::scope a une sémantique légèrement différente (panic vs error)   | Moyenne  | **Moyen**    | Utiliser `std::panic::catch_unwind` + conversion en Result                                                       |
+| **config**                      | R11 : Le parsing de flags Go (`flag` package) ne mappe pas 1:1 sur clap                    | Faible   | **Faible**   | clap est plus puissant, adaptation straightforward                                                                 |
+| **calibration**                 | R12 : Les micro-benchmarks Rust ont un overhead différent de Go                             | Moyenne  | **Moyen**    | Utiliser `criterion` en mode automatique, ne pas comparer les valeurs absolues cross-langage                     |
+| **bigfft (SIMD)**               | R13 : Les routines asm amd64 via go:linkname n'ont pas d'équivalent direct                  | Moyenne  | **Élevé**  | Implémenter via `std::arch::x86_64` intrinsèques ou laisser LLVM auto-vectoriser                               |
+| **gmp (feature)**               | R14 : La crate `rug` (GMP bindings) est LGPL, ce qui peut être incompatible               | Faible   | **Élevé**  | Documenter la contrainte LGPL. Feature optionnelle uniquement. Alternative :`gmp-mpfr-sys` avec linking statique |
+| **global**                      | R15 : La taille du portage (~15K LoC Go → ~20K LoC Rust estimé) crée un risque de dérive | Moyenne  | **Élevé**  | Migration incrémentale phase par phase avec validation croisée à chaque étape                                  |
 
 ### 1.5.2 Matrice Risque × Impact
 
@@ -852,19 +829,19 @@ Chaque algorithme Rust doit produire des résultats **bit-à-bit identiques** à
 
 ### 1.6.2 Matrice de validation
 
-| N | Fast Doubling | Matrix Exp. | FFT-Based | Résultat (digits) | Type de validation |
-|---|--------------|-------------|-----------|-------------------|--------------------|
-| 0 | F(0) = 0 | F(0) = 0 | F(0) = 0 | 1 | Golden file |
-| 1 | F(1) = 1 | F(1) = 1 | F(1) = 1 | 1 | Golden file |
-| 92 | Near max u64 | Near max u64 | Near max u64 | 19 | Golden file (frontière u64) |
-| 93 | Max u64 (12200160415121876738) | Idem | Idem | 20 | Golden file (seuil fast path) |
-| 94 | Premier BigInt | Premier BigInt | Premier BigInt | 20 | Golden file (overflow u64) |
-| 1 000 | Golden | Golden | Golden | 209 | Golden file |
-| 10 000 | Golden | Golden | Golden | 2 090 | Golden file + identités |
-| 100 000 | Golden | Golden | Golden | 20 899 | Golden file + identités |
-| 1 000 000 | Exécution Go | Exécution Go | Exécution Go | 208 988 | Diff Go/Rust + Cassini |
-| 10 000 000 | Exécution Go | Exécution Go | Exécution Go | 2 089 877 | Diff Go/Rust + Cassini |
-| 100 000 000 | Exécution Go | Exécution Go | Exécution Go | 20 898 764 | Diff Go/Rust (dernier) |
+| N           | Fast Doubling                  | Matrix Exp.    | FFT-Based      | Résultat (digits) | Type de validation            |
+| ----------- | ------------------------------ | -------------- | -------------- | ------------------ | ----------------------------- |
+| 0           | F(0) = 0                       | F(0) = 0       | F(0) = 0       | 1                  | Golden file                   |
+| 1           | F(1) = 1                       | F(1) = 1       | F(1) = 1       | 1                  | Golden file                   |
+| 92          | Near max u64                   | Near max u64   | Near max u64   | 19                 | Golden file (frontière u64)  |
+| 93          | Max u64 (12200160415121876738) | Idem           | Idem           | 20                 | Golden file (seuil fast path) |
+| 94          | Premier BigInt                 | Premier BigInt | Premier BigInt | 20                 | Golden file (overflow u64)    |
+| 1 000       | Golden                         | Golden         | Golden         | 209                | Golden file                   |
+| 10 000      | Golden                         | Golden         | Golden         | 2 090              | Golden file + identités      |
+| 100 000     | Golden                         | Golden         | Golden         | 20 899             | Golden file + identités      |
+| 1 000 000   | Exécution Go                  | Exécution Go  | Exécution Go  | 208 988            | Diff Go/Rust + Cassini        |
+| 10 000 000  | Exécution Go                  | Exécution Go  | Exécution Go  | 2 089 877          | Diff Go/Rust + Cassini        |
+| 100 000 000 | Exécution Go                  | Exécution Go  | Exécution Go  | 20 898 764         | Diff Go/Rust (dernier)        |
 
 **Total** : 11 valeurs de N × 3 algorithmes = **33 points de validation**
 
@@ -932,13 +909,13 @@ proptest! {
 
 5 cibles de fuzz correspondant aux 5 cibles Go :
 
-| Cible Fuzz | Stratégie | Limite N |
-|-----------|-----------|----------|
-| `fuzz_fast_doubling_consistency` | Cross-valide Fast Doubling vs Matrix | n ≤ 50 000 |
-| `fuzz_fft_consistency` | Cross-valide FFT vs Fast Doubling | n ≤ 20 000 |
-| `fuzz_fibonacci_identities` | Vérifie identités de doublement + d'Ocagne | n ≤ 10 000 |
-| `fuzz_progress_monotonicity` | Progression monotone croissante | n 10..20 000 |
-| `fuzz_fast_doubling_mod` | Validation modular Fast Doubling | n ≤ 100 000, mod ≤ 10^9 |
+| Cible Fuzz                         | Stratégie                                   | Limite N                  |
+| ---------------------------------- | -------------------------------------------- | ------------------------- |
+| `fuzz_fast_doubling_consistency` | Cross-valide Fast Doubling vs Matrix         | n ≤ 50 000               |
+| `fuzz_fft_consistency`           | Cross-valide FFT vs Fast Doubling            | n ≤ 20 000               |
+| `fuzz_fibonacci_identities`      | Vérifie identités de doublement + d'Ocagne | n ≤ 10 000               |
+| `fuzz_progress_monotonicity`     | Progression monotone croissante              | n 10..20 000              |
+| `fuzz_fast_doubling_mod`         | Validation modular Fast Doubling             | n ≤ 100 000, mod ≤ 10^9 |
 
 ### 1.6.4 Critères de réussite
 
@@ -960,34 +937,34 @@ Deux machines de référence documentées dans le projet Go :
 
 ### 1.7.2 Baselines Go (Machine B — AMD Ryzen 9 5900X)
 
-| N | Fast Doubling | Matrix Exp. | FFT-Based | Digits |
-|---|--------------|-------------|-----------|--------|
-| 1 000 | 15 µs | 18 µs | 45 µs | 209 |
-| 10 000 | 180 µs | 220 µs | 350 µs | 2 090 |
-| 100 000 | 3.2 ms | 4.1 ms | 5.8 ms | 20 899 |
-| 1 000 000 | 85 ms | 110 ms | 95 ms | 208 988 |
-| 10 000 000 | 2.1 s | 2.8 s | 2.3 s | 2 089 877 |
-| 100 000 000 | 45 s | 62 s | 48 s | 20 898 764 |
-| 250 000 000 | 3 m 12 s | 4 m 25 s | 3 m 28 s | 52 246 909 |
+| N           | Fast Doubling | Matrix Exp. | FFT-Based | Digits     |
+| ----------- | ------------- | ----------- | --------- | ---------- |
+| 1 000       | 15 µs        | 18 µs      | 45 µs    | 209        |
+| 10 000      | 180 µs       | 220 µs     | 350 µs   | 2 090      |
+| 100 000     | 3.2 ms        | 4.1 ms      | 5.8 ms    | 20 899     |
+| 1 000 000   | 85 ms         | 110 ms      | 95 ms     | 208 988    |
+| 10 000 000  | 2.1 s         | 2.8 s       | 2.3 s     | 2 089 877  |
+| 100 000 000 | 45 s          | 62 s        | 48 s      | 20 898 764 |
+| 250 000 000 | 3 m 12 s      | 4 m 25 s    | 3 m 28 s  | 52 246 909 |
 
 ### 1.7.3 Baselines mémoire Go (estimées)
 
-| N | Mémoire estimée (peak RSS) |
-|---|---------------------------|
-| 10 000 000 | ~120 MB |
-| 100 000 000 | ~1.2 GB |
-| 1 000 000 000 | ~12 GB |
+| N             | Mémoire estimée (peak RSS) |
+| ------------- | ---------------------------- |
+| 10 000 000    | ~120 MB                      |
+| 100 000 000   | ~1.2 GB                      |
+| 1 000 000 000 | ~12 GB                       |
 
 ### 1.7.4 Seuils de régression Rust
 
 **Règle** : Aucune régression >5% n'est acceptable sur une même machine avec la même charge.
 
-| Métrique | Seuil d'alerte (jaune) | Seuil d'échec (rouge) |
-|----------|----------------------|----------------------|
-| Temps d'exécution | +3% | +5% |
-| Mémoire peak RSS | +5% | +10% |
-| Allocations totales | +10% | +25% |
-| Temps de démarrage | +10ms | +20ms |
+| Métrique           | Seuil d'alerte (jaune) | Seuil d'échec (rouge) |
+| ------------------- | ---------------------- | ---------------------- |
+| Temps d'exécution  | +3%                    | +5%                    |
+| Mémoire peak RSS   | +5%                    | +10%                   |
+| Allocations totales | +10%                   | +25%                   |
+| Temps de démarrage | +10ms                  | +20ms                  |
 
 ### 1.7.5 Stratégie de détection
 
@@ -1030,70 +1007,70 @@ criterion_main!(benches);
 
 ### 1.8.1 Performance
 
-| # | Exigence | Cible | Méthode de mesure |
-|---|----------|-------|-------------------|
-| NFR-P1 | Temps de démarrage (cold start, aucun calcul) | < 50 ms (p99) | `hyperfine --warmup 3 --runs 100 ./fibcalc-rs --help` |
-| NFR-P2 | Latence premier résultat pour N ≤ 93 | < 1 ms | Benchmark unitaire |
-| NFR-P3 | Débit de calcul F(10M) Fast Doubling | ≤ 2.1 s (ref Ryzen 9) | `criterion` |
-| NFR-P4 | Surcoût du TUI vs CLI (même calcul) | < 5% | Comparaison temps CLI vs TUI |
+| #      | Exigence                                       | Cible                  | Méthode de mesure                                      |
+| ------ | ---------------------------------------------- | ---------------------- | ------------------------------------------------------- |
+| NFR-P1 | Temps de démarrage (cold start, aucun calcul) | < 50 ms (p99)          | `hyperfine --warmup 3 --runs 100 ./fibcalc-rs --help` |
+| NFR-P2 | Latence premier résultat pour N ≤ 93         | < 1 ms                 | Benchmark unitaire                                      |
+| NFR-P3 | Débit de calcul F(10M) Fast Doubling          | ≤ 2.1 s (ref Ryzen 9) | `criterion`                                           |
+| NFR-P4 | Surcoût du TUI vs CLI (même calcul)          | < 5%                   | Comparaison temps CLI vs TUI                            |
 
 ### 1.8.2 Mémoire
 
-| # | Exigence | Cible | Méthode de mesure |
-|---|----------|-------|-------------------|
-| NFR-M1 | RSS au démarrage (aucun calcul) | < 10 MB | `/proc/self/status` VmRSS |
-| NFR-M2 | RSS pour F(10M) Fast Doubling | ≤ 130 MB | Mesure runtime |
-| NFR-M3 | Mode `--last-digits K` mémoire | O(K), indépendant de N | Test avec N=10^12, K=100 |
-| NFR-M4 | Pas de fuite mémoire sur 1000 calculs consécutifs | RSS stable (±5%) | Test en boucle avec `valgrind` |
+| #      | Exigence                                            | Cible                   | Méthode de mesure               |
+| ------ | --------------------------------------------------- | ----------------------- | -------------------------------- |
+| NFR-M1 | RSS au démarrage (aucun calcul)                    | < 10 MB                 | `/proc/self/status` VmRSS      |
+| NFR-M2 | RSS pour F(10M) Fast Doubling                       | ≤ 130 MB               | Mesure runtime                   |
+| NFR-M3 | Mode `--last-digits K` mémoire                   | O(K), indépendant de N | Test avec N=10^12, K=100         |
+| NFR-M4 | Pas de fuite mémoire sur 1000 calculs consécutifs | RSS stable (±5%)       | Test en boucle avec `valgrind` |
 
 ### 1.8.3 Taille du binaire
 
-| # | Exigence | Cible | Méthode de mesure |
-|---|----------|-------|-------------------|
-| NFR-B1 | Binaire stripped (release, pure-Rust) | < 5 MB | `strip fibcalc-rs && ls -la` |
-| NFR-B2 | Binaire avec feature GMP | < 8 MB | Idem avec `--features gmp` |
-| NFR-B3 | Temps de compilation incrémentale | < 15 s | `cargo build` après modification d'un fichier |
+| #      | Exigence                              | Cible  | Méthode de mesure                               |
+| ------ | ------------------------------------- | ------ | ------------------------------------------------ |
+| NFR-B1 | Binaire stripped (release, pure-Rust) | < 5 MB | `strip fibcalc-rs && ls -la`                   |
+| NFR-B2 | Binaire avec feature GMP              | < 8 MB | Idem avec `--features gmp`                     |
+| NFR-B3 | Temps de compilation incrémentale    | < 15 s | `cargo build` après modification d'un fichier |
 
 ### 1.8.4 Fiabilité
 
-| # | Exigence | Cible | Méthode de mesure |
-|---|----------|-------|-------------------|
-| NFR-R1 | Zéro panic en fonctionnement normal | 0 panics | Tests E2E + fuzz testing |
-| NFR-R2 | Timeout configurable respecté | Arrêt dans les 100ms après timeout | Test avec `--timeout 1s` sur N=10^9 |
-| NFR-R3 | Ctrl+C arrête proprement le calcul | Exit code 130, pas de corruption | Test signal SIGINT |
-| NFR-R4 | Résultats déterministes (même N, même résultat) | Identique sur 100 exécutions | Script de comparaison |
+| #      | Exigence                                             | Cible                                | Méthode de mesure                    |
+| ------ | ---------------------------------------------------- | ------------------------------------ | ------------------------------------- |
+| NFR-R1 | Zéro panic en fonctionnement normal                 | 0 panics                             | Tests E2E + fuzz testing              |
+| NFR-R2 | Timeout configurable respecté                       | Arrêt dans les 100ms après timeout | Test avec `--timeout 1s` sur N=10^9 |
+| NFR-R3 | Ctrl+C arrête proprement le calcul                  | Exit code 130, pas de corruption     | Test signal SIGINT                    |
+| NFR-R4 | Résultats déterministes (même N, même résultat) | Identique sur 100 exécutions        | Script de comparaison                 |
 
 ### 1.8.5 Portabilité
 
-| # | Exigence | Cible | Méthode de mesure |
-|---|----------|-------|-------------------|
-| NFR-X1 | Compilation sur 5 target triples | 5/5 réussis | CI matrix |
-| NFR-X2 | Pas de dépendance système (hors feature GMP) | 0 libs dynamiques | `ldd` / `otool -L` |
-| NFR-X3 | Support NO_COLOR standard | Couleurs désactivées | `NO_COLOR=1 ./fibcalc-rs` |
+| #      | Exigence                                       | Cible                  | Méthode de mesure          |
+| ------ | ---------------------------------------------- | ---------------------- | --------------------------- |
+| NFR-X1 | Compilation sur 5 target triples               | 5/5 réussis           | CI matrix                   |
+| NFR-X2 | Pas de dépendance système (hors feature GMP) | 0 libs dynamiques      | `ldd` / `otool -L`      |
+| NFR-X3 | Support NO_COLOR standard                      | Couleurs désactivées | `NO_COLOR=1 ./fibcalc-rs` |
 
 ### 1.8.6 Sécurité
 
-| # | Exigence | Cible | Méthode de mesure |
-|---|----------|-------|-------------------|
-| NFR-S1 | Aucune vulnérabilité connue dans les deps | 0 advisories | `cargo audit` |
-| NFR-S2 | Blocs `unsafe` minimaux et documentés | ≤ 5, tous avec commentaire `// SAFETY:` | `cargo geiger` + audit manuel |
-| NFR-S3 | Pas d'injection de commande via les arguments CLI | Validation stricte | Tests de fuzzing sur les arguments |
+| #      | Exigence                                          | Cible                                      | Méthode de mesure                 |
+| ------ | ------------------------------------------------- | ------------------------------------------ | ---------------------------------- |
+| NFR-S1 | Aucune vulnérabilité connue dans les deps       | 0 advisories                               | `cargo audit`                    |
+| NFR-S2 | Blocs `unsafe` minimaux et documentés          | ≤ 5, tous avec commentaire `// SAFETY:` | `cargo geiger` + audit manuel    |
+| NFR-S3 | Pas d'injection de commande via les arguments CLI | Validation stricte                         | Tests de fuzzing sur les arguments |
 
 ### 1.8.7 Observabilité
 
-| # | Exigence | Cible | Méthode de mesure |
-|---|----------|-------|-------------------|
-| NFR-O1 | Logging structuré configurable (niveaux TRACE→ERROR) | 5 niveaux | `RUST_LOG=trace ./fibcalc-rs` |
-| NFR-O2 | Métriques de progression (bits/s, digits/s, steps/s) | Affichage en mode `--details` | Test de sortie |
-| NFR-O3 | Profil de calibration sérialisable en JSON | Lecture/écriture JSON | Test serde round-trip |
+| #      | Exigence                                               | Cible                           | Méthode de mesure              |
+| ------ | ------------------------------------------------------ | ------------------------------- | ------------------------------- |
+| NFR-O1 | Logging structuré configurable (niveaux TRACE→ERROR) | 5 niveaux                       | `RUST_LOG=trace ./fibcalc-rs` |
+| NFR-O2 | Métriques de progression (bits/s, digits/s, steps/s)  | Affichage en mode `--details` | Test de sortie                  |
+| NFR-O3 | Profil de calibration sérialisable en JSON            | Lecture/écriture JSON          | Test serde round-trip           |
 
 ### 1.8.8 Ergonomie
 
-| # | Exigence | Cible | Méthode de mesure |
-|---|----------|-------|-------------------|
-| NFR-E1 | Messages d'erreur clairs avec suggestion de correction | Toutes les erreurs config | Test E2E des messages d'erreur |
-| NFR-E2 | Shell completion pour 4 shells | bash, zsh, fish, powershell | Génération + validation syntaxique |
-| NFR-E3 | `--help` lisible et complet | Tous les flags documentés | Comparaison avec la doc |
+| #      | Exigence                                               | Cible                       | Méthode de mesure                   |
+| ------ | ------------------------------------------------------ | --------------------------- | ------------------------------------ |
+| NFR-E1 | Messages d'erreur clairs avec suggestion de correction | Toutes les erreurs config   | Test E2E des messages d'erreur       |
+| NFR-E2 | Shell completion pour 4 shells                         | bash, zsh, fish, powershell | Génération + validation syntaxique |
+| NFR-E3 | `--help` lisible et complet                          | Tous les flags documentés  | Comparaison avec la doc              |
 
 ---
 
@@ -1101,13 +1078,13 @@ criterion_main!(benches);
 
 ### 1.9.1 Targets supportés
 
-| # | Target Triple | OS | Arch | SIMD | Priorité |
-|---|--------------|-----|------|------|----------|
-| T1 | `x86_64-unknown-linux-gnu` | Linux | x86_64 | AVX2/AVX-512 | P0 |
-| T2 | `x86_64-unknown-linux-musl` | Linux (statique) | x86_64 | AVX2/AVX-512 | P1 |
-| T3 | `x86_64-pc-windows-msvc` | Windows | x86_64 | AVX2/AVX-512 | P1 |
-| T4 | `x86_64-apple-darwin` | macOS | x86_64 | AVX2 | P1 |
-| T5 | `aarch64-apple-darwin` | macOS (Apple Silicon) | ARM64 | NEON | P1 |
+| #  | Target Triple                 | OS                    | Arch   | SIMD         | Priorité |
+| -- | ----------------------------- | --------------------- | ------ | ------------ | --------- |
+| T1 | `x86_64-unknown-linux-gnu`  | Linux                 | x86_64 | AVX2/AVX-512 | P0        |
+| T2 | `x86_64-unknown-linux-musl` | Linux (statique)      | x86_64 | AVX2/AVX-512 | P1        |
+| T3 | `x86_64-pc-windows-msvc`    | Windows               | x86_64 | AVX2/AVX-512 | P1        |
+| T4 | `x86_64-apple-darwin`       | macOS                 | x86_64 | AVX2         | P1        |
+| T5 | `aarch64-apple-darwin`      | macOS (Apple Silicon) | ARM64  | NEON         | P1        |
 
 ### 1.9.2 Instructions de build par target
 
@@ -1131,6 +1108,7 @@ ldd target/x86_64-unknown-linux-gnu/release/fibcalc-rs
 ```
 
 **Problèmes connus** :
+
 - Nécessite glibc ≥ 2.17 (CentOS 7+)
 - Pour SIMD AVX-512 : ajouter `RUSTFLAGS="-C target-cpu=native"`
 
@@ -1150,6 +1128,7 @@ ldd target/x86_64-unknown-linux-musl/release/fibcalc-rs
 ```
 
 **Problèmes connus** :
+
 - Feature GMP non supportée avec musl (libgmp nécessite glibc)
 - Taille binaire légèrement plus grande (~10%)
 
@@ -1165,6 +1144,7 @@ cargo build --release --target x86_64-pc-windows-msvc
 ```
 
 **Problèmes connus** :
+
 - GMP difficile à compiler avec MSVC → préférer le target `gnu` ou WSL
 - Les tests TUI nécessitent un terminal réel (pas PowerShell ISE)
 
@@ -1181,6 +1161,7 @@ cargo build --release --target x86_64-apple-darwin --features gmp
 ```
 
 **Problèmes connus** :
+
 - AVX-512 non disponible sur aucun Mac Intel
 - Cross-compilation depuis Linux nécessite `osxcross`
 
@@ -1197,6 +1178,7 @@ cargo build --release --target aarch64-apple-darwin --features gmp
 ```
 
 **Problèmes connus** :
+
 - Pas d'AVX2/AVX-512 → utiliser NEON intrinsèques ou scalar fallback
 - Les opérations SIMD doivent avoir un fallback `#[cfg(not(target_arch = "x86_64"))]`
 - Cross-compilation depuis Linux x86_64 nécessite Xcode SDKs
@@ -1230,42 +1212,44 @@ FibGo est sous **Apache License 2.0**, une licence permissive compatible avec la
 
 ### 1.10.2 Matrice de licences des dépendances Rust
 
-| Crate | Licence | Compatible Apache-2.0 | Notes |
-|-------|---------|----------------------|-------|
-| `num-bigint` | MIT / Apache-2.0 | Oui | Dual-license, choix libre |
-| `num-traits` | MIT / Apache-2.0 | Oui | Dual-license |
-| `rug` | LGPL-3.0+ | **Conditionnel** | Via GMP (LGPL). OK si linking dynamique. Problématique pour binaire statique redistribué. |
-| `gmp-mpfr-sys` | LGPL-3.0+ | **Conditionnel** | Même contrainte que `rug` |
-| `ratatui` | MIT | Oui | |
-| `crossterm` | MIT | Oui | |
-| `clap` | MIT / Apache-2.0 | Oui | |
-| `clap_complete` | MIT / Apache-2.0 | Oui | |
-| `rayon` | MIT / Apache-2.0 | Oui | |
-| `crossbeam` | MIT / Apache-2.0 | Oui | |
-| `bumpalo` | MIT / Apache-2.0 | Oui | |
-| `parking_lot` | MIT / Apache-2.0 | Oui | |
-| `thiserror` | MIT / Apache-2.0 | Oui | |
-| `anyhow` | MIT / Apache-2.0 | Oui | |
-| `serde` | MIT / Apache-2.0 | Oui | |
-| `serde_json` | MIT / Apache-2.0 | Oui | |
-| `tracing` | MIT | Oui | |
-| `tracing-subscriber` | MIT | Oui | |
-| `criterion` | MIT / Apache-2.0 | Oui | dev-dependency uniquement |
-| `proptest` | MIT / Apache-2.0 | Oui | dev-dependency uniquement |
-| `sysinfo` | MIT | Oui | |
-| `indicatif` | MIT | Oui | |
-| `console` | MIT | Oui | |
+| Crate                  | Licence          | Compatible Apache-2.0  | Notes                                                                                       |
+| ---------------------- | ---------------- | ---------------------- | ------------------------------------------------------------------------------------------- |
+| `num-bigint`         | MIT / Apache-2.0 | Oui                    | Dual-license, choix libre                                                                   |
+| `num-traits`         | MIT / Apache-2.0 | Oui                    | Dual-license                                                                                |
+| `rug`                | LGPL-3.0+        | **Conditionnel** | Via GMP (LGPL). OK si linking dynamique. Problématique pour binaire statique redistribué. |
+| `gmp-mpfr-sys`       | LGPL-3.0+        | **Conditionnel** | Même contrainte que `rug`                                                                |
+| `ratatui`            | MIT              | Oui                    |                                                                                             |
+| `crossterm`          | MIT              | Oui                    |                                                                                             |
+| `clap`               | MIT / Apache-2.0 | Oui                    |                                                                                             |
+| `clap_complete`      | MIT / Apache-2.0 | Oui                    |                                                                                             |
+| `rayon`              | MIT / Apache-2.0 | Oui                    |                                                                                             |
+| `crossbeam`          | MIT / Apache-2.0 | Oui                    |                                                                                             |
+| `bumpalo`            | MIT / Apache-2.0 | Oui                    |                                                                                             |
+| `parking_lot`        | MIT / Apache-2.0 | Oui                    |                                                                                             |
+| `thiserror`          | MIT / Apache-2.0 | Oui                    |                                                                                             |
+| `anyhow`             | MIT / Apache-2.0 | Oui                    |                                                                                             |
+| `serde`              | MIT / Apache-2.0 | Oui                    |                                                                                             |
+| `serde_json`         | MIT / Apache-2.0 | Oui                    |                                                                                             |
+| `tracing`            | MIT              | Oui                    |                                                                                             |
+| `tracing-subscriber` | MIT              | Oui                    |                                                                                             |
+| `criterion`          | MIT / Apache-2.0 | Oui                    | dev-dependency uniquement                                                                   |
+| `proptest`           | MIT / Apache-2.0 | Oui                    | dev-dependency uniquement                                                                   |
+| `sysinfo`            | MIT              | Oui                    |                                                                                             |
+| `indicatif`          | MIT              | Oui                    |                                                                                             |
+| `console`            | MIT              | Oui                    |                                                                                             |
 
 ### 1.10.3 Analyse de la problématique GMP / LGPL
 
 **Constat** : La crate `rug` (bindings Rust vers GMP/MPFR/MPC) hérite de la licence LGPL-3.0+ de GMP.
 
 **Implications** :
+
 - **Linking dynamique** : Compatible avec Apache-2.0. L'utilisateur peut remplacer la bibliothèque GMP.
 - **Linking statique** : Zone grise LGPL. Nécessite de fournir le code objet permettant la re-liaison.
 - **Redistribution binaire** : Contraintes LGPL à respecter (sources GMP, instructions de re-liaison).
 
 **Recommandation** :
+
 1. Le binaire par défaut (`cargo build --release`) n'inclut **pas** GMP → 100% Apache-2.0
 2. La feature `gmp` est **optionnelle** et documentée avec les contraintes LGPL
 3. Pour les distributions binaires avec GMP : fournir les instructions de re-liaison LGPL
@@ -1296,20 +1280,20 @@ ignore = false
 
 ### 1.11.1 Estimation de l'effort
 
-| Package Go | LoC Go (approx.) | Complexité portage | LoC Rust (estimé) | Durée estimée |
-|-----------|------------------|-------------------|-------------------|--------------|
-| `internal/fibonacci` (algorithmes) | ~3 500 | Élevée (BigInt, FFT, parallélisme) | ~4 500 | 3-4 semaines |
-| `internal/bigfft` | ~2 500 | Très élevée (FFT Fermat, SIMD) | ~3 000 | 3-4 semaines |
-| `internal/orchestration` | ~500 | Moyenne (errgroup → rayon) | ~500 | 1 semaine |
-| `internal/cli` | ~1 200 | Faible (reformatage) | ~1 000 | 1 semaine |
-| `internal/tui` | ~1 800 | Élevée (Bubble Tea → ratatui) | ~2 200 | 2-3 semaines |
-| `internal/calibration` | ~800 | Moyenne | ~900 | 1 semaine |
-| `internal/config` | ~400 | Faible (flag → clap) | ~300 | 0.5 semaine |
-| `internal/app` | ~300 | Faible | ~250 | 0.5 semaine |
-| `internal/errors` | ~200 | Faible (→ thiserror) | ~150 | 0.5 semaine |
-| Support (`format`, `metrics`, `ui`, etc.) | ~600 | Faible | ~500 | 1 semaine |
-| Tests | ~5 000 | Moyenne (réécriture) | ~5 500 | 3-4 semaines |
-| **Total** | **~16 800** | | **~18 800** | **~18-22 semaines** |
+| Package Go                                      | LoC Go (approx.)  | Complexité portage                   | LoC Rust (estimé) | Durée estimée           |
+| ----------------------------------------------- | ----------------- | ------------------------------------- | ------------------ | ------------------------- |
+| `internal/fibonacci` (algorithmes)            | ~3 500            | Élevée (BigInt, FFT, parallélisme) | ~4 500             | 3-4 semaines              |
+| `internal/bigfft`                             | ~2 500            | Très élevée (FFT Fermat, SIMD)     | ~3 000             | 3-4 semaines              |
+| `internal/orchestration`                      | ~500              | Moyenne (errgroup → rayon)           | ~500               | 1 semaine                 |
+| `internal/cli`                                | ~1 200            | Faible (reformatage)                  | ~1 000             | 1 semaine                 |
+| `internal/tui`                                | ~1 800            | Élevée (Bubble Tea → ratatui)      | ~2 200             | 2-3 semaines              |
+| `internal/calibration`                        | ~800              | Moyenne                               | ~900               | 1 semaine                 |
+| `internal/config`                             | ~400              | Faible (flag → clap)                 | ~300               | 0.5 semaine               |
+| `internal/app`                                | ~300              | Faible                                | ~250               | 0.5 semaine               |
+| `internal/errors`                             | ~200              | Faible (→ thiserror)                 | ~150               | 0.5 semaine               |
+| Support (`format`, `metrics`, `ui`, etc.) | ~600              | Faible                                | ~500               | 1 semaine                 |
+| Tests                                           | ~5 000            | Moyenne (réécriture)                | ~5 500             | 3-4 semaines              |
+| **Total**                                 | **~16 800** |                                       | **~18 800**  | **~18-22 semaines** |
 
 ### 1.11.2 Phases et timeline
 
@@ -1377,14 +1361,14 @@ Durée totale : 2 + 4 + 3 + 2 + max(2, 3) + 2 = 16 semaines
 
 ### 1.11.4 Jalons de validation
 
-| Jalon | Semaine | Critère de réussite |
-|-------|---------|---------------------|
-| M1 : FFT multiplication opérationnelle | S6 | `mulFFT` et `sqrFFT` produisent résultats corrects |
-| M2 : Fast Doubling F(1M) correct | S9 | Golden test + comparaison Go |
-| M3 : 3 algorithmes + orchestration | S11 | Validation croisée complète N ≤ 10M |
-| M4 : CLI fonctionnel | S13 | Toutes les flags opérationnelles, E2E pass |
-| M5 : TUI fonctionnel | S14 | Dashboard interactif avec 5 panels |
-| M6 : Release candidate | S16 | Tous les NFR satisfaits, benchmarks verts |
+| Jalon                                   | Semaine | Critère de réussite                                   |
+| --------------------------------------- | ------- | ------------------------------------------------------- |
+| M1 : FFT multiplication opérationnelle | S6      | `mulFFT` et `sqrFFT` produisent résultats corrects |
+| M2 : Fast Doubling F(1M) correct        | S9      | Golden test + comparaison Go                            |
+| M3 : 3 algorithmes + orchestration      | S11     | Validation croisée complète N ≤ 10M                  |
+| M4 : CLI fonctionnel                    | S13     | Toutes les flags opérationnelles, E2E pass             |
+| M5 : TUI fonctionnel                    | S14     | Dashboard interactif avec 5 panels                      |
+| M6 : Release candidate                  | S16     | Tous les NFR satisfaits, benchmarks verts               |
 
 ---
 
@@ -1531,51 +1515,51 @@ Seuils par défaut : ParallelThreshold=4096 bits, FFTThreshold=500K bits, Strass
 
 ## Annexe A — Correspondance des constantes Go → Rust
 
-| Constante Go | Valeur | Fichier source | Équivalent Rust |
-|-------------|--------|---------------|-----------------|
-| `DefaultParallelThreshold` | 4 096 bits | `constants.go` | `const DEFAULT_PARALLEL_THRESHOLD: usize = 4096` |
-| `DefaultFFTThreshold` | 500 000 bits | `constants.go` | `const DEFAULT_FFT_THRESHOLD: usize = 500_000` |
-| `DefaultStrassenThreshold` | 3 072 bits | `constants.go` | `const DEFAULT_STRASSEN_THRESHOLD: usize = 3072` |
-| `ParallelFFTThreshold` | 5 000 000 bits | `constants.go` | `const PARALLEL_FFT_THRESHOLD: usize = 5_000_000` |
-| `CalibrationN` | 10 000 000 | `constants.go` | `const CALIBRATION_N: u64 = 10_000_000` |
-| `ProgressReportThreshold` | 0.01 (1%) | `constants.go` | `const PROGRESS_REPORT_THRESHOLD: f64 = 0.01` |
-| `MaxFibUint64` | 93 | `calculator.go` | `const MAX_FIB_U64: u64 = 93` |
-| `MaxPooledBitLen` | 100 000 000 bits | `common.go` | `const MAX_POOLED_BIT_LEN: usize = 100_000_000` |
+| Constante Go                 | Valeur           | Fichier source    | Équivalent Rust                                    |
+| ---------------------------- | ---------------- | ----------------- | --------------------------------------------------- |
+| `DefaultParallelThreshold` | 4 096 bits       | `constants.go`  | `const DEFAULT_PARALLEL_THRESHOLD: usize = 4096`  |
+| `DefaultFFTThreshold`      | 500 000 bits     | `constants.go`  | `const DEFAULT_FFT_THRESHOLD: usize = 500_000`    |
+| `DefaultStrassenThreshold` | 3 072 bits       | `constants.go`  | `const DEFAULT_STRASSEN_THRESHOLD: usize = 3072`  |
+| `ParallelFFTThreshold`     | 5 000 000 bits   | `constants.go`  | `const PARALLEL_FFT_THRESHOLD: usize = 5_000_000` |
+| `CalibrationN`             | 10 000 000       | `constants.go`  | `const CALIBRATION_N: u64 = 10_000_000`           |
+| `ProgressReportThreshold`  | 0.01 (1%)        | `constants.go`  | `const PROGRESS_REPORT_THRESHOLD: f64 = 0.01`     |
+| `MaxFibUint64`             | 93               | `calculator.go` | `const MAX_FIB_U64: u64 = 93`                     |
+| `MaxPooledBitLen`          | 100 000 000 bits | `common.go`     | `const MAX_POOLED_BIT_LEN: usize = 100_000_000`   |
 
 ## Annexe B — Correspondance des codes de sortie
 
-| Code Go | Constante Go | Signification | Code Rust |
-|---------|-------------|---------------|-----------|
-| 0 | `ExitSuccess` | Succès | `std::process::exit(0)` |
-| 1 | `ExitErrorGeneric` | Erreur générique | `FibError::Calculation` |
-| 2 | `ExitErrorTimeout` | Timeout | `FibError::Timeout` |
-| 3 | `ExitErrorMismatch` | Désaccord entre algorithmes | `FibError::Mismatch` |
-| 4 | `ExitErrorConfig` | Erreur de configuration | `FibError::Config` |
-| 130 | `ExitErrorCanceled` | Annulation (Ctrl+C) | `FibError::Cancelled` |
+| Code Go | Constante Go          | Signification                | Code Rust                 |
+| ------- | --------------------- | ---------------------------- | ------------------------- |
+| 0       | `ExitSuccess`       | Succès                      | `std::process::exit(0)` |
+| 1       | `ExitErrorGeneric`  | Erreur générique           | `FibError::Calculation` |
+| 2       | `ExitErrorTimeout`  | Timeout                      | `FibError::Timeout`     |
+| 3       | `ExitErrorMismatch` | Désaccord entre algorithmes | `FibError::Mismatch`    |
+| 4       | `ExitErrorConfig`   | Erreur de configuration      | `FibError::Config`      |
+| 130     | `ExitErrorCanceled` | Annulation (Ctrl+C)          | `FibError::Cancelled`   |
 
 ## Annexe C — Correspondance des flags CLI
 
-| Flag Go | Type | Défaut | Flag Rust (clap) | Notes |
-|---------|------|--------|-----------------|-------|
-| `-n` | uint64 | 100 000 000 | `-n <N>` | `#[arg(short, default_value = "100000000")]` |
-| `-algo` | string | "all" | `--algo <ALGO>` | `#[arg(long, default_value = "all")]` |
-| `-calculate` / `-c` | bool | false | `--calculate` / `-c` | `#[arg(short, long)]` |
-| `-verbose` / `-v` | bool | false | `--verbose` / `-v` | `#[arg(short, long)]` |
-| `-details` / `-d` | bool | false | `--details` / `-d` | `#[arg(short, long)]` |
-| `-output` / `-o` | string | "" | `--output <PATH>` | `#[arg(short, long)]` |
-| `-quiet` / `-q` | bool | false | `--quiet` / `-q` | `#[arg(short, long)]` |
-| `-calibrate` | bool | false | `--calibrate` | `#[arg(long)]` |
-| `-auto-calibrate` | bool | false | `--auto-calibrate` | `#[arg(long)]` |
-| `-timeout` | duration | 5m | `--timeout <DURATION>` | Parse custom (e.g., "5m", "1h") |
-| `-threshold` | int | 0 | `--threshold <BITS>` | `#[arg(long, default_value = "0")]` |
-| `-fft-threshold` | int | 0 | `--fft-threshold <BITS>` | `#[arg(long, default_value = "0")]` |
-| `-strassen-threshold` | int | 0 | `--strassen-threshold <BITS>` | `#[arg(long, default_value = "0")]` |
-| `-tui` | bool | false | `--tui` | `#[arg(long)]` |
-| `-completion` | string | "" | `--completion <SHELL>` | `#[arg(long, value_enum)]` |
-| `--version` / `-V` | bool | false | `--version` / `-V` | Automatique avec clap |
-| `--last-digits` | int | 0 | `--last-digits <K>` | `#[arg(long, default_value = "0")]` |
-| `--memory-limit` | string | "" | `--memory-limit <SIZE>` | Parse custom (e.g., "8G") |
-| `--gc-control` | string | "auto" | N/A | Non applicable en Rust (pas de GC) |
+| Flag Go                 | Type     | Défaut     | Flag Rust (clap)                | Notes                                          |
+| ----------------------- | -------- | ----------- | ------------------------------- | ---------------------------------------------- |
+| `-n`                  | uint64   | 100 000 000 | `-n <N>`                      | `#[arg(short, default_value = "100000000")]` |
+| `-algo`               | string   | "all"       | `--algo <ALGO>`               | `#[arg(long, default_value = "all")]`        |
+| `-calculate` / `-c` | bool     | false       | `--calculate` / `-c`        | `#[arg(short, long)]`                        |
+| `-verbose` / `-v`   | bool     | false       | `--verbose` / `-v`          | `#[arg(short, long)]`                        |
+| `-details` / `-d`   | bool     | false       | `--details` / `-d`          | `#[arg(short, long)]`                        |
+| `-output` / `-o`    | string   | ""          | `--output <PATH>`             | `#[arg(short, long)]`                        |
+| `-quiet` / `-q`     | bool     | false       | `--quiet` / `-q`            | `#[arg(short, long)]`                        |
+| `-calibrate`          | bool     | false       | `--calibrate`                 | `#[arg(long)]`                               |
+| `-auto-calibrate`     | bool     | false       | `--auto-calibrate`            | `#[arg(long)]`                               |
+| `-timeout`            | duration | 5m          | `--timeout <DURATION>`        | Parse custom (e.g., "5m", "1h")                |
+| `-threshold`          | int      | 0           | `--threshold <BITS>`          | `#[arg(long, default_value = "0")]`          |
+| `-fft-threshold`      | int      | 0           | `--fft-threshold <BITS>`      | `#[arg(long, default_value = "0")]`          |
+| `-strassen-threshold` | int      | 0           | `--strassen-threshold <BITS>` | `#[arg(long, default_value = "0")]`          |
+| `-tui`                | bool     | false       | `--tui`                       | `#[arg(long)]`                               |
+| `-completion`         | string   | ""          | `--completion <SHELL>`        | `#[arg(long, value_enum)]`                   |
+| `--version` / `-V`  | bool     | false       | `--version` / `-V`          | Automatique avec clap                          |
+| `--last-digits`       | int      | 0           | `--last-digits <K>`           | `#[arg(long, default_value = "0")]`          |
+| `--memory-limit`      | string   | ""          | `--memory-limit <SIZE>`       | Parse custom (e.g., "8G")                      |
+| `--gc-control`        | string   | "auto"      | N/A                             | Non applicable en Rust (pas de GC)             |
 
 > **Note** : Le flag `--gc-control` de Go n'a pas d'équivalent en Rust puisqu'il n'y a pas de garbage collector. Les allocations sont gérées via RAII et l'arena allocator.
 
@@ -1584,6 +1568,7 @@ Seuils par défaut : ParallelThreshold=4096 bits, FFTThreshold=500K bits, Strass
 *Fin de la Phase 1 — Fondations & Analyse des exigences*
 *Document rédigé en français pour le projet FibCalc-rs*
 *Prochaine phase : Phase 2 — Spécifications algorithmiques détaillées (T2.1–T2.18)*
+
 # Phase 2 — Spécifications Algorithmiques
 
 > **Portage FibGo → Rust** | Tâches T2.1 à T2.18
@@ -1593,26 +1578,26 @@ Seuils par défaut : ParallelThreshold=4096 bits, FFTThreshold=500K bits, Strass
 
 ## Table des matières
 
-| Tâche | Titre | Ligne |
-|-------|-------|-------|
-| T2.1 | Fast Doubling : itération bit-à-bit et transitions d'état | §2.1 |
-| T2.2 | Fast Doubling : logique de parallélisation | §2.2 |
-| T2.3 | Exponentiation Matricielle : gestion d'état et pooling | §2.3 |
-| T2.4 | Strassen : logique de commutation et fallback | §2.4 |
-| T2.5 | Sélection des paramètres FFT (k, n, modulus de Fermat) | §2.5 |
-| T2.6 | Arithmétique de Fermat (Shift, Mul, Sqr, normalisation) | §2.6 |
-| T2.7 | FFT : structure récursive et cas de base | §2.7 |
-| T2.8 | Opérations polynomiales (Poly, PolValues, transformées) | §2.8 |
-| T2.9 | Optimisation de réutilisation de transformée FFT pour le carré | §2.9 |
-| T2.10 | Sélection adaptative de stratégie de multiplication | §2.10 |
-| T2.11 | Fast Doubling Modulaire (--last-digits) | §2.11 |
-| T2.12 | Fast path itératif (n ≤ 93) | §2.12 |
-| T2.13 | Retour résultat zéro-copie | §2.13 |
-| T2.14 | Méthodologie de comparaison inter-algorithmes | §2.14 |
-| T2.15 | Générateur de séquence et optimisation Skip | §2.15 |
-| T2.16 | Sélection de calculateur depuis la configuration | §2.16 |
-| T2.17 | Preuves de correction algorithmique | §2.17 |
-| T2.18 | Carte de couverture de tests par algorithme | §2.18 |
+| Tâche | Titre                                                             | Ligne  |
+| ------ | ----------------------------------------------------------------- | ------ |
+| T2.1   | Fast Doubling : itération bit-à-bit et transitions d'état      | §2.1  |
+| T2.2   | Fast Doubling : logique de parallélisation                       | §2.2  |
+| T2.3   | Exponentiation Matricielle : gestion d'état et pooling           | §2.3  |
+| T2.4   | Strassen : logique de commutation et fallback                     | §2.4  |
+| T2.5   | Sélection des paramètres FFT (k, n, modulus de Fermat)          | §2.5  |
+| T2.6   | Arithmétique de Fermat (Shift, Mul, Sqr, normalisation)          | §2.6  |
+| T2.7   | FFT : structure récursive et cas de base                         | §2.7  |
+| T2.8   | Opérations polynomiales (Poly, PolValues, transformées)         | §2.8  |
+| T2.9   | Optimisation de réutilisation de transformée FFT pour le carré | §2.9  |
+| T2.10  | Sélection adaptative de stratégie de multiplication             | §2.10 |
+| T2.11  | Fast Doubling Modulaire (--last-digits)                           | §2.11 |
+| T2.12  | Fast path itératif (n ≤ 93)                                     | §2.12 |
+| T2.13  | Retour résultat zéro-copie                                      | §2.13 |
+| T2.14  | Méthodologie de comparaison inter-algorithmes                    | §2.14 |
+| T2.15  | Générateur de séquence et optimisation Skip                    | §2.15 |
+| T2.16  | Sélection de calculateur depuis la configuration                 | §2.16 |
+| T2.17  | Preuves de correction algorithmique                               | §2.17 |
+| T2.18  | Carte de couverture de tests par algorithme                       | §2.18 |
 
 ---
 
@@ -1735,23 +1720,23 @@ La ligne Go `s.FK, s.FK1, s.T2, s.T3, s.T1 = s.T3, s.T1, s.FK, s.FK1, s.T2` effe
 
 **Avant rotation :**
 
-| Variable | Contient | Signification |
-|----------|----------|---------------|
-| FK | Ancien F(k) | Obsolète |
-| FK1 | Ancien F(k+1) | Obsolète |
-| T1 | FK1² + FK² | = F(2k+1) |
-| T2 | FK² | Temporaire |
-| T3 | 2·FK·FK1 - FK² | = F(2k) |
+| Variable | Contient          | Signification |
+| -------- | ----------------- | ------------- |
+| FK       | Ancien F(k)       | Obsolète     |
+| FK1      | Ancien F(k+1)     | Obsolète     |
+| T1       | FK1² + FK²      | = F(2k+1)     |
+| T2       | FK²              | Temporaire    |
+| T3       | 2·FK·FK1 - FK² | = F(2k)       |
 
 **Après rotation :**
 
-| Variable | Contient | Signification |
-|----------|----------|---------------|
-| FK | F(2k) | Nouveau F(k) |
-| FK1 | F(2k+1) | Nouveau F(k+1) |
-| T1 | Ancien T2 | Libre |
-| T2 | Ancien FK | Libre |
-| T3 | Ancien FK1 | Libre |
+| Variable | Contient   | Signification  |
+| -------- | ---------- | -------------- |
+| FK       | F(2k)      | Nouveau F(k)   |
+| FK1      | F(2k+1)    | Nouveau F(k+1) |
+| T1       | Ancien T2  | Libre          |
+| T2       | Ancien FK  | Libre          |
+| T3       | Ancien FK1 | Libre          |
 
 ### 2.1.5 Notes de traduction Rust
 
@@ -1866,11 +1851,11 @@ En Rust, cela se traduit par un `tokio::sync::Semaphore` ou un `crossbeam::chann
 
 Lorsque les opérandes dépassent `FFTThreshold`, la parallélisation au niveau Fibonacci est **désactivée** (sauf pour opérandes > 5M bits) car le moteur FFT sature déjà les cœurs CPU via son propre sémaphore (`bigfft.concurrencySemaphore` limité à `NumCPU`).
 
-| Couche | Sémaphore | Capacité | Condition d'activation |
-|--------|-----------|----------|----------------------|
-| Fibonacci | taskSemaphore | NumCPU × 2 | maxBitLen > ParallelThreshold ET maxBitLen ≤ FFTThreshold |
-| FFT | concurrencySemaphore | NumCPU | Récursion FFT, size ≥ 4, depth < 3 |
-| Les deux | — | NumCPU × 3 max | maxBitLen > ParallelFFTThreshold (5M bits) |
+| Couche    | Sémaphore           | Capacité       | Condition d'activation                                     |
+| --------- | -------------------- | --------------- | ---------------------------------------------------------- |
+| Fibonacci | taskSemaphore        | NumCPU × 2     | maxBitLen > ParallelThreshold ET maxBitLen ≤ FFTThreshold |
+| FFT       | concurrencySemaphore | NumCPU          | Récursion FFT, size ≥ 4, depth < 3                       |
+| Les deux  | —                   | NumCPU × 3 max | maxBitLen > ParallelFFTThreshold (5M bits)                 |
 
 ---
 
@@ -2050,11 +2035,11 @@ T2 = T1 + P4              C₁₂ = T1 + P5 + P6
 
 ### 2.4.3 Comparaison des coûts
 
-| Méthode | Multiplications | Additions | Seuil (bits) |
-|---------|----------------|-----------|--------------|
-| Naïf 2×2 | 8 | 4 | ≤ strassenThreshold |
-| Strassen-Winograd | 7 | 15 | > strassenThreshold |
-| Carré symétrique | 4 (3 sqr + 1 mul) | 4 | Toujours (si symétrique) |
+| Méthode           | Multiplications   | Additions | Seuil (bits)              |
+| ------------------ | ----------------- | --------- | ------------------------- |
+| Naïf 2×2         | 8                 | 4         | ≤ strassenThreshold      |
+| Strassen-Winograd  | 7                 | 15        | > strassenThreshold       |
+| Carré symétrique | 4 (3 sqr + 1 mul) | 4         | Toujours (si symétrique) |
 
 ### 2.4.4 Seuil par défaut et configuration
 
@@ -2142,6 +2127,7 @@ FONCTION fftSizeSqr(x: nat) → (k: uint, m: int):
 ### 2.5.5 Modulus de Fermat
 
 L'arithmétique FFT opère modulo `2^(n×W) + 1` (nombre de Fermat généralisé), où :
+
 - `n` = `valueSize(k, m, extra)` en mots
 - Le modulus M = 2^(n×64) + 1 sur une architecture 64 bits
 
@@ -2571,11 +2557,11 @@ Les méthodes `PolValues.Mul()` et `PolValues.Sqr()` sont **en lecture seule** s
 
 ### 2.9.4 Comparaison des coûts FFT
 
-| Approche | Transformées directes | Produits point-à-point | Transformées inverses | Total FFT |
-|----------|---------------------|----------------------|---------------------|-----------|
-| Naïve (3 Mul séparés) | 6 | 3 | 3 | 12 |
-| Avec réutilisation (carré) | 2 | 3 | 3 | 8 |
-| **Économie** | **-4** | 0 | 0 | **-33%** |
+| Approche                     | Transformées directes | Produits point-à-point | Transformées inverses | Total FFT      |
+| ---------------------------- | ---------------------- | ----------------------- | ---------------------- | -------------- |
+| Naïve (3 Mul séparés)     | 6                      | 3                       | 3                      | 12             |
+| Avec réutilisation (carré) | 2                      | 3                       | 3                      | 8              |
+| **Économie**          | **-4**           | 0                       | 0                      | **-33%** |
 
 ### 2.9.5 Notes de traduction Rust
 
@@ -2591,11 +2577,11 @@ Les méthodes `PolValues.Mul()` et `PolValues.Sqr()` sont **en lecture seule** s
 
 ### 2.10.1 Les trois stratégies
 
-| Stratégie | Classe Go | Comportement | Cas d'utilisation |
-|-----------|-----------|-------------|-------------------|
-| Adaptive | `AdaptiveStrategy` | math/big si petit, FFT si grand | Production (défaut) |
-| FFT-Only | `FFTOnlyStrategy` | FFT pour toutes les opérations | Benchmark / très grands nombres |
-| Karatsuba | `KaratsubaStrategy` | math/big.Mul toujours | Tests / comparaison |
+| Stratégie | Classe Go             | Comportement                    | Cas d'utilisation                |
+| ---------- | --------------------- | ------------------------------- | -------------------------------- |
+| Adaptive   | `AdaptiveStrategy`  | math/big si petit, FFT si grand | Production (défaut)             |
+| FFT-Only   | `FFTOnlyStrategy`   | FFT pour toutes les opérations | Benchmark / très grands nombres |
+| Karatsuba  | `KaratsubaStrategy` | math/big.Mul toujours           | Tests / comparaison              |
 
 ### 2.10.2 Organigramme de sélection (AdaptiveStrategy)
 
@@ -2733,11 +2719,11 @@ Pour `--last-digits K`, le modulus est m = 10^K, donc la mémoire est O(K) bits.
 
 ### 2.11.3 Comparaison avec le calcul complet
 
-| Aspect | F(n) complet | F(n) mod m |
-|--------|-------------|------------|
-| Mémoire | O(n) bits | O(K) bits |
-| Temps | O(log n × M(n)) | O(log n × M(K)) |
-| Cas F(10^18) mod 10^6 | Impossible | < 1 seconde |
+| Aspect                | F(n) complet     | F(n) mod m       |
+| --------------------- | ---------------- | ---------------- |
+| Mémoire              | O(n) bits        | O(K) bits        |
+| Temps                 | O(log n × M(n)) | O(log n × M(K)) |
+| Cas F(10^18) mod 10^6 | Impossible       | < 1 seconde      |
 
 ### 2.11.4 Gestion du mod négatif
 
@@ -2845,11 +2831,11 @@ L'état (`CalculationState` ou `matrixState`) doit rester valide pour être remi
 
 ### 2.13.4 Coût
 
-| Opération | Coût |
-|-----------|------|
-| Copie O(n) | ~850 KB pour F(10M), ~8.5 MB pour F(100M) |
-| Pointer stealing | 24 bytes (allocation d'un header big.Int vide) |
-| **Économie** | ~99.997% de la copie éliminée |
+| Opération          | Coût                                          |
+| ------------------- | ---------------------------------------------- |
+| Copie O(n)          | ~850 KB pour F(10M), ~8.5 MB pour F(100M)      |
+| Pointer stealing    | 24 bytes (allocation d'un header big.Int vide) |
+| **Économie** | ~99.997% de la copie éliminée                |
 
 ### 2.13.5 Mapping Rust : `std::mem::replace`
 
@@ -3018,10 +3004,10 @@ FONCTION Skip(ctx, n):
 
 ### 2.15.4 Seuil itératif vs Calculator
 
-| Saut (distance) | Méthode | Complexité |
-|-----------------|---------|-----------|
-| < 1000 | Itération | O(distance × d) où d = nombre de chiffres |
-| ≥ 1000 | Calculator (Fast Doubling) | O(log n × M(n)) |
+| Saut (distance) | Méthode                   | Complexité                                 |
+| --------------- | -------------------------- | ------------------------------------------- |
+| < 1000          | Itération                 | O(distance × d) où d = nombre de chiffres |
+| ≥ 1000         | Calculator (Fast Doubling) | O(log n × M(n))                            |
 
 ### 2.15.5 Notes de traduction Rust
 
@@ -3057,12 +3043,12 @@ FONCTION GetCalculatorsToRun(cfg, factory) → Vec<Calculator>:
 
 ### 2.16.2 Algorithmes enregistrés par défaut
 
-| Clé | Classe | Description |
-|-----|--------|-------------|
-| `"fast"` | `OptimizedFastDoubling` | Fast Doubling adaptatif (Karatsuba + FFT) |
-| `"matrix"` | `MatrixExponentiation` | Exponentiation matricielle (Strassen) |
-| `"fft"` | `FFTBasedCalculator` | Fast Doubling FFT-only |
-| `"gmp"` | `GMPCalculator` | GMP (optionnel, build tag `gmp`) |
+| Clé         | Classe                    | Description                               |
+| ------------ | ------------------------- | ----------------------------------------- |
+| `"fast"`   | `OptimizedFastDoubling` | Fast Doubling adaptatif (Karatsuba + FFT) |
+| `"matrix"` | `MatrixExponentiation`  | Exponentiation matricielle (Strassen)     |
+| `"fft"`    | `FFTBasedCalculator`    | Fast Doubling FFT-only                    |
+| `"gmp"`    | `GMPCalculator`         | GMP (optionnel, build tag `gmp`)        |
 
 ### 2.16.3 Parsing des valeurs valides
 
@@ -3199,46 +3185,46 @@ La gestion du cas négatif (ajout de m) préserve l'équivalence modulo m. ✓
 
 ### 2.18.1 Matrice composant × type de test
 
-| Composant | Unit | Table-driven | Golden File | Fuzz | Property | Bench | E2E |
-|-----------|------|-------------|-------------|------|----------|-------|-----|
-| **Fast Doubling** | ✓ | ✓ | ✓ | FuzzFastDoublingConsistency | gopter identities | ✓ | ✓ |
-| **FFT-Based** | ✓ | ✓ | ✓ | FuzzFFTBasedConsistency | — | ✓ | ✓ |
-| **Matrix Exp.** | ✓ | ✓ | ✓ | — | — | ✓ | ✓ |
-| **Strassen** | ✓ | ✓ | — | — | — | — | — |
-| **Carré symétrique** | ✓ | — | — | — | — | — | — |
-| **FastDoublingMod** | ✓ | ✓ | — | FuzzFastDoublingMod | — | — | — |
-| **calculateSmall** | ✓ | ✓ | ✓ | — | — | — | — |
-| **AdaptiveStrategy** | ✓ | — | — | — | — | — | — |
-| **FFTOnlyStrategy** | ✓ | — | — | — | — | — | — |
-| **KaratsubaStrategy** | ✓ | — | — | — | — | — | — |
-| **ShouldParallelize** | ✓ | ✓ | — | — | — | — | — |
-| **SequenceGenerator** | ✓ | ✓ | — | — | — | — | — |
-| **Skip optimization** | ✓ | ✓ | — | — | — | — | — |
-| **Factory/Registry** | ✓ | ✓ | — | — | — | — | — |
-| **Orchestrator** | ✓ | ✓ | — | — | — | — | ✓ |
-| **AnalyzeResults** | ✓ | ✓ | — | — | — | — | — |
-| **CalculationState pool** | ✓ | — | — | — | — | — | — |
-| **matrixState pool** | ✓ | — | — | — | — | — | — |
-| **CalculationArena** | ✓ | — | — | — | — | — | — |
-| **bigfft.Mul** | ✓ | ✓ | — | — | — | ✓ | — |
-| **bigfft.Sqr** | ✓ | ✓ | — | — | — | ✓ | — |
-| **fermat ops** | ✓ | ✓ | — | — | — | — | — |
-| **Poly/PolValues** | ✓ | — | — | — | — | — | — |
-| **FFT recursion** | ✓ | — | — | — | — | — | — |
-| **Progress reporting** | ✓ | ✓ | — | FuzzProgressMonotonicity | — | — | — |
-| **DynamicThreshold** | ✓ | ✓ | — | — | — | — | — |
+| Composant                       | Unit | Table-driven | Golden File | Fuzz                        | Property          | Bench | E2E |
+| ------------------------------- | ---- | ------------ | ----------- | --------------------------- | ----------------- | ----- | --- |
+| **Fast Doubling**         | ✓   | ✓           | ✓          | FuzzFastDoublingConsistency | gopter identities | ✓    | ✓  |
+| **FFT-Based**             | ✓   | ✓           | ✓          | FuzzFFTBasedConsistency     | —                | ✓    | ✓  |
+| **Matrix Exp.**           | ✓   | ✓           | ✓          | —                          | —                | ✓    | ✓  |
+| **Strassen**              | ✓   | ✓           | —          | —                          | —                | —    | —  |
+| **Carré symétrique**    | ✓   | —           | —          | —                          | —                | —    | —  |
+| **FastDoublingMod**       | ✓   | ✓           | —          | FuzzFastDoublingMod         | —                | —    | —  |
+| **calculateSmall**        | ✓   | ✓           | ✓          | —                          | —                | —    | —  |
+| **AdaptiveStrategy**      | ✓   | —           | —          | —                          | —                | —    | —  |
+| **FFTOnlyStrategy**       | ✓   | —           | —          | —                          | —                | —    | —  |
+| **KaratsubaStrategy**     | ✓   | —           | —          | —                          | —                | —    | —  |
+| **ShouldParallelize**     | ✓   | ✓           | —          | —                          | —                | —    | —  |
+| **SequenceGenerator**     | ✓   | ✓           | —          | —                          | —                | —    | —  |
+| **Skip optimization**     | ✓   | ✓           | —          | —                          | —                | —    | —  |
+| **Factory/Registry**      | ✓   | ✓           | —          | —                          | —                | —    | —  |
+| **Orchestrator**          | ✓   | ✓           | —          | —                          | —                | —    | ✓  |
+| **AnalyzeResults**        | ✓   | ✓           | —          | —                          | —                | —    | —  |
+| **CalculationState pool** | ✓   | —           | —          | —                          | —                | —    | —  |
+| **matrixState pool**      | ✓   | —           | —          | —                          | —                | —    | —  |
+| **CalculationArena**      | ✓   | —           | —          | —                          | —                | —    | —  |
+| **bigfft.Mul**            | ✓   | ✓           | —          | —                          | —                | ✓    | —  |
+| **bigfft.Sqr**            | ✓   | ✓           | —          | —                          | —                | ✓    | —  |
+| **fermat ops**            | ✓   | ✓           | —          | —                          | —                | —    | —  |
+| **Poly/PolValues**        | ✓   | —           | —          | —                          | —                | —    | —  |
+| **FFT recursion**         | ✓   | —           | —          | —                          | —                | —    | —  |
+| **Progress reporting**    | ✓   | ✓           | —          | FuzzProgressMonotonicity    | —                | —    | —  |
+| **DynamicThreshold**      | ✓   | ✓           | —          | —                          | —                | —    | —  |
 
 ### 2.18.2 Fichiers de test principaux
 
-| Fichier | Couverture |
-|---------|-----------|
-| `internal/fibonacci/fibonacci_test.go` | Tests unitaires et table-driven pour tous les calculateurs |
-| `internal/fibonacci/fibonacci_fuzz_test.go` | 5 cibles fuzz (FuzzFastDoublingConsistency, FuzzFFTBasedConsistency, FuzzFibonacciIdentities, FuzzProgressMonotonicity, FuzzFastDoublingMod) |
-| `internal/fibonacci/fibonacci_property_test.go` | Tests property-based via gopter |
-| `internal/fibonacci/example_test.go` | Tests d'exemple (documentation exécutable) |
-| `internal/bigfft/*_test.go` | Tests unitaires et benchmarks FFT |
-| `internal/orchestration/orchestrator_test.go` | Tests d'orchestration concurrente |
-| `test/e2e/` | Tests end-to-end du binaire CLI |
+| Fichier                                           | Couverture                                                                                                                                   |
+| ------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------- |
+| `internal/fibonacci/fibonacci_test.go`          | Tests unitaires et table-driven pour tous les calculateurs                                                                                   |
+| `internal/fibonacci/fibonacci_fuzz_test.go`     | 5 cibles fuzz (FuzzFastDoublingConsistency, FuzzFFTBasedConsistency, FuzzFibonacciIdentities, FuzzProgressMonotonicity, FuzzFastDoublingMod) |
+| `internal/fibonacci/fibonacci_property_test.go` | Tests property-based via gopter                                                                                                              |
+| `internal/fibonacci/example_test.go`            | Tests d'exemple (documentation exécutable)                                                                                                  |
+| `internal/bigfft/*_test.go`                     | Tests unitaires et benchmarks FFT                                                                                                            |
+| `internal/orchestration/orchestrator_test.go`   | Tests d'orchestration concurrente                                                                                                            |
+| `test/e2e/`                                     | Tests end-to-end du binaire CLI                                                                                                              |
 
 ### 2.18.3 Golden file
 
@@ -3246,13 +3232,13 @@ Le fichier `internal/fibonacci/testdata/fibonacci_golden.json` contient des vale
 
 ### 2.18.4 Cibles Fuzz
 
-| Cible Fuzz | Description | Invariant vérifié |
-|-----------|-------------|-------------------|
-| `FuzzFastDoublingConsistency` | Fast Doubling vs itératif | F_fast(n) == F_iter(n) |
-| `FuzzFFTBasedConsistency` | FFT vs Fast Doubling | F_fft(n) == F_fast(n) |
-| `FuzzFibonacciIdentities` | Identités mathématiques | F(m+n) = F(m-1)F(n) + F(m)F(n+1) |
-| `FuzzProgressMonotonicity` | Monotonie du progrès | progress[i] ≤ progress[i+1] |
-| `FuzzFastDoublingMod` | Modulaire vs complet | FastDoublingMod(n,m) == F(n) mod m |
+| Cible Fuzz                      | Description                | Invariant vérifié                |
+| ------------------------------- | -------------------------- | ---------------------------------- |
+| `FuzzFastDoublingConsistency` | Fast Doubling vs itératif | F_fast(n) == F_iter(n)             |
+| `FuzzFFTBasedConsistency`     | FFT vs Fast Doubling       | F_fft(n) == F_fast(n)              |
+| `FuzzFibonacciIdentities`     | Identités mathématiques  | F(m+n) = F(m-1)F(n) + F(m)F(n+1)   |
+| `FuzzProgressMonotonicity`    | Monotonie du progrès      | progress[i] ≤ progress[i+1]       |
+| `FuzzFastDoublingMod`         | Modulaire vs complet       | FastDoublingMod(n,m) == F(n) mod m |
 
 ### 2.18.5 Objectif de couverture
 
@@ -3261,57 +3247,58 @@ Le fichier `internal/fibonacci/testdata/fibonacci_golden.json` contient des vale
 
 ### 2.18.6 Stratégie de portage des tests en Rust
 
-| Type Go | Équivalent Rust |
-|---------|----------------|
+| Type Go                      | Équivalent Rust                                 |
+| ---------------------------- | ------------------------------------------------ |
 | `testing.T` / table-driven | `#[test]` + macros `test_case` ou `rstest` |
-| `testing.F` (fuzz) | `cargo-fuzz` / `libfuzzer` / `proptest` |
-| gopter (property-based) | `proptest` crate |
-| `testing.B` (bench) | `criterion` crate |
-| Golden files JSON | `serde_json` + `include_str!` |
-| E2E via `exec.Command` | `assert_cmd` crate |
+| `testing.F` (fuzz)         | `cargo-fuzz` / `libfuzzer` / `proptest`    |
+| gopter (property-based)      | `proptest` crate                               |
+| `testing.B` (bench)        | `criterion` crate                              |
+| Golden files JSON            | `serde_json` + `include_str!`                |
+| E2E via `exec.Command`     | `assert_cmd` crate                             |
 
 ---
 
 ## Annexe A — Constantes de configuration par défaut
 
-| Constante | Valeur | Fichier source | Usage |
-|-----------|--------|---------------|-------|
-| `DefaultParallelThreshold` | 4 096 bits | `constants.go` | Seuil de parallélisation |
-| `DefaultFFTThreshold` | 500 000 bits | `constants.go` | Seuil FFT vs Karatsuba |
-| `DefaultStrassenThreshold` | 3 072 bits | `constants.go` | Seuil Strassen vs naïf |
-| `ParallelFFTThreshold` | 5 000 000 bits | `constants.go` | Réactivation parallèle en mode FFT |
-| `MaxPooledBitLen` | 100 000 000 bits | `common.go` | Limite de taille pour le pool |
-| `MaxFibUint64` | 93 | `calculator.go` | Seuil fast path itératif |
-| `fftThreshold` (bigfft) | 1 800 mots (~115 Kbits) | `fft.go` | Seuil interne FFT |
-| `smallMulThreshold` | 30 mots | `fermat.go` | Seuil basicMul vs big.Int |
-| `ParallelFFTRecursionThreshold` | 4 (log2) | `fft_recursion.go` | Seuil récursion FFT parallèle |
-| `MaxParallelFFTDepth` | 3 | `fft_recursion.go` | Profondeur max récursion parallèle |
-| `ProgressReportThreshold` | 0.01 (1%) | `constants.go` | Seuil de rapport de progrès |
-| `iterativeThreshold` (Skip) | 1 000 | `generator_iterative.go` | Seuil Skip itératif vs Calculator |
-| `defaultStrassenThresholdBits` | 256 bits | `matrix_ops.go` | Fallback Strassen atomique |
-| `DynamicAdjustmentInterval` | 5 itérations | `dynamic_threshold.go` | Intervalle d'ajustement dynamique |
-| `HysteresisMargin` | 0.15 (15%) | `dynamic_threshold.go` | Marge d'hystérésis |
+| Constante                         | Valeur                  | Fichier source             | Usage                                |
+| --------------------------------- | ----------------------- | -------------------------- | ------------------------------------ |
+| `DefaultParallelThreshold`      | 4 096 bits              | `constants.go`           | Seuil de parallélisation            |
+| `DefaultFFTThreshold`           | 500 000 bits            | `constants.go`           | Seuil FFT vs Karatsuba               |
+| `DefaultStrassenThreshold`      | 3 072 bits              | `constants.go`           | Seuil Strassen vs naïf              |
+| `ParallelFFTThreshold`          | 5 000 000 bits          | `constants.go`           | Réactivation parallèle en mode FFT |
+| `MaxPooledBitLen`               | 100 000 000 bits        | `common.go`              | Limite de taille pour le pool        |
+| `MaxFibUint64`                  | 93                      | `calculator.go`          | Seuil fast path itératif            |
+| `fftThreshold` (bigfft)         | 1 800 mots (~115 Kbits) | `fft.go`                 | Seuil interne FFT                    |
+| `smallMulThreshold`             | 30 mots                 | `fermat.go`              | Seuil basicMul vs big.Int            |
+| `ParallelFFTRecursionThreshold` | 4 (log2)                | `fft_recursion.go`       | Seuil récursion FFT parallèle      |
+| `MaxParallelFFTDepth`           | 3                       | `fft_recursion.go`       | Profondeur max récursion parallèle |
+| `ProgressReportThreshold`       | 0.01 (1%)               | `constants.go`           | Seuil de rapport de progrès         |
+| `iterativeThreshold` (Skip)     | 1 000                   | `generator_iterative.go` | Seuil Skip itératif vs Calculator   |
+| `defaultStrassenThresholdBits`  | 256 bits                | `matrix_ops.go`          | Fallback Strassen atomique           |
+| `DynamicAdjustmentInterval`     | 5 itérations           | `dynamic_threshold.go`   | Intervalle d'ajustement dynamique    |
+| `HysteresisMargin`              | 0.15 (15%)              | `dynamic_threshold.go`   | Marge d'hystérésis                 |
 
 ---
 
 ## Annexe B — Glossaire des types pour le portage Rust
 
-| Type Go | Type Rust recommandé | Notes |
-|---------|---------------------|-------|
-| `*big.Int` | `num_bigint::BigUint` | Pas de signe négatif pour Fibonacci |
-| `[]big.Word` (nat) | `Vec<u64>` | Même représentation little-endian |
-| `fermat` | `Vec<u64>` (n+1 éléments) | Wrapper newtype recommandé |
-| `sync.Pool` | `crossbeam::queue::ArrayQueue` ou `thread_local!` | Pas d'équivalent direct |
-| `sync.WaitGroup` | `std::thread::scope` ou `rayon::scope` | Scoped threads préférés |
-| `chan struct{}` (sémaphore) | `tokio::sync::Semaphore` ou `crossbeam` | Selon async vs sync |
-| `atomic.Int32` | `AtomicI32` | Direct |
-| `context.Context` | `tokio::CancellationToken` ou `Arc<AtomicBool>` | Pattern d'annulation |
-| `errgroup.Group` | `tokio::task::JoinSet` ou `rayon::scope` | Selon async vs sync |
-| `parallel.ErrorCollector` | `Arc<Mutex<Option<Error>>>` | First-error-wins |
+| Type Go                        | Type Rust recommandé                                 | Notes                                |
+| ------------------------------ | ----------------------------------------------------- | ------------------------------------ |
+| `*big.Int`                   | `num_bigint::BigUint`                               | Pas de signe négatif pour Fibonacci |
+| `[]big.Word` (nat)           | `Vec<u64>`                                          | Même représentation little-endian  |
+| `fermat`                     | `Vec<u64>` (n+1 éléments)                         | Wrapper newtype recommandé          |
+| `sync.Pool`                  | `crossbeam::queue::ArrayQueue` ou `thread_local!` | Pas d'équivalent direct             |
+| `sync.WaitGroup`             | `std::thread::scope` ou `rayon::scope`            | Scoped threads préférés           |
+| `chan struct{}` (sémaphore) | `tokio::sync::Semaphore` ou `crossbeam`           | Selon async vs sync                  |
+| `atomic.Int32`               | `AtomicI32`                                         | Direct                               |
+| `context.Context`            | `tokio::CancellationToken` ou `Arc<AtomicBool>`   | Pattern d'annulation                 |
+| `errgroup.Group`             | `tokio::task::JoinSet` ou `rayon::scope`          | Selon async vs sync                  |
+| `parallel.ErrorCollector`    | `Arc<Mutex<Option<Error>>>`                         | First-error-wins                     |
 
 ---
 
 *Fin de la Phase 2 — Spécifications Algorithmiques*
+
 # Phase 3 — Système d'Observation & Suivi de Progression (T3.1–T3.10)
 
 ---
@@ -3391,15 +3378,16 @@ Fil principal                     Fil de calcul
 
 ### Thread-Safety — Analyse Go
 
-| Opération         | Verrou        | Contention attendue |
-|-------------------|---------------|---------------------|
-| `Register()`      | `mu.Lock()`   | Rare (initialisation uniquement) |
-| `Unregister()`    | `mu.Lock()`   | Rare (nettoyage uniquement) |
-| `Notify()`        | `mu.RLock()`  | Fréquent — verrouillage partagé |
-| `Freeze()`        | `mu.RLock()` (1 fois) | Unique — puis lock-free |
-| `ObserverCount()` | `mu.RLock()`  | Diagnostic uniquement |
+| Opération          | Verrou                  | Contention attendue                |
+| ------------------- | ----------------------- | ---------------------------------- |
+| `Register()`      | `mu.Lock()`           | Rare (initialisation uniquement)   |
+| `Unregister()`    | `mu.Lock()`           | Rare (nettoyage uniquement)        |
+| `Notify()`        | `mu.RLock()`          | Fréquent — verrouillage partagé |
+| `Freeze()`        | `mu.RLock()` (1 fois) | Unique — puis lock-free           |
+| `ObserverCount()` | `mu.RLock()`          | Diagnostic uniquement              |
 
 **Implémentation Go** (`internal/fibonacci/observer.go`):
+
 ```go
 type ProgressSubject struct {
     observers []ProgressObserver
@@ -3514,12 +3502,12 @@ func (s *ProgressSubject) Freeze(calcIndex int) ProgressCallback {
 
 ### Analyse de concurrence
 
-| Propriété                  | Garantie                               |
-|----------------------------|----------------------------------------|
-| Visibilité du snapshot     | Les observers enregistrés au moment de `Freeze()` sont capturés |
-| Enregistrements tardifs    | Non visibles dans le snapshot figé      |
+| Propriété                 | Garantie                                                               |
+| --------------------------- | ---------------------------------------------------------------------- |
+| Visibilité du snapshot     | Les observers enregistrés au moment de `Freeze()` sont capturés    |
+| Enregistrements tardifs     | Non visibles dans le snapshot figé                                    |
 | Désenregistrements tardifs | Le snapshot retient une référence → pas de dangling pointer (GC Go) |
-| Coût par appel reporter    | 0 acquisition de verrou, 1 boucle sur slice |
+| Coût par appel reporter    | 0 acquisition de verrou, 1 boucle sur slice                            |
 
 ### Transposition Rust
 
@@ -3616,25 +3604,25 @@ Progress(i) = WorkDone(i) / TotalWork
 #### Exemple 1 : n = 1 000 000 (numBits = 20)
 
 | Itération i | stepIndex | WorkOfStep (4^si) | WorkDone cumulé | Progress (%) |
-|:-----------:|:---------:|------------------:|----------------:|-------------:|
-| 19 (MSB)    | 0         | 1                 | 1               | 0.000 %      |
-| 18          | 1         | 4                 | 5               | 0.000 %      |
-| 15          | 4         | 256               | 341             | 0.000 %      |
-| 10          | 9         | 262 144           | 349 525         | 0.025 %      |
-| 5           | 14        | 268 435 456       | 357 913 941     | 25.6 %       |
-| 2           | 17        | ~1.7 × 10^10      | ~2.3 × 10^10    | 82.5 %       |
-| 0 (LSB)    | 19        | ~2.7 × 10^11      | ~3.7 × 10^11    | 100 %        |
+| :----------: | :-------: | ----------------: | ---------------: | -----------: |
+|   19 (MSB)   |     0     |                 1 |                1 |      0.000 % |
+|      18      |     1     |                 4 |                5 |      0.000 % |
+|      15      |     4     |               256 |              341 |      0.000 % |
+|      10      |     9     |           262 144 |          349 525 |      0.025 % |
+|      5      |    14    |       268 435 456 |      357 913 941 |       25.6 % |
+|      2      |    17    |     ~1.7 × 10^10 |    ~2.3 × 10^10 |       82.5 % |
+|   0 (LSB)   |    19    |     ~2.7 × 10^11 |    ~3.7 × 10^11 |        100 % |
 
 **TotalWork(20) = (4^20 - 1) / 3 ≈ 3.66 × 10^11**
 
 #### Exemple 2 : n = 10 000 000 (numBits = 24)
 
-| Phase          | Bits traités | Progress approximative |
-|----------------|:------------:|:----------------------:|
-| 20 premiers bits | 19 → 4      | ~0.4 %                 |
-| Bits 4 → 2     | 3 bits       | ~6.2 %                 |
-| Bit 1           | 1 bit        | ~25 %                  |
-| Bit 0 (final)   | 1 bit        | → 100 %                |
+| Phase            | Bits traités | Progress approximative |
+| ---------------- | :-----------: | :--------------------: |
+| 20 premiers bits |    19 → 4    |         ~0.4 %         |
+| Bits 4 → 2      |    3 bits    |         ~6.2 %         |
+| Bit 1            |     1 bit     |         ~25 %         |
+| Bit 0 (final)    |     1 bit     |        → 100 %        |
 
 **Observation** : ~75% du travail total est concentré dans les 2 derniers bits.
 
@@ -3731,6 +3719,7 @@ pub fn precompute_powers4(num_bits: usize) -> &'static [f64] {
 ```
 
 **Alternative Rust avec `const`** :
+
 ```rust
 /// Évaluation à la compilation (const fn).
 const fn make_powers_of_4() -> [f64; 64] {
@@ -3752,12 +3741,12 @@ const POWERS_OF_4: [f64; 64] = make_powers_of_4();
 
 ### Comparaison des coûts
 
-| Opération                 | Go                  | Rust (const)        |
-|---------------------------|---------------------|---------------------|
-| Initialisation            | `init()` au runtime | Compilation         |
-| Lookup par itération      | O(1) — index slice  | O(1) — index array  |
-| Allocation par appel      | 0 (slice global)    | 0 (ref statique)    |
-| `math.Pow(4, x)` évité   | ~50 ns/appel        | ~50 ns/appel        |
+| Opération                 | Go                    | Rust (const)        |
+| -------------------------- | --------------------- | ------------------- |
+| Initialisation             | `init()` au runtime | Compilation         |
+| Lookup par itération      | O(1) — index slice   | O(1) — index array |
+| Allocation par appel       | 0 (slice global)      | 0 (ref statique)    |
+| `math.Pow(4, x)` évité | ~50 ns/appel          | ~50 ns/appel        |
 
 ---
 
@@ -3845,6 +3834,7 @@ pub fn report_step_progress(
 ### Impact sur le nombre d'appels
 
 Pour F(10M) avec numBits = 24 :
+
 - Sans seuil : 24 appels (1 par bit)
 - Avec seuil 1% : ~27 appels (première + dernière + ~25 seuils franchis)
 - Avec seuil 5% : ~22 appels
@@ -3943,6 +3933,7 @@ impl ProgressObserver for ChannelObserver {
 ```
 
 **Alternative avec `crossbeam::channel`** :
+
 ```rust
 use crossbeam::channel::{Sender, TrySendError};
 
@@ -4089,12 +4080,12 @@ func (o *NoOpObserver) Update(calcIndex int, progress float64) {
 
 ### Cas d'utilisation
 
-| Scénario                        | Usage                                    |
-|---------------------------------|------------------------------------------|
-| Tests unitaires                 | Observer par défaut — pas de side effects |
-| Mode silencieux (`--quiet`)     | Aucune sortie de progression             |
-| Benchmarks                      | Éliminer le coût des notifications       |
-| Observer optionnel              | Éviter les vérifications `nil`           |
+| Scénario                     | Usage                                       |
+| ----------------------------- | ------------------------------------------- |
+| Tests unitaires               | Observer par défaut — pas de side effects |
+| Mode silencieux (`--quiet`) | Aucune sortie de progression                |
+| Benchmarks                    | Éliminer le coût des notifications        |
+| Observer optionnel            | Éviter les vérifications `nil`          |
 
 ### Transposition Rust
 
@@ -4127,10 +4118,10 @@ type ProgressUpdate struct {
 
 ### Sémantique des champs
 
-| Champ              | Type    | Plage       | Sémantique                                      |
-|--------------------|---------|-------------|--------------------------------------------------|
-| `CalculatorIndex`  | `int`   | [0, N-1]    | Identifie le calculateur parmi N calculs concurrents |
-| `Value`            | `float64` | [0.0, 1.0] | Progression normalisée (0% → 100%)              |
+| Champ               | Type        | Plage      | Sémantique                                          |
+| ------------------- | ----------- | ---------- | ---------------------------------------------------- |
+| `CalculatorIndex` | `int`     | [0, N-1]   | Identifie le calculateur parmi N calculs concurrents |
+| `Value`           | `float64` | [0.0, 1.0] | Progression normalisée (0% → 100%)                 |
 
 ### Invariants
 
@@ -4280,6 +4271,7 @@ func NewCalculationArena(n uint64) *CalculationArena {
 ```
 
 **Formule** :
+
 ```
 Taille de F(n) ≈ n × log₂(φ) bits ≈ n × 0.69424 bits
 Words par big.Int = ⌈n × 0.69424 / 64⌉ + 1
@@ -4346,6 +4338,7 @@ impl CalculationArena {
 ```
 
 **Avantage bumpalo** :
+
 - Allocation O(1) par incrément de pointeur
 - Libération O(1) via `reset()` (pas de destructeurs individuels)
 - Localité de cache excellente (mémoire contiguë)
@@ -4353,13 +4346,13 @@ impl CalculationArena {
 
 ### Comparaison Go vs Rust
 
-| Aspect              | Go (CalculationArena)           | Rust (bumpalo::Bump)             |
-|---------------------|----------------------------------|----------------------------------|
-| Sécurité mémoire    | Manuelle (Reset invalide les réf)| Borrow checker (compile-time)    |
-| Fallback si épuisé  | Allocation tas                   | Allocation tas (ou panic)        |
-| Fragmentation       | Zéro (contigu)                   | Zéro (contigu)                   |
-| Libération          | Reset() — O(1)                   | reset() — O(1)                   |
-| Tracking GC         | Le bloc unique est tracké        | Pas de GC                        |
+| Aspect               | Go (CalculationArena)              | Rust (bumpalo::Bump)          |
+| -------------------- | ---------------------------------- | ----------------------------- |
+| Sécurité mémoire  | Manuelle (Reset invalide les réf) | Borrow checker (compile-time) |
+| Fallback si épuisé | Allocation tas                     | Allocation tas (ou panic)     |
+| Fragmentation        | Zéro (contigu)                    | Zéro (contigu)               |
+| Libération          | Reset() — O(1)                    | reset() — O(1)               |
+| Tracking GC          | Le bloc unique est tracké         | Pas de GC                     |
 
 ---
 
@@ -4486,13 +4479,13 @@ impl Drop for MemoryController {
 
 ### Comparaison des approches
 
-| Aspect                | Go (GCController)            | Rust (RAII)                      |
-|-----------------------|------------------------------|----------------------------------|
-| Problème résolu       | Pauses GC imprévisibles      | Fragmentation, localité cache    |
-| Mécanisme             | `SetGCPercent(-1)` + limite  | Arènes + `Drop` automatique     |
-| Filet de sécurité     | Limite mémoire douce         | OOM killer OS + `try_reserve`    |
-| Restauration          | Explicite dans `End()`       | Automatique via `Drop`           |
-| Statistiques          | `runtime.MemStats` delta     | `jemalloc_ctl` ou custom alloc  |
+| Aspect              | Go (GCController)             | Rust (RAII)                      |
+| ------------------- | ----------------------------- | -------------------------------- |
+| Problème résolu   | Pauses GC imprévisibles      | Fragmentation, localité cache   |
+| Mécanisme          | `SetGCPercent(-1)` + limite | Arènes +`Drop` automatique    |
+| Filet de sécurité | Limite mémoire douce         | OOM killer OS +`try_reserve`   |
+| Restauration        | Explicite dans `End()`      | Automatique via `Drop`         |
+| Statistiques        | `runtime.MemStats` delta    | `jemalloc_ctl` ou custom alloc |
 
 ---
 
@@ -4532,6 +4525,7 @@ func getWordSlicePoolIndex(size int) int {
 ```
 
 **Dérivation** : Les tailles sont des puissances de 4 commençant à 4^3 = 64. Pour une taille `s`, l'index est :
+
 ```
 idx = (⌈log₂(s)⌉ - 5) / 2
     = (bits.Len(s-1) - 5) / 2
@@ -4663,12 +4657,12 @@ func PreWarmPools(n uint64) {
 
 ### Table des seuils
 
-| Plage de n          | numBuffers | Justification                          |
-|---------------------|:----------:|----------------------------------------|
-| n < 100 000         | 2          | Overhead minimal                        |
-| 100K ≤ n < 1M       | 4          | Quelques buffers nécessaires            |
-| 1M ≤ n < 10M        | 5          | FFT activé, plus de buffers temporaires |
-| n ≥ 10M             | 6          | Maximum pour calculs très lourds        |
+| Plage de n     | numBuffers | Justification                            |
+| -------------- | :--------: | ---------------------------------------- |
+| n < 100 000    |     2     | Overhead minimal                         |
+| 100K ≤ n < 1M |     4     | Quelques buffers nécessaires            |
+| 1M ≤ n < 10M  |     5     | FFT activé, plus de buffers temporaires |
+| n ≥ 10M       |     6     | Maximum pour calculs très lourds        |
 
 ### Mécanisme d'initialisation unique
 
@@ -4873,12 +4867,12 @@ Composantes :
 
 ### Exemples numériques
 
-| n           | F(n) bits   | Bytes/big.Int | State  | FFT    | Cache  | Overhead | **Total**   |
-|------------:|------------:|--------------:|-------:|-------:|-------:|---------:|------------:|
-| 1 000 000   | 694 240     | ~86 KB        | 430 KB | 258 KB | 172 KB | 430 KB   | **~1.3 MB** |
-| 10 000 000  | 6 942 400   | ~868 KB       | 4.2 MB | 2.5 MB | 1.7 MB | 4.2 MB   | **~12.6 MB**|
-| 100 000 000 | 69 424 000  | ~8.5 MB       | 42 MB  | 25 MB  | 17 MB  | 42 MB    | **~126 MB** |
-| 1 000 000 000| 694 240 000| ~85 MB        | 425 MB | 255 MB | 170 MB | 425 MB   | **~1.3 GB** |
+|             n |   F(n) bits | Bytes/big.Int |  State |    FFT |  Cache | Overhead |    **Total** |
+| ------------: | ----------: | ------------: | -----: | -----: | -----: | -------: | -----------------: |
+|     1 000 000 |     694 240 |        ~86 KB | 430 KB | 258 KB | 172 KB |   430 KB |  **~1.3 MB** |
+|    10 000 000 |   6 942 400 |       ~868 KB | 4.2 MB | 2.5 MB | 1.7 MB |   4.2 MB | **~12.6 MB** |
+|   100 000 000 |  69 424 000 |       ~8.5 MB |  42 MB |  25 MB |  17 MB |    42 MB |  **~126 MB** |
+| 1 000 000 000 | 694 240 000 |        ~85 MB | 425 MB | 255 MB | 170 MB |   425 MB |  **~1.3 GB** |
 
 ### Transposition Rust
 
@@ -5163,6 +5157,7 @@ impl StatePool {
 ```
 
 **Zero-Copy en Rust** :
+
 ```rust
 // std::mem::take remplace la valeur par Default et retourne l'originale
 let result = std::mem::take(&mut state.fk); // fk devient BigUint::ZERO
@@ -5272,18 +5267,18 @@ Rust Option B (thread_local):
 
 ### Tableau récapitulatif
 
-| Patron Go               | Équivalent Rust               | Crate                |
-|--------------------------|-------------------------------|----------------------|
-| `errgroup.Group`         | `rayon::scope`                | `rayon`              |
-| `sync.WaitGroup`         | `rayon::scope`                | `rayon`              |
-| `chan struct{}`(sémaphore)| Implicite (rayon threadpool)  | `rayon`              |
-| `chan T` (tamponné)      | `crossbeam::channel::bounded` | `crossbeam-channel`  |
-| `select { default: }`   | `try_send()`                  | `crossbeam-channel`  |
-| `sync.Pool`             | `object-pool` / `thread_local`| `object-pool`        |
-| `sync.RWMutex`          | `parking_lot::RwLock`         | `parking_lot`        |
-| `sync.Once`             | `std::sync::Once`             | stdlib               |
-| `atomic.Bool`           | `AtomicBool`                  | stdlib               |
-| `context.Context`       | `Arc<AtomicBool>` + tokio     | stdlib / `tokio`     |
+| Patron Go                     | Équivalent Rust                   | Crate                 |
+| ----------------------------- | ---------------------------------- | --------------------- |
+| `errgroup.Group`            | `rayon::scope`                   | `rayon`             |
+| `sync.WaitGroup`            | `rayon::scope`                   | `rayon`             |
+| `chan struct{}`(sémaphore) | Implicite (rayon threadpool)       | `rayon`             |
+| `chan T` (tamponné)        | `crossbeam::channel::bounded`    | `crossbeam-channel` |
+| `select { default: }`       | `try_send()`                     | `crossbeam-channel` |
+| `sync.Pool`                 | `object-pool` / `thread_local` | `object-pool`       |
+| `sync.RWMutex`              | `parking_lot::RwLock`            | `parking_lot`       |
+| `sync.Once`                 | `std::sync::Once`                | stdlib                |
+| `atomic.Bool`               | `AtomicBool`                     | stdlib                |
+| `context.Context`           | `Arc<AtomicBool>` + tokio        | stdlib /`tokio`     |
 
 ---
 
@@ -5516,7 +5511,7 @@ tasks.par_iter_mut()
 
 ---
 
-## T4.12 — Protocole d'Annulation Coopérative (Checkpoints, Propagation d'Erreur, Arc<AtomicBool>)
+## T4.12 — Protocole d'Annulation Coopérative (Checkpoints, Propagation d'Erreur, Arc`<AtomicBool>`)
 
 ### Modèle Go — context.Context
 
@@ -5587,7 +5582,7 @@ ctx.Err() retourne context.Canceled ou context.DeadlineExceeded
           CalculateWithObservers → Calculate → orchestration → app → exit code 130
 ```
 
-### Transposition Rust — Arc<AtomicBool> + CancellationToken
+### Transposition Rust — Arc`<AtomicBool>` + CancellationToken
 
 ```rust
 use std::sync::atomic::{AtomicBool, Ordering};
@@ -5716,15 +5711,15 @@ fn setup_signal_handler(token: &CancellationToken) {
 
 ### Comparaison Go context.Context vs Rust CancellationToken
 
-| Aspect                  | Go (context.Context)          | Rust (CancellationToken)       |
-|-------------------------|-------------------------------|--------------------------------|
-| Mécanisme               | Channel interne + Mutex       | AtomicBool                     |
-| Coût du check           | ~10 ns (lecture channel)      | ~1 ns (load atomique)          |
-| Timeout intégré         | `context.WithTimeout`         | Séparé (`tokio::time`)         |
-| Héritage parent-enfant  | Oui (`WithCancel`)            | Manuel (`clone()`)             |
-| Valeurs attachées       | `context.WithValue`           | Non (type-safe séparé)         |
-| Propagation d'erreur    | `ctx.Err()` → error           | `check()` → Result<(), Error>` |
-| Signal OS               | `signal.NotifyContext`        | `signal_hook::flag`            |
+| Aspect                  | Go (context.Context)     | Rust (CancellationToken)          |
+| ----------------------- | ------------------------ | --------------------------------- |
+| Mécanisme              | Channel interne + Mutex  | AtomicBool                        |
+| Coût du check          | ~10 ns (lecture channel) | ~1 ns (load atomique)             |
+| Timeout intégré       | `context.WithTimeout`  | Séparé (`tokio::time`)        |
+| Héritage parent-enfant | Oui (`WithCancel`)     | Manuel (`clone()`)              |
+| Valeurs attachées      | `context.WithValue`    | Non (type-safe séparé)          |
+| Propagation d'erreur    | `ctx.Err()` → error   | `check()` → Result<(), Error>` |
+| Signal OS               | `signal.NotifyContext` | `signal_hook::flag`             |
 
 ### Diagramme de propagation d'annulation Rust
 
@@ -5749,6 +5744,7 @@ Signal SIGINT ─────────────►  CancellationToken.canc
      ▼
  main → process::exit(130)
 ```
+
 # Phase 5 — Seuils Dynamiques & Calibration
 
 > Portage de `internal/fibonacci/dynamic_threshold.go`, `internal/fibonacci/threshold_types.go`, et de `internal/calibration/*` vers Rust.
@@ -5840,13 +5836,13 @@ Lecture : si metrics_count <= 20 → copier metrics[0..metrics_count]
 
 ### Protocole de concurrence
 
-| Opération | Thread | Mutex requis |
-|-----------|--------|-------------|
-| `record_iteration()` | Thread calcul (unique) | Aucun — accès single-writer |
-| `should_adjust()` | Thread calcul (unique) | Aucun — appelé depuis la même boucle |
-| `get_thresholds()` | Threads multiples (lecture) | `RwLock::read()` |
-| `get_stats()` | Thread UI / métriques | `RwLock::read()` |
-| `reset()` | Thread principal | `RwLock::write()` |
+| Opération             | Thread                      | Mutex requis                            |
+| ---------------------- | --------------------------- | --------------------------------------- |
+| `record_iteration()` | Thread calcul (unique)      | Aucun — accès single-writer           |
+| `should_adjust()`    | Thread calcul (unique)      | Aucun — appelé depuis la même boucle |
+| `get_thresholds()`   | Threads multiples (lecture) | `RwLock::read()`                      |
+| `get_stats()`        | Thread UI / métriques      | `RwLock::read()`                      |
+| `reset()`            | Thread principal            | `RwLock::write()`                     |
 
 ### Points d'attention pour le portage
 
@@ -5940,16 +5936,16 @@ fn significant_change(old_val: i32, new_val: i32) -> bool {
 
 ### Bornes de sécurité
 
-| Seuil | Borne inférieure | Borne supérieure |
-|-------|-----------------|-----------------|
-| FFT | 100 000 bits (plancher fixe) | `original_fft × 2` |
-| Parallélisme | 1 024 bits (plancher fixe) | `original_parallel × 4` |
+| Seuil         | Borne inférieure            | Borne supérieure          |
+| ------------- | ---------------------------- | -------------------------- |
+| FFT           | 100 000 bits (plancher fixe) | `original_fft × 2`      |
+| Parallélisme | 1 024 bits (plancher fixe)   | `original_parallel × 4` |
 
 ### Taux d'ajustement
 
-| Direction | FFT | Parallélisme |
-|-----------|-----|-------------|
-| Baisser (mode bénéfique) | `current × 9/10` (-10%) | `current × 8/10` (-20%) |
+| Direction                        | FFT                         | Parallélisme               |
+| -------------------------------- | --------------------------- | --------------------------- |
+| Baisser (mode bénéfique)       | `current × 9/10` (-10%)  | `current × 8/10` (-20%)  |
 | Augmenter (mode non bénéfique) | `current × 11/10` (+10%) | `current × 12/10` (+20%) |
 
 Le parallélisme a des taux d'ajustement plus agressifs car le surcoût de goroutines/threads est plus sensible aux variations de charge.
@@ -6265,12 +6261,12 @@ pub struct CalibrationProfile {
 
 ### Règles de validation (`is_valid`)
 
-| Champ | Condition de validité | Mapping Go → Rust |
-|-------|----------------------|-------------------|
-| `profile_version` | `== CURRENT_PROFILE_VERSION (2)` | Identique |
-| `num_cpu` | `== num_cpus::get()` | `runtime.NumCPU()` → `num_cpus::get()` |
-| `target_arch` | `== std::env::consts::ARCH` | `runtime.GOARCH` → `ARCH` |
-| `word_size` | `== size_of::<usize>() * 8` | `32 << (^uint(0) >> 63)` → `size_of::<usize>() * 8` |
+| Champ               | Condition de validité             | Mapping Go → Rust                                       |
+| ------------------- | ---------------------------------- | -------------------------------------------------------- |
+| `profile_version` | `== CURRENT_PROFILE_VERSION (2)` | Identique                                                |
+| `num_cpu`         | `== num_cpus::get()`             | `runtime.NumCPU()` → `num_cpus::get()`              |
+| `target_arch`     | `== std::env::consts::ARCH`      | `runtime.GOARCH` → `ARCH`                           |
+| `word_size`       | `== size_of::<usize>() * 8`      | `32 << (^uint(0) >> 63)` → `size_of::<usize>() * 8` |
 
 ```rust
 impl CalibrationProfile {
@@ -6290,12 +6286,12 @@ impl CalibrationProfile {
 
 ### Persistance
 
-| Opération | Go | Rust |
-|-----------|-----|------|
-| Sérialisation | `json.MarshalIndent` | `serde_json::to_string_pretty` |
-| Écriture | `os.WriteFile(path, data, 0600)` | `std::fs::write` + permissions via `std::os::unix::fs::PermissionsExt` |
-| Lecture | `os.ReadFile` + `json.Unmarshal` | `std::fs::read_to_string` + `serde_json::from_str` |
-| Chemin par défaut | `~/.fibcalc_calibration.json` | `dirs::home_dir()` + `DEFAULT_PROFILE_FILENAME` |
+| Opération         | Go                                   | Rust                                                                       |
+| ------------------ | ------------------------------------ | -------------------------------------------------------------------------- |
+| Sérialisation     | `json.MarshalIndent`               | `serde_json::to_string_pretty`                                           |
+| Écriture          | `os.WriteFile(path, data, 0600)`   | `std::fs::write` + permissions via `std::os::unix::fs::PermissionsExt` |
+| Lecture            | `os.ReadFile` + `json.Unmarshal` | `std::fs::read_to_string` + `serde_json::from_str`                     |
+| Chemin par défaut | `~/.fibcalc_calibration.json`      | `dirs::home_dir()` + `DEFAULT_PROFILE_FILENAME`                        |
 
 ---
 
@@ -6356,11 +6352,11 @@ impl CalibrationProfile {
 
 ### Correspondance Go → Rust pour chaque mode
 
-| Mode | Point d'entrée Go | Point d'entrée Rust |
-|------|-------------------|---------------------|
-| Full | `RunCalibration()` | `pub fn run_full_calibration()` |
-| Auto | `AutoCalibrateWithProfile()` | `pub fn auto_calibrate()` |
-| Cached | `LoadCachedCalibration()` | `pub fn load_cached_calibration()` |
+| Mode   | Point d'entrée Go             | Point d'entrée Rust                 |
+| ------ | ------------------------------ | ------------------------------------ |
+| Full   | `RunCalibration()`           | `pub fn run_full_calibration()`    |
+| Auto   | `AutoCalibrateWithProfile()` | `pub fn auto_calibrate()`          |
+| Cached | `LoadCachedCalibration()`    | `pub fn load_cached_calibration()` |
 
 ### Mode Full (`--calibrate`)
 
@@ -6408,11 +6404,11 @@ pub fn run_full_calibration(
 
 ### Mode Auto — Latence par tier
 
-| Tier | Latence typique | Condition de succès |
-|------|----------------|---------------------|
-| 1 — Cache | < 1 ms | `profile.is_valid() == true` |
-| 2 — Micro-bench | ~100–150 ms | `results.confidence >= 0.5` |
-| 3 — Full runner | 2–30 s | Au moins un trial réussi |
+| Tier             | Latence typique | Condition de succès           |
+| ---------------- | --------------- | ------------------------------ |
+| 1 — Cache       | < 1 ms          | `profile.is_valid() == true` |
+| 2 — Micro-bench | ~100–150 ms    | `results.confidence >= 0.5`  |
+| 3 — Full runner | 2–30 s         | Au moins un trial réussi      |
 
 ---
 
@@ -6474,15 +6470,15 @@ pub fn estimate_optimal_strassen_threshold() -> i32 {
 
 ### Génération de candidats de calibration
 
-| Fonction | Nombre de cœurs | Candidats générés |
-|----------|----------------|-------------------|
-| `generate_parallel_thresholds()` | 1 | `[0]` |
-| | 2–4 | `[0, 512, 1024, 2048, 4096]` |
-| | 5–8 | `[0, 256, 512, 1024, 2048, 4096, 8192]` |
-| | 9–16 | `[0, 256, 512, 1024, 2048, 4096, 8192, 16384]` |
-| | 17+ | `[0, 256, 512, 1024, 2048, 4096, 8192, 16384, 32768]` |
-| `generate_quick_fft_thresholds()` | Tous | `[0, 750_000, 1_000_000, 1_500_000]` |
-| `generate_quick_strassen_thresholds()` | Tous | `[192, 256, 384, 512]` |
+| Fonction                                 | Nombre de cœurs | Candidats générés                                    |
+| ---------------------------------------- | ---------------- | ------------------------------------------------------- |
+| `generate_parallel_thresholds()`       | 1                | `[0]`                                                 |
+|                                          | 2–4             | `[0, 512, 1024, 2048, 4096]`                          |
+|                                          | 5–8             | `[0, 256, 512, 1024, 2048, 4096, 8192]`               |
+|                                          | 9–16            | `[0, 256, 512, 1024, 2048, 4096, 8192, 16384]`        |
+|                                          | 17+              | `[0, 256, 512, 1024, 2048, 4096, 8192, 16384, 32768]` |
+| `generate_quick_fft_thresholds()`      | Tous             | `[0, 750_000, 1_000_000, 1_500_000]`                  |
+| `generate_quick_strassen_thresholds()` | Tous             | `[192, 256, 384, 512]`                                |
 
 ---
 
@@ -6490,11 +6486,11 @@ pub fn estimate_optimal_strassen_threshold() -> i32 {
 
 ### Configuration du moteur
 
-| Constante | Valeur | Description |
-|-----------|--------|-------------|
-| `MICRO_BENCH_ITERATIONS` | 3 | Itérations par test pour moyennage |
-| `MICRO_BENCH_TIMEOUT` | 150 ms | Timeout total de la suite |
-| `MICRO_BENCH_PER_TEST_TIMEOUT` | 30 ms | Timeout par test individuel |
+| Constante                        | Valeur | Description                         |
+| -------------------------------- | ------ | ----------------------------------- |
+| `MICRO_BENCH_ITERATIONS`       | 3      | Itérations par test pour moyennage |
+| `MICRO_BENCH_TIMEOUT`          | 150 ms | Timeout total de la suite           |
+| `MICRO_BENCH_PER_TEST_TIMEOUT` | 30 ms  | Timeout par test individuel         |
 
 ### Tailles de test
 
@@ -6511,12 +6507,12 @@ const MICRO_BENCH_TEST_SIZES: &[usize] = &[
 
 Pour chaque taille, 4 configurations sont testées :
 
-| Config | Méthode de multiplication | Parallélisme |
-|--------|--------------------------|-------------|
-| 1 | `num::BigUint::mul` (standard) | Séquentiel |
-| 2 | `num::BigUint::mul` (standard) | Parallèle |
-| 3 | FFT multiplication | Séquentiel |
-| 4 | FFT multiplication | Parallèle |
+| Config | Méthode de multiplication       | Parallélisme |
+| ------ | -------------------------------- | ------------- |
+| 1      | `num::BigUint::mul` (standard) | Séquentiel   |
+| 2      | `num::BigUint::mul` (standard) | Parallèle    |
+| 3      | FFT multiplication               | Séquentiel   |
+| 4      | FFT multiplication               | Parallèle    |
 
 Total : 4 tailles × 4 configs = **16 tests** exécutés en parallèle avec sémaphore `= num_cpus::get()`.
 
@@ -6594,16 +6590,16 @@ Le pattern `0xAAAA...^ i*0x1234567` est déterministe (reproductible) et exerce 
 
 ### Vue d'ensemble du mapping
 
-| Concept Bubble Tea (Go) | Équivalent ratatui (Rust) |
-|--------------------------|---------------------------|
-| `tea.Model` (interface) | Struct `App` implémentant une boucle événementielle |
-| `Model.Init() → tea.Cmd` | `App::new()` + spawn de tâches tokio initiales |
-| `Model.Update(msg) → (Model, Cmd)` | `App::handle_event(event) → Action` |
-| `Model.View() → string` | `App::draw(frame: &mut Frame)` |
-| `tea.Msg` (interface vide) | `enum AppMessage { ... }` |
-| `tea.Cmd` (fonction) | `tokio::spawn` ou `mpsc::channel` |
-| `tea.Program` | Boucle `loop { terminal.draw(); handle_events(); }` |
-| `tea.WithAltScreen()` | `crossterm::terminal::enable_raw_mode()` + alternate screen |
+| Concept Bubble Tea (Go)               | Équivalent ratatui (Rust)                                    |
+| ------------------------------------- | ------------------------------------------------------------- |
+| `tea.Model` (interface)             | Struct `App` implémentant une boucle événementielle      |
+| `Model.Init() → tea.Cmd`           | `App::new()` + spawn de tâches tokio initiales             |
+| `Model.Update(msg) → (Model, Cmd)` | `App::handle_event(event) → Action`                        |
+| `Model.View() → string`            | `App::draw(frame: &mut Frame)`                              |
+| `tea.Msg` (interface vide)          | `enum AppMessage { ... }`                                   |
+| `tea.Cmd` (fonction)                | `tokio::spawn` ou `mpsc::channel`                         |
+| `tea.Program`                       | Boucle `loop { terminal.draw(); handle_events(); }`         |
+| `tea.WithAltScreen()`               | `crossterm::terminal::enable_raw_mode()` + alternate screen |
 
 ### Structure du Model racine
 
@@ -6670,13 +6666,13 @@ pub struct App {
 
 ### Différences architecturales clés
 
-| Aspect | Bubble Tea (Go) | ratatui (Rust) |
-|--------|-----------------|----------------|
-| **Immutabilité du modèle** | Copie du Model à chaque Update | Mutation in-place (`&mut self`) |
-| **Dispatching de messages** | `tea.Program.Send()` (thread-safe) | `mpsc::UnboundedSender::send()` |
-| **Rendu** | `View() → String` (le framework fait le diff) | `draw(Frame)` → rendu direct dans le buffer |
-| **Commandes asynchrones** | `tea.Cmd` (thunk retournant un Msg) | `tokio::spawn` + envoi via channel |
-| **Écran alternatif** | `tea.WithAltScreen()` | `crossterm::terminal::EnterAlternateScreen` |
+| Aspect                             | Bubble Tea (Go)                                  | ratatui (Rust)                                 |
+| ---------------------------------- | ------------------------------------------------ | ---------------------------------------------- |
+| **Immutabilité du modèle** | Copie du Model à chaque Update                  | Mutation in-place (`&mut self`)              |
+| **Dispatching de messages**  | `tea.Program.Send()` (thread-safe)             | `mpsc::UnboundedSender::send()`              |
+| **Rendu**                    | `View() → String` (le framework fait le diff) | `draw(Frame)` → rendu direct dans le buffer |
+| **Commandes asynchrones**    | `tea.Cmd` (thunk retournant un Msg)            | `tokio::spawn` + envoi via channel           |
+| **Écran alternatif**        | `tea.WithAltScreen()`                          | `crossterm::terminal::EnterAlternateScreen`  |
 
 ---
 
@@ -6797,12 +6793,12 @@ tokio::spawn(async move {
 
 ### Comparaison des patterns
 
-| Aspect | Go (programRef) | Rust (mpsc channel) |
-|--------|-----------------|---------------------|
-| Thread-safety | `tea.Program.Send()` est thread-safe | `mpsc::UnboundedSender` est `Send + Clone` |
-| Lifetime | Heap-allocated, survit aux copies | `Clone` du sender, survit aux moves |
-| Nil check | `if r.program != nil` | Le canal retourne `Err` si le receiver est droppé |
-| Multi-sender | Un seul `programRef` partagé | Chaque tâche clone le `Sender` |
+| Aspect        | Go (programRef)                        | Rust (mpsc channel)                                  |
+| ------------- | -------------------------------------- | ---------------------------------------------------- |
+| Thread-safety | `tea.Program.Send()` est thread-safe | `mpsc::UnboundedSender` est `Send + Clone`       |
+| Lifetime      | Heap-allocated, survit aux copies      | `Clone` du sender, survit aux moves                |
+| Nil check     | `if r.program != nil`                | Le canal retourne `Err` si le receiver est droppé |
+| Multi-sender  | Un seul `programRef` partagé        | Chaque tâche clone le `Sender`                    |
 
 ---
 
@@ -6915,12 +6911,12 @@ pub struct IndicatorsMsg {
 
 ### Adaptations Rust
 
-| Champ Go | Champ Rust | Raison |
-|----------|-----------|--------|
-| `NumGC uint32` | `num_gc: u32` | Pas de GC en Rust, mais conservé pour l'affichage (sera 0) |
-| `PauseTotalNs uint64` | `pause_total_ns: u64` | Idem — sera toujours 0 |
-| `NumGoroutine int` | `num_threads: usize` | Goroutines → threads Rayon/tokio |
-| `time.Time` (dans TickMsg) | `Instant` | Monotone, adapté aux mesures de durée |
+| Champ Go                     | Champ Rust              | Raison                                                      |
+| ---------------------------- | ----------------------- | ----------------------------------------------------------- |
+| `NumGC uint32`             | `num_gc: u32`         | Pas de GC en Rust, mais conservé pour l'affichage (sera 0) |
+| `PauseTotalNs uint64`      | `pause_total_ns: u64` | Idem — sera toujours 0                                     |
+| `NumGoroutine int`         | `num_threads: usize`  | Goroutines → threads Rayon/tokio                           |
+| `time.Time` (dans TickMsg) | `Instant`             | Monotone, adapté aux mesures de durée                     |
 
 ---
 
@@ -7048,13 +7044,13 @@ fn handle_event(&mut self, event: Event) {
 
 ### Tailles minimales
 
-| Panneau | Largeur min | Hauteur min |
-|---------|------------|-------------|
-| Logs | 20 chars | 4 lignes |
-| Metrics | 15 chars | 3 lignes |
-| Chart | 15 chars | 4 lignes |
-| Header | Pleine largeur | 1 ligne |
-| Footer | Pleine largeur | 1 ligne |
+| Panneau | Largeur min    | Hauteur min |
+| ------- | -------------- | ----------- |
+| Logs    | 20 chars       | 4 lignes    |
+| Metrics | 15 chars       | 3 lignes    |
+| Chart   | 15 chars       | 4 lignes    |
+| Header  | Pleine largeur | 1 ligne     |
+| Footer  | Pleine largeur | 1 ligne     |
 
 ---
 
@@ -7556,21 +7552,21 @@ pub struct SysStats {
 
 ### Différences Go vs Rust pour les métriques runtime
 
-| Métrique | Go | Rust |
-|----------|-----|------|
-| Heap utilisé | `runtime.MemStats.Alloc` | RSS processus via `sysinfo` |
-| Heap système | `runtime.MemStats.HeapSys` | VMS processus |
-| Cycles GC | `runtime.MemStats.NumGC` | 0 (pas de GC) |
-| Pause GC | `runtime.MemStats.PauseTotalNs` | 0 (pas de GC) |
-| Goroutines | `runtime.NumGoroutine()` | Nombre de threads (via `sysinfo` ou `/proc/self/status`) |
+| Métrique     | Go                                | Rust                                                         |
+| ------------- | --------------------------------- | ------------------------------------------------------------ |
+| Heap utilisé | `runtime.MemStats.Alloc`        | RSS processus via `sysinfo`                                |
+| Heap système | `runtime.MemStats.HeapSys`      | VMS processus                                                |
+| Cycles GC     | `runtime.MemStats.NumGC`        | 0 (pas de GC)                                                |
+| Pause GC      | `runtime.MemStats.PauseTotalNs` | 0 (pas de GC)                                                |
+| Goroutines    | `runtime.NumGoroutine()`        | Nombre de threads (via `sysinfo` ou `/proc/self/status`) |
 
 ### Mapping crate
 
-| Dépendance Go | Crate Rust | Usage |
-|---------------|-----------|-------|
-| `github.com/shirou/gopsutil/v4/cpu` | `sysinfo` | CPU% global |
-| `github.com/shirou/gopsutil/v4/mem` | `sysinfo` | MEM% et RSS |
-| `runtime.ReadMemStats()` | `sysinfo::Process` | Métriques processus |
+| Dépendance Go                        | Crate Rust           | Usage                |
+| ------------------------------------- | -------------------- | -------------------- |
+| `github.com/shirou/gopsutil/v4/cpu` | `sysinfo`          | CPU% global          |
+| `github.com/shirou/gopsutil/v4/mem` | `sysinfo`          | MEM% et RSS          |
+| `runtime.ReadMemStats()`            | `sysinfo::Process` | Métriques processus |
 
 ---
 
@@ -7731,41 +7727,42 @@ if msg.result.result.is_some() {
 
 ### Résumé des dépendances crate pour le TUI
 
-| Crate | Version | Usage |
-|-------|---------|-------|
-| `ratatui` | ≥ 0.28 | Framework TUI (Layout, Frame, Widget) |
-| `crossterm` | ≥ 0.28 | Backend terminal (events, raw mode, alternate screen) |
-| `tokio` | ≥ 1.0 | Runtime async (spawn, channels, timers) |
-| `sysinfo` | ≥ 0.31 | Métriques système (CPU%, MEM%, RSS) |
-| `chrono` | ≥ 0.4 | Horodatage (calibration profiles) |
-| `serde` / `serde_json` | ≥ 1.0 | Sérialisation profils calibration |
-| `num-cpus` | ≥ 1.16 | Détection nombre de CPUs |
-| `tokio-util` | ≥ 0.7 | `CancellationToken` |
+| Crate                      | Version | Usage                                                 |
+| -------------------------- | ------- | ----------------------------------------------------- |
+| `ratatui`                | ≥ 0.28 | Framework TUI (Layout, Frame, Widget)                 |
+| `crossterm`              | ≥ 0.28 | Backend terminal (events, raw mode, alternate screen) |
+| `tokio`                  | ≥ 1.0  | Runtime async (spawn, channels, timers)               |
+| `sysinfo`                | ≥ 0.31 | Métriques système (CPU%, MEM%, RSS)                 |
+| `chrono`                 | ≥ 0.4  | Horodatage (calibration profiles)                     |
+| `serde` / `serde_json` | ≥ 1.0  | Sérialisation profils calibration                    |
+| `num-cpus`               | ≥ 1.16 | Détection nombre de CPUs                             |
+| `tokio-util`             | ≥ 0.7  | `CancellationToken`                                 |
 
 ---
 
 ## Résumé des correspondances Phase 5-6
 
-| Tâche | Fichier Go source | Module Rust cible | Complexité |
-|-------|-------------------|-------------------|-----------|
-| T5.1 | `fibonacci/dynamic_threshold.go` | `fibonacci::dynamic_threshold` | Moyenne |
-| T5.2 | `fibonacci/dynamic_threshold.go` (significantChange) | `fibonacci::dynamic_threshold` | Faible |
-| T5.3 | `fibonacci/threshold_types.go` | `fibonacci::threshold_types` | Faible |
-| T5.4 | `fibonacci/dynamic_threshold.go` (analyze*) | `fibonacci::dynamic_threshold` | Moyenne |
-| T5.5 | `calibration/profile.go` | `calibration::profile` | Faible |
-| T5.6 | `calibration/calibration.go` | `calibration::mod` | Élevée |
-| T5.7 | `calibration/adaptive.go` | `calibration::adaptive` | Faible |
-| T5.8 | `calibration/microbench.go` | `calibration::microbench` | Moyenne |
-| T6.1 | `tui/model.go` | `tui::app` | Élevée |
-| T6.2 | `tui/model.go` (generation) | `tui::app` | Faible |
-| T6.3 | `tui/bridge.go` (programRef) | `tui::bridge` (mpsc) | Faible |
-| T6.4 | `tui/messages.go` | `tui::messages` | Faible |
-| T6.5 | `tui/model.go` (layoutPanels) | `tui::layout` | Moyenne |
-| T6.6 | `tui/sparkline.go` | `tui::sparkline` | Faible |
-| T6.7 | `tui/sparkline.go` (RenderBrailleChart) | `tui::braille` | Moyenne |
-| T6.8 | `tui/logs.go` | `tui::logs` | Moyenne |
-| T6.9 | `sysmon/sysmon.go` | `sysmon::mod` | Faible |
-| T6.10 | `tui/bridge.go` | `tui::bridge` | Moyenne |
+| Tâche | Fichier Go source                                      | Module Rust cible                | Complexité |
+| ------ | ------------------------------------------------------ | -------------------------------- | ----------- |
+| T5.1   | `fibonacci/dynamic_threshold.go`                     | `fibonacci::dynamic_threshold` | Moyenne     |
+| T5.2   | `fibonacci/dynamic_threshold.go` (significantChange) | `fibonacci::dynamic_threshold` | Faible      |
+| T5.3   | `fibonacci/threshold_types.go`                       | `fibonacci::threshold_types`   | Faible      |
+| T5.4   | `fibonacci/dynamic_threshold.go` (analyze*)          | `fibonacci::dynamic_threshold` | Moyenne     |
+| T5.5   | `calibration/profile.go`                             | `calibration::profile`         | Faible      |
+| T5.6   | `calibration/calibration.go`                         | `calibration::mod`             | Élevée    |
+| T5.7   | `calibration/adaptive.go`                            | `calibration::adaptive`        | Faible      |
+| T5.8   | `calibration/microbench.go`                          | `calibration::microbench`      | Moyenne     |
+| T6.1   | `tui/model.go`                                       | `tui::app`                     | Élevée    |
+| T6.2   | `tui/model.go` (generation)                          | `tui::app`                     | Faible      |
+| T6.3   | `tui/bridge.go` (programRef)                         | `tui::bridge` (mpsc)           | Faible      |
+| T6.4   | `tui/messages.go`                                    | `tui::messages`                | Faible      |
+| T6.5   | `tui/model.go` (layoutPanels)                        | `tui::layout`                  | Moyenne     |
+| T6.6   | `tui/sparkline.go`                                   | `tui::sparkline`               | Faible      |
+| T6.7   | `tui/sparkline.go` (RenderBrailleChart)              | `tui::braille`                 | Moyenne     |
+| T6.8   | `tui/logs.go`                                        | `tui::logs`                    | Moyenne     |
+| T6.9   | `sysmon/sysmon.go`                                   | `sysmon::mod`                  | Faible      |
+| T6.10  | `tui/bridge.go`                                      | `tui::bridge`                  | Moyenne     |
+
 # Phase 7 — Intégration, Tests & Finalisation
 
 > **Portage FibGo (Go) → FibRust (Rust)**
@@ -7781,7 +7778,7 @@ if msg.result.result.is_some() {
 - [T7.4 — Catalogue de Cas Limites](#t74--catalogue-de-cas-limites)
 - [T7.5 — Carte de Propagation des Erreurs](#t75--carte-de-propagation-des-erreurs)
 - [T7.6 — Spécification FFI (GMP / rug)](#t76--spécification-ffi-gmp--rug)
-- [T7.7 — Scénarios de Tests d'Intégration](#t77--scénarios-de-tests-dintégration)
+- [T7.7 — Scénarios de Tests d&#39;Intégration](#t77--scénarios-de-tests-dintégration)
 - [T7.8 — Structure Documentaire du Projet Rust](#t78--structure-documentaire-du-projet-rust)
 
 ---
@@ -7792,194 +7789,194 @@ if msg.result.result.is_some() {
 
 Le workspace Cargo contient **7 crates** :
 
-| Crate | Type | Description |
-|-------|------|-------------|
-| `fibcalc-core` | `lib` | Algorithmes Fibonacci, stratégies, observateurs, seuils dynamiques, arène mémoire, contrôle GC |
-| `fibcalc-bigfft` | `lib` | Multiplication FFT, nombres de Fermat, cache de transformées, allocateurs, pools |
-| `fibcalc-orchestration` | `lib` | Exécution parallèle, sélection de calculatrices, analyse de résultats |
-| `fibcalc-cli` | `lib` | Sortie CLI, présentateur, barre de progression, ETA, complétion shell |
-| `fibcalc-tui` | `lib` | Dashboard TUI Ratatui (modèle Elm), panneaux, graphiques, sparklines |
-| `fibcalc-calibration` | `lib` | Calibration, benchmarks, profils adaptatifs, micro-benchmarks |
-| `fibcalc` | `bin` | Point d'entrée binaire, application, configuration, gestion des erreurs |
+| Crate                     | Type    | Description                                                                                        |
+| ------------------------- | ------- | -------------------------------------------------------------------------------------------------- |
+| `fibcalc-core`          | `lib` | Algorithmes Fibonacci, stratégies, observateurs, seuils dynamiques, arène mémoire, contrôle GC |
+| `fibcalc-bigfft`        | `lib` | Multiplication FFT, nombres de Fermat, cache de transformées, allocateurs, pools                  |
+| `fibcalc-orchestration` | `lib` | Exécution parallèle, sélection de calculatrices, analyse de résultats                          |
+| `fibcalc-cli`           | `lib` | Sortie CLI, présentateur, barre de progression, ETA, complétion shell                            |
+| `fibcalc-tui`           | `lib` | Dashboard TUI Ratatui (modèle Elm), panneaux, graphiques, sparklines                              |
+| `fibcalc-calibration`   | `lib` | Calibration, benchmarks, profils adaptatifs, micro-benchmarks                                      |
+| `fibcalc`               | `bin` | Point d'entrée binaire, application, configuration, gestion des erreurs                           |
 
 ### 7.1.2 Table de correspondance exhaustive
 
 #### Crate `fibcalc` (binaire principal)
 
-| Fichier Go | Crate Rust | Fichier Rust | Priorité | Notes de migration |
-|-----------|-----------|-------------|---------|-------------------|
-| `cmd/fibcalc/main.go` | `fibcalc` | `src/main.rs` | P0 | Point d'entrée `fn main()`, appel à `app::run()` |
-| `cmd/fibcalc/main_test.go` | `fibcalc` | `tests/main_test.rs` | P1 | Tests d'intégration du binaire |
-| `cmd/generate-golden/main.go` | `fibcalc` | `src/bin/generate_golden.rs` | P2 | Binaire séparé pour données de référence |
-| `cmd/generate-golden/main_test.go` | `fibcalc` | `tests/generate_golden_test.rs` | P2 | Tests du générateur golden |
-| `internal/app/app.go` | `fibcalc` | `src/app.rs` | P0 | `Application` struct, `new()`, `run()`, dispatch modes |
-| `internal/app/version.go` | `fibcalc` | `src/version.rs` | P0 | Constantes de version via `build.rs` ou `env!()` |
-| `internal/app/doc.go` | `fibcalc` | — | — | Pas d'équivalent Rust (doc dans `//!` du `lib.rs`) |
-| `internal/app/app_test.go` | `fibcalc` | `tests/app_test.rs` | P1 | Tests d'intégration |
-| `internal/app/version_test.go` | `fibcalc` | `tests/version_test.rs` | P2 | Tests version |
-| `internal/config/config.go` | `fibcalc` | `src/config.rs` | P0 | `AppConfig`, parsing via `clap` |
-| `internal/config/env.go` | `fibcalc` | `src/config/env.rs` | P1 | Variables d'environnement `FIBCALC_*` |
-| `internal/config/usage.go` | `fibcalc` | `src/config/usage.rs` | P2 | Aide personnalisée (intégrée dans `clap`) |
-| `internal/config/doc.go` | `fibcalc` | — | — | Doc module Rust |
-| `internal/config/config_test.go` | `fibcalc` | `tests/config_test.rs` | P1 | Tests config |
-| `internal/config/config_exhaustive_test.go` | `fibcalc` | `tests/config_exhaustive_test.rs` | P2 | Tests exhaustifs config |
-| `internal/config/config_extra_test.go` | `fibcalc` | `tests/config_extra_test.rs` | P2 | Tests supplémentaires |
-| `internal/config/env_test.go` | `fibcalc` | `tests/config_env_test.rs` | P1 | Tests env vars |
-| `internal/errors/errors.go` | `fibcalc` | `src/errors.rs` | P0 | `FibError` enum avec `thiserror` |
-| `internal/errors/handler.go` | `fibcalc` | `src/errors/handler.rs` | P0 | `HandleCalculationError`, codes de sortie |
-| `internal/errors/doc.go` | `fibcalc` | — | — | Doc module |
-| `internal/errors/errors_test.go` | `fibcalc` | `src/errors.rs` (tests inline) | P1 | `#[cfg(test)] mod tests` |
-| `internal/errors/handler_test.go` | `fibcalc` | `src/errors/handler.rs` (tests inline) | P1 | Tests handler |
-| `internal/format/duration.go` | `fibcalc` | `src/format/duration.rs` | P1 | Formatage durées |
-| `internal/format/numbers.go` | `fibcalc` | `src/format/numbers.rs` | P1 | Formatage nombres |
-| `internal/format/progress_eta.go` | `fibcalc` | `src/format/progress_eta.rs` | P1 | Affichage ETA |
-| `internal/format/progress_eta_test.go` | `fibcalc` | `src/format/progress_eta.rs` (tests) | P2 | Tests ETA |
-| `internal/metrics/indicators.go` | `fibcalc` | `src/metrics/indicators.rs` | P2 | Indicateurs performance (bits/s, digits/s) |
-| `internal/metrics/memory.go` | `fibcalc` | `src/metrics/memory.rs` | P2 | `MemoryCollector`, `MemorySnapshot` |
-| `internal/metrics/indicators_test.go` | `fibcalc` | `src/metrics/indicators.rs` (tests) | P2 | Tests indicateurs |
-| `internal/metrics/memory_test.go` | `fibcalc` | `src/metrics/memory.rs` (tests) | P2 | Tests mémoire |
-| `internal/parallel/errors.go` | `fibcalc` | `src/parallel/errors.rs` | P1 | `ErrorCollector` → Rust `Result` + `rayon` |
-| `internal/parallel/doc.go` | `fibcalc` | — | — | Doc module |
-| `internal/parallel/errors_test.go` | `fibcalc` | `src/parallel/errors.rs` (tests) | P1 | Tests ErrorCollector |
-| `internal/sysmon/sysmon.go` | `fibcalc` | `src/sysmon.rs` | P3 | Monitoring CPU/mémoire via `sysinfo` |
-| `internal/sysmon/sysmon_test.go` | `fibcalc` | `src/sysmon.rs` (tests) | P3 | Tests sysmon |
-| `internal/testutil/ansi.go` | `fibcalc` | `src/testutil.rs` | P2 | Nettoyage ANSI pour assertions test |
-| `internal/testutil/doc.go` | `fibcalc` | — | — | Doc module |
-| `internal/testutil/ansi_test.go` | `fibcalc` | `src/testutil.rs` (tests) | P2 | Tests ANSI |
-| `internal/ui/colors.go` | `fibcalc` | `src/ui/colors.rs` | P1 | Couleurs terminales, `NO_COLOR` |
-| `internal/ui/themes.go` | `fibcalc` | `src/ui/themes.rs` | P1 | Thèmes (`ColorTheme`) |
-| `internal/ui/doc.go` | `fibcalc` | — | — | Doc module |
-| `internal/ui/themes_test.go` | `fibcalc` | `src/ui/themes.rs` (tests) | P2 | Tests thèmes |
+| Fichier Go                                    | Crate Rust  | Fichier Rust                             | Priorité | Notes de migration                                           |
+| --------------------------------------------- | ----------- | ---------------------------------------- | --------- | ------------------------------------------------------------ |
+| `cmd/fibcalc/main.go`                       | `fibcalc` | `src/main.rs`                          | P0        | Point d'entrée `fn main()`, appel à `app::run()`       |
+| `cmd/fibcalc/main_test.go`                  | `fibcalc` | `tests/main_test.rs`                   | P1        | Tests d'intégration du binaire                              |
+| `cmd/generate-golden/main.go`               | `fibcalc` | `src/bin/generate_golden.rs`           | P2        | Binaire séparé pour données de référence                |
+| `cmd/generate-golden/main_test.go`          | `fibcalc` | `tests/generate_golden_test.rs`        | P2        | Tests du générateur golden                                 |
+| `internal/app/app.go`                       | `fibcalc` | `src/app.rs`                           | P0        | `Application` struct, `new()`, `run()`, dispatch modes |
+| `internal/app/version.go`                   | `fibcalc` | `src/version.rs`                       | P0        | Constantes de version via `build.rs` ou `env!()`         |
+| `internal/app/doc.go`                       | `fibcalc` | —                                       | —        | Pas d'équivalent Rust (doc dans `//!` du `lib.rs`)      |
+| `internal/app/app_test.go`                  | `fibcalc` | `tests/app_test.rs`                    | P1        | Tests d'intégration                                         |
+| `internal/app/version_test.go`              | `fibcalc` | `tests/version_test.rs`                | P2        | Tests version                                                |
+| `internal/config/config.go`                 | `fibcalc` | `src/config.rs`                        | P0        | `AppConfig`, parsing via `clap`                          |
+| `internal/config/env.go`                    | `fibcalc` | `src/config/env.rs`                    | P1        | Variables d'environnement `FIBCALC_*`                      |
+| `internal/config/usage.go`                  | `fibcalc` | `src/config/usage.rs`                  | P2        | Aide personnalisée (intégrée dans `clap`)               |
+| `internal/config/doc.go`                    | `fibcalc` | —                                       | —        | Doc module Rust                                              |
+| `internal/config/config_test.go`            | `fibcalc` | `tests/config_test.rs`                 | P1        | Tests config                                                 |
+| `internal/config/config_exhaustive_test.go` | `fibcalc` | `tests/config_exhaustive_test.rs`      | P2        | Tests exhaustifs config                                      |
+| `internal/config/config_extra_test.go`      | `fibcalc` | `tests/config_extra_test.rs`           | P2        | Tests supplémentaires                                       |
+| `internal/config/env_test.go`               | `fibcalc` | `tests/config_env_test.rs`             | P1        | Tests env vars                                               |
+| `internal/errors/errors.go`                 | `fibcalc` | `src/errors.rs`                        | P0        | `FibError` enum avec `thiserror`                         |
+| `internal/errors/handler.go`                | `fibcalc` | `src/errors/handler.rs`                | P0        | `HandleCalculationError`, codes de sortie                  |
+| `internal/errors/doc.go`                    | `fibcalc` | —                                       | —        | Doc module                                                   |
+| `internal/errors/errors_test.go`            | `fibcalc` | `src/errors.rs` (tests inline)         | P1        | `#[cfg(test)] mod tests`                                   |
+| `internal/errors/handler_test.go`           | `fibcalc` | `src/errors/handler.rs` (tests inline) | P1        | Tests handler                                                |
+| `internal/format/duration.go`               | `fibcalc` | `src/format/duration.rs`               | P1        | Formatage durées                                            |
+| `internal/format/numbers.go`                | `fibcalc` | `src/format/numbers.rs`                | P1        | Formatage nombres                                            |
+| `internal/format/progress_eta.go`           | `fibcalc` | `src/format/progress_eta.rs`           | P1        | Affichage ETA                                                |
+| `internal/format/progress_eta_test.go`      | `fibcalc` | `src/format/progress_eta.rs` (tests)   | P2        | Tests ETA                                                    |
+| `internal/metrics/indicators.go`            | `fibcalc` | `src/metrics/indicators.rs`            | P2        | Indicateurs performance (bits/s, digits/s)                   |
+| `internal/metrics/memory.go`                | `fibcalc` | `src/metrics/memory.rs`                | P2        | `MemoryCollector`, `MemorySnapshot`                      |
+| `internal/metrics/indicators_test.go`       | `fibcalc` | `src/metrics/indicators.rs` (tests)    | P2        | Tests indicateurs                                            |
+| `internal/metrics/memory_test.go`           | `fibcalc` | `src/metrics/memory.rs` (tests)        | P2        | Tests mémoire                                               |
+| `internal/parallel/errors.go`               | `fibcalc` | `src/parallel/errors.rs`               | P1        | `ErrorCollector` → Rust `Result` + `rayon`            |
+| `internal/parallel/doc.go`                  | `fibcalc` | —                                       | —        | Doc module                                                   |
+| `internal/parallel/errors_test.go`          | `fibcalc` | `src/parallel/errors.rs` (tests)       | P1        | Tests ErrorCollector                                         |
+| `internal/sysmon/sysmon.go`                 | `fibcalc` | `src/sysmon.rs`                        | P3        | Monitoring CPU/mémoire via `sysinfo`                      |
+| `internal/sysmon/sysmon_test.go`            | `fibcalc` | `src/sysmon.rs` (tests)                | P3        | Tests sysmon                                                 |
+| `internal/testutil/ansi.go`                 | `fibcalc` | `src/testutil.rs`                      | P2        | Nettoyage ANSI pour assertions test                          |
+| `internal/testutil/doc.go`                  | `fibcalc` | —                                       | —        | Doc module                                                   |
+| `internal/testutil/ansi_test.go`            | `fibcalc` | `src/testutil.rs` (tests)              | P2        | Tests ANSI                                                   |
+| `internal/ui/colors.go`                     | `fibcalc` | `src/ui/colors.rs`                     | P1        | Couleurs terminales,`NO_COLOR`                             |
+| `internal/ui/themes.go`                     | `fibcalc` | `src/ui/themes.rs`                     | P1        | Thèmes (`ColorTheme`)                                     |
+| `internal/ui/doc.go`                        | `fibcalc` | —                                       | —        | Doc module                                                   |
+| `internal/ui/themes_test.go`                | `fibcalc` | `src/ui/themes.rs` (tests)             | P2        | Tests thèmes                                                |
 
 #### Crate `fibcalc-core`
 
-| Fichier Go | Crate Rust | Fichier Rust | Priorité | Notes de migration |
-|-----------|-----------|-------------|---------|-------------------|
-| `internal/fibonacci/calculator.go` | `fibcalc-core` | `src/calculator.rs` | P0 | Trait `Calculator`, `FibCalculator` décorateur, `calculateSmall()` |
-| `internal/fibonacci/strategy.go` | `fibcalc-core` | `src/strategy.rs` | P0 | Traits `Multiplier`, `DoublingStepExecutor`; `AdaptiveStrategy`, `FFTOnlyStrategy`, `KaratsubaStrategy` |
-| `internal/fibonacci/observer.go` | `fibcalc-core` | `src/observer.rs` | P0 | Trait `ProgressObserver`, `ProgressSubject` avec `Freeze()` |
-| `internal/fibonacci/observers.go` | `fibcalc-core` | `src/observers.rs` | P1 | `ChannelObserver`, `LoggingObserver`, `NoOpObserver` |
-| `internal/fibonacci/registry.go` | `fibcalc-core` | `src/registry.rs` | P0 | Trait `CalculatorFactory`, `DefaultFactory` avec `RwLock<HashMap>` |
-| `internal/fibonacci/generator.go` | `fibcalc-core` | `src/generator.rs` | P1 | Trait `SequenceGenerator` |
-| `internal/fibonacci/generator_iterative.go` | `fibcalc-core` | `src/generator_iterative.rs` | P1 | `IterativeGenerator` implémentation |
-| `internal/fibonacci/fastdoubling.go` | `fibcalc-core` | `src/fastdoubling.rs` | P0 | `OptimizedFastDoubling`, `CalculationState`, `statePool` → pools Rust |
-| `internal/fibonacci/matrix.go` | `fibcalc-core` | `src/matrix.rs` | P0 | `MatrixExponentiation`, `matrixState` pool |
-| `internal/fibonacci/fft_based.go` | `fibcalc-core` | `src/fft_based.rs` | P0 | `FFTBasedCalculator` |
-| `internal/fibonacci/doubling_framework.go` | `fibcalc-core` | `src/doubling_framework.rs` | P0 | `DoublingFramework`, `ExecuteDoublingLoop()` |
-| `internal/fibonacci/matrix_framework.go` | `fibcalc-core` | `src/matrix_framework.rs` | P0 | `MatrixFramework`, `ExecuteMatrixLoop()` |
-| `internal/fibonacci/matrix_ops.go` | `fibcalc-core` | `src/matrix_ops.rs` | P0 | Multiplications matricielles, Strassen |
-| `internal/fibonacci/matrix_types.go` | `fibcalc-core` | `src/matrix_types.rs` | P0 | Types `Matrix`, `MatrixState` |
-| `internal/fibonacci/fft.go` | `fibcalc-core` | `src/fft_wrappers.rs` | P0 | `mulFFT`, `sqrFFT`, `smartMultiply`, `smartSquare`, `executeDoublingStepFFT` |
-| `internal/fibonacci/common.go` | `fibcalc-core` | `src/common.rs` | P0 | `taskSemaphore` → Rayon, `executeTasks` générique, pools |
-| `internal/fibonacci/constants.go` | `fibcalc-core` | `src/constants.rs` | P0 | Constantes de seuils, `pub const` |
-| `internal/fibonacci/options.go` | `fibcalc-core` | `src/options.rs` | P0 | `Options` struct, `normalizeOptions()` |
-| `internal/fibonacci/progress.go` | `fibcalc-core` | `src/progress.rs` | P0 | `ProgressUpdate`, `ProgressCallback`, `CalcTotalWork()`, `PrecomputePowers4()` |
-| `internal/fibonacci/dynamic_threshold.go` | `fibcalc-core` | `src/dynamic_threshold.rs` | P1 | `DynamicThresholdManager` avec ring buffer |
-| `internal/fibonacci/threshold_types.go` | `fibcalc-core` | `src/threshold_types.rs` | P1 | `IterationMetric`, `ThresholdStats`, `DynamicThresholdConfig` |
-| `internal/fibonacci/arena.go` | `fibcalc-core` | `src/arena.rs` | P1 | `CalculationArena` → bump allocator Rust |
-| `internal/fibonacci/gc_control.go` | `fibcalc-core` | `src/gc_control.rs` | P2 | Pas de GC en Rust — stub ou métriques mémoire |
-| `internal/fibonacci/memory_budget.go` | `fibcalc-core` | `src/memory_budget.rs` | P1 | `MemoryEstimate`, `EstimateMemoryUsage()`, `ParseMemoryLimit()` |
-| `internal/fibonacci/modular.go` | `fibcalc-core` | `src/modular.rs` | P1 | `FastDoublingMod` pour `--last-digits` |
-| `internal/fibonacci/testing.go` | `fibcalc-core` | `src/testing.rs` | P1 | `MockCalculator`, `TestFactory` (cfg(test) ou pub) |
-| `internal/fibonacci/doc.go` | `fibcalc-core` | `src/lib.rs` | — | Documentation `//!` module racine |
-| `internal/fibonacci/calculator_gmp.go` | `fibcalc-core` | `src/calculator_gmp.rs` | P2 | Feature `gmp`, `rug::Integer`, `#[cfg(feature = "gmp")]` |
-| Tous les `*_test.go` fibonacci | `fibcalc-core` | `tests/*.rs` + `src/*.rs` inline | P1-P2 | 28 fichiers de test → `#[cfg(test)]` + `tests/` |
+| Fichier Go                                    | Crate Rust       | Fichier Rust                         | Priorité | Notes de migration                                                                                                |
+| --------------------------------------------- | ---------------- | ------------------------------------ | --------- | ----------------------------------------------------------------------------------------------------------------- |
+| `internal/fibonacci/calculator.go`          | `fibcalc-core` | `src/calculator.rs`                | P0        | Trait `Calculator`, `FibCalculator` décorateur, `calculateSmall()`                                         |
+| `internal/fibonacci/strategy.go`            | `fibcalc-core` | `src/strategy.rs`                  | P0        | Traits `Multiplier`, `DoublingStepExecutor`; `AdaptiveStrategy`, `FFTOnlyStrategy`, `KaratsubaStrategy` |
+| `internal/fibonacci/observer.go`            | `fibcalc-core` | `src/observer.rs`                  | P0        | Trait `ProgressObserver`, `ProgressSubject` avec `Freeze()`                                                 |
+| `internal/fibonacci/observers.go`           | `fibcalc-core` | `src/observers.rs`                 | P1        | `ChannelObserver`, `LoggingObserver`, `NoOpObserver`                                                        |
+| `internal/fibonacci/registry.go`            | `fibcalc-core` | `src/registry.rs`                  | P0        | Trait `CalculatorFactory`, `DefaultFactory` avec `RwLock<HashMap>`                                          |
+| `internal/fibonacci/generator.go`           | `fibcalc-core` | `src/generator.rs`                 | P1        | Trait `SequenceGenerator`                                                                                       |
+| `internal/fibonacci/generator_iterative.go` | `fibcalc-core` | `src/generator_iterative.rs`       | P1        | `IterativeGenerator` implémentation                                                                            |
+| `internal/fibonacci/fastdoubling.go`        | `fibcalc-core` | `src/fastdoubling.rs`              | P0        | `OptimizedFastDoubling`, `CalculationState`, `statePool` → pools Rust                                      |
+| `internal/fibonacci/matrix.go`              | `fibcalc-core` | `src/matrix.rs`                    | P0        | `MatrixExponentiation`, `matrixState` pool                                                                    |
+| `internal/fibonacci/fft_based.go`           | `fibcalc-core` | `src/fft_based.rs`                 | P0        | `FFTBasedCalculator`                                                                                            |
+| `internal/fibonacci/doubling_framework.go`  | `fibcalc-core` | `src/doubling_framework.rs`        | P0        | `DoublingFramework`, `ExecuteDoublingLoop()`                                                                  |
+| `internal/fibonacci/matrix_framework.go`    | `fibcalc-core` | `src/matrix_framework.rs`          | P0        | `MatrixFramework`, `ExecuteMatrixLoop()`                                                                      |
+| `internal/fibonacci/matrix_ops.go`          | `fibcalc-core` | `src/matrix_ops.rs`                | P0        | Multiplications matricielles, Strassen                                                                            |
+| `internal/fibonacci/matrix_types.go`        | `fibcalc-core` | `src/matrix_types.rs`              | P0        | Types `Matrix`, `MatrixState`                                                                                 |
+| `internal/fibonacci/fft.go`                 | `fibcalc-core` | `src/fft_wrappers.rs`              | P0        | `mulFFT`, `sqrFFT`, `smartMultiply`, `smartSquare`, `executeDoublingStepFFT`                            |
+| `internal/fibonacci/common.go`              | `fibcalc-core` | `src/common.rs`                    | P0        | `taskSemaphore` → Rayon, `executeTasks` générique, pools                                                   |
+| `internal/fibonacci/constants.go`           | `fibcalc-core` | `src/constants.rs`                 | P0        | Constantes de seuils,`pub const`                                                                                |
+| `internal/fibonacci/options.go`             | `fibcalc-core` | `src/options.rs`                   | P0        | `Options` struct, `normalizeOptions()`                                                                        |
+| `internal/fibonacci/progress.go`            | `fibcalc-core` | `src/progress.rs`                  | P0        | `ProgressUpdate`, `ProgressCallback`, `CalcTotalWork()`, `PrecomputePowers4()`                            |
+| `internal/fibonacci/dynamic_threshold.go`   | `fibcalc-core` | `src/dynamic_threshold.rs`         | P1        | `DynamicThresholdManager` avec ring buffer                                                                      |
+| `internal/fibonacci/threshold_types.go`     | `fibcalc-core` | `src/threshold_types.rs`           | P1        | `IterationMetric`, `ThresholdStats`, `DynamicThresholdConfig`                                               |
+| `internal/fibonacci/arena.go`               | `fibcalc-core` | `src/arena.rs`                     | P1        | `CalculationArena` → bump allocator Rust                                                                       |
+| `internal/fibonacci/gc_control.go`          | `fibcalc-core` | `src/gc_control.rs`                | P2        | Pas de GC en Rust — stub ou métriques mémoire                                                                  |
+| `internal/fibonacci/memory_budget.go`       | `fibcalc-core` | `src/memory_budget.rs`             | P1        | `MemoryEstimate`, `EstimateMemoryUsage()`, `ParseMemoryLimit()`                                             |
+| `internal/fibonacci/modular.go`             | `fibcalc-core` | `src/modular.rs`                   | P1        | `FastDoublingMod` pour `--last-digits`                                                                        |
+| `internal/fibonacci/testing.go`             | `fibcalc-core` | `src/testing.rs`                   | P1        | `MockCalculator`, `TestFactory` (cfg(test) ou pub)                                                            |
+| `internal/fibonacci/doc.go`                 | `fibcalc-core` | `src/lib.rs`                       | —        | Documentation `//!` module racine                                                                               |
+| `internal/fibonacci/calculator_gmp.go`      | `fibcalc-core` | `src/calculator_gmp.rs`            | P2        | Feature `gmp`, `rug::Integer`, `#[cfg(feature = "gmp")]`                                                    |
+| Tous les `*_test.go` fibonacci              | `fibcalc-core` | `tests/*.rs` + `src/*.rs` inline | P1-P2     | 28 fichiers de test →`#[cfg(test)]` + `tests/`                                                               |
 
 #### Crate `fibcalc-bigfft`
 
-| Fichier Go | Crate Rust | Fichier Rust | Priorité | Notes de migration |
-|-----------|-----------|-------------|---------|-------------------|
-| `internal/bigfft/fft.go` | `fibcalc-bigfft` | `src/fft.rs` | P0 | API publique `Mul`, `Sqr`, `MulTo`, `SqrTo` |
-| `internal/bigfft/fft_core.go` | `fibcalc-bigfft` | `src/fft_core.rs` | P0 | Noyau FFT, transformées directe/inverse |
-| `internal/bigfft/fft_recursion.go` | `fibcalc-bigfft` | `src/fft_recursion.rs` | P0 | Récursion FFT, parallélisme interne |
-| `internal/bigfft/fft_poly.go` | `fibcalc-bigfft` | `src/fft_poly.rs` | P0 | Opérations polynomiales pour FFT |
-| `internal/bigfft/fft_cache.go` | `fibcalc-bigfft` | `src/fft_cache.rs` | P1 | Cache LRU thread-safe pour transformées |
-| `internal/bigfft/fermat.go` | `fibcalc-bigfft` | `src/fermat.rs` | P0 | Arithmétique nombres de Fermat |
-| `internal/bigfft/pool.go` | `fibcalc-bigfft` | `src/pool.rs` | P1 | Pools `BigInt`, recyclage objets |
-| `internal/bigfft/pool_warming.go` | `fibcalc-bigfft` | `src/pool_warming.rs` | P2 | Pré-chauffage des pools |
-| `internal/bigfft/bump.go` | `fibcalc-bigfft` | `src/bump.rs` | P0 | `BumpAllocator` O(1) |
-| `internal/bigfft/allocator.go` | `fibcalc-bigfft` | `src/allocator.rs` | P0 | Trait `TempAllocator`, `PoolAllocator`, `BumpAllocatorAdapter` |
-| `internal/bigfft/memory_est.go` | `fibcalc-bigfft` | `src/memory_est.rs` | P1 | Estimation mémoire FFT |
-| `internal/bigfft/scan.go` | `fibcalc-bigfft` | `src/scan.rs` | P1 | Utilitaires de scan |
-| `internal/bigfft/arith_amd64.go` | `fibcalc-bigfft` | `src/arith_amd64.rs` | P1 | `go:linkname` → FFI directe ou crate `num-bigint` |
-| `internal/bigfft/arith_generic.go` | `fibcalc-bigfft` | `src/arith_generic.rs` | P0 | Implémentations portables |
-| `internal/bigfft/arith_decl.go` | `fibcalc-bigfft` | `src/arith_decl.rs` | P1 | Déclarations d'arithmétique vectorielle |
-| `internal/bigfft/cpu_amd64.go` | `fibcalc-bigfft` | `src/cpu_detect.rs` | P2 | Détection CPU AVX2/AVX-512 via `std::arch` |
-| `internal/bigfft/doc.go` | `fibcalc-bigfft` | `src/lib.rs` | — | Documentation `//!` |
-| Tous les `*_test.go` bigfft | `fibcalc-bigfft` | `tests/*.rs` + inline | P1-P2 | 12 fichiers de test |
+| Fichier Go                           | Crate Rust         | Fichier Rust             | Priorité | Notes de migration                                                   |
+| ------------------------------------ | ------------------ | ------------------------ | --------- | -------------------------------------------------------------------- |
+| `internal/bigfft/fft.go`           | `fibcalc-bigfft` | `src/fft.rs`           | P0        | API publique `Mul`, `Sqr`, `MulTo`, `SqrTo`                  |
+| `internal/bigfft/fft_core.go`      | `fibcalc-bigfft` | `src/fft_core.rs`      | P0        | Noyau FFT, transformées directe/inverse                             |
+| `internal/bigfft/fft_recursion.go` | `fibcalc-bigfft` | `src/fft_recursion.rs` | P0        | Récursion FFT, parallélisme interne                                |
+| `internal/bigfft/fft_poly.go`      | `fibcalc-bigfft` | `src/fft_poly.rs`      | P0        | Opérations polynomiales pour FFT                                    |
+| `internal/bigfft/fft_cache.go`     | `fibcalc-bigfft` | `src/fft_cache.rs`     | P1        | Cache LRU thread-safe pour transformées                             |
+| `internal/bigfft/fermat.go`        | `fibcalc-bigfft` | `src/fermat.rs`        | P0        | Arithmétique nombres de Fermat                                      |
+| `internal/bigfft/pool.go`          | `fibcalc-bigfft` | `src/pool.rs`          | P1        | Pools `BigInt`, recyclage objets                                   |
+| `internal/bigfft/pool_warming.go`  | `fibcalc-bigfft` | `src/pool_warming.rs`  | P2        | Pré-chauffage des pools                                             |
+| `internal/bigfft/bump.go`          | `fibcalc-bigfft` | `src/bump.rs`          | P0        | `BumpAllocator` O(1)                                               |
+| `internal/bigfft/allocator.go`     | `fibcalc-bigfft` | `src/allocator.rs`     | P0        | Trait `TempAllocator`, `PoolAllocator`, `BumpAllocatorAdapter` |
+| `internal/bigfft/memory_est.go`    | `fibcalc-bigfft` | `src/memory_est.rs`    | P1        | Estimation mémoire FFT                                              |
+| `internal/bigfft/scan.go`          | `fibcalc-bigfft` | `src/scan.rs`          | P1        | Utilitaires de scan                                                  |
+| `internal/bigfft/arith_amd64.go`   | `fibcalc-bigfft` | `src/arith_amd64.rs`   | P1        | `go:linkname` → FFI directe ou crate `num-bigint`               |
+| `internal/bigfft/arith_generic.go` | `fibcalc-bigfft` | `src/arith_generic.rs` | P0        | Implémentations portables                                           |
+| `internal/bigfft/arith_decl.go`    | `fibcalc-bigfft` | `src/arith_decl.rs`    | P1        | Déclarations d'arithmétique vectorielle                            |
+| `internal/bigfft/cpu_amd64.go`     | `fibcalc-bigfft` | `src/cpu_detect.rs`    | P2        | Détection CPU AVX2/AVX-512 via `std::arch`                        |
+| `internal/bigfft/doc.go`           | `fibcalc-bigfft` | `src/lib.rs`           | —        | Documentation `//!`                                                |
+| Tous les `*_test.go` bigfft        | `fibcalc-bigfft` | `tests/*.rs` + inline  | P1-P2     | 12 fichiers de test                                                  |
 
 #### Crate `fibcalc-orchestration`
 
-| Fichier Go | Crate Rust | Fichier Rust | Priorité | Notes de migration |
-|-----------|-----------|-------------|---------|-------------------|
-| `internal/orchestration/orchestrator.go` | `fibcalc-orchestration` | `src/orchestrator.rs` | P0 | `ExecuteCalculations()`, `AnalyzeComparisonResults()` via `tokio` ou `rayon` |
-| `internal/orchestration/interfaces.go` | `fibcalc-orchestration` | `src/interfaces.rs` | P0 | Traits `ProgressReporter`, `ResultPresenter`, `NullProgressReporter` |
-| `internal/orchestration/calculator_selection.go` | `fibcalc-orchestration` | `src/calculator_selection.rs` | P0 | `GetCalculatorsToRun()` |
-| `internal/orchestration/doc.go` | `fibcalc-orchestration` | `src/lib.rs` | — | Documentation module |
-| Tous les `*_test.go` orchestration | `fibcalc-orchestration` | `tests/*.rs` | P1 | 3 fichiers de test |
+| Fichier Go                                         | Crate Rust                | Fichier Rust                    | Priorité | Notes de migration                                                                   |
+| -------------------------------------------------- | ------------------------- | ------------------------------- | --------- | ------------------------------------------------------------------------------------ |
+| `internal/orchestration/orchestrator.go`         | `fibcalc-orchestration` | `src/orchestrator.rs`         | P0        | `ExecuteCalculations()`, `AnalyzeComparisonResults()` via `tokio` ou `rayon` |
+| `internal/orchestration/interfaces.go`           | `fibcalc-orchestration` | `src/interfaces.rs`           | P0        | Traits `ProgressReporter`, `ResultPresenter`, `NullProgressReporter`           |
+| `internal/orchestration/calculator_selection.go` | `fibcalc-orchestration` | `src/calculator_selection.rs` | P0        | `GetCalculatorsToRun()`                                                            |
+| `internal/orchestration/doc.go`                  | `fibcalc-orchestration` | `src/lib.rs`                  | —        | Documentation module                                                                 |
+| Tous les `*_test.go` orchestration               | `fibcalc-orchestration` | `tests/*.rs`                  | P1        | 3 fichiers de test                                                                   |
 
 #### Crate `fibcalc-cli`
 
-| Fichier Go | Crate Rust | Fichier Rust | Priorité | Notes de migration |
-|-----------|-----------|-------------|---------|-------------------|
-| `internal/cli/output.go` | `fibcalc-cli` | `src/output.rs` | P0 | `Display*`, `Format*`, `Write*`, `Print*` |
-| `internal/cli/presenter.go` | `fibcalc-cli` | `src/presenter.rs` | P0 | `CLIResultPresenter`, `CLIProgressReporter` |
-| `internal/cli/calculate.go` | `fibcalc-cli` | `src/calculate.rs` | P1 | Helpers d'affichage résultats |
-| `internal/cli/progress_eta.go` | `fibcalc-cli` | `src/progress_eta.rs` | P1 | Calcul ETA, affichage progression |
-| `internal/cli/completion.go` | `fibcalc-cli` | `src/completion.rs` | P2 | Complétion shell via `clap_complete` |
-| `internal/cli/provider.go` | `fibcalc-cli` | `src/provider.rs` | P1 | Fournisseurs progress reporter et config display |
-| `internal/cli/ui.go` | `fibcalc-cli` | `src/ui.rs` | P1 | Helpers UI (spinners via `indicatif`) |
-| `internal/cli/ui_display.go` | `fibcalc-cli` | `src/ui_display.rs` | P1 | Affichage formaté |
-| `internal/cli/ui_format.go` | `fibcalc-cli` | `src/ui_format.rs` | P1 | Formatage UI |
-| `internal/cli/doc.go` | `fibcalc-cli` | `src/lib.rs` | — | Documentation module |
-| Tous les `*_test.go` cli | `fibcalc-cli` | `tests/*.rs` + inline | P1-P2 | 8 fichiers de test |
+| Fichier Go                       | Crate Rust      | Fichier Rust            | Priorité | Notes de migration                                |
+| -------------------------------- | --------------- | ----------------------- | --------- | ------------------------------------------------- |
+| `internal/cli/output.go`       | `fibcalc-cli` | `src/output.rs`       | P0        | `Display*`, `Format*`, `Write*`, `Print*` |
+| `internal/cli/presenter.go`    | `fibcalc-cli` | `src/presenter.rs`    | P0        | `CLIResultPresenter`, `CLIProgressReporter`   |
+| `internal/cli/calculate.go`    | `fibcalc-cli` | `src/calculate.rs`    | P1        | Helpers d'affichage résultats                    |
+| `internal/cli/progress_eta.go` | `fibcalc-cli` | `src/progress_eta.rs` | P1        | Calcul ETA, affichage progression                 |
+| `internal/cli/completion.go`   | `fibcalc-cli` | `src/completion.rs`   | P2        | Complétion shell via `clap_complete`           |
+| `internal/cli/provider.go`     | `fibcalc-cli` | `src/provider.rs`     | P1        | Fournisseurs progress reporter et config display  |
+| `internal/cli/ui.go`           | `fibcalc-cli` | `src/ui.rs`           | P1        | Helpers UI (spinners via `indicatif`)           |
+| `internal/cli/ui_display.go`   | `fibcalc-cli` | `src/ui_display.rs`   | P1        | Affichage formaté                                |
+| `internal/cli/ui_format.go`    | `fibcalc-cli` | `src/ui_format.rs`    | P1        | Formatage UI                                      |
+| `internal/cli/doc.go`          | `fibcalc-cli` | `src/lib.rs`          | —        | Documentation module                              |
+| Tous les `*_test.go` cli       | `fibcalc-cli` | `tests/*.rs` + inline | P1-P2     | 8 fichiers de test                                |
 
 #### Crate `fibcalc-tui`
 
-| Fichier Go | Crate Rust | Fichier Rust | Priorité | Notes de migration |
-|-----------|-----------|-------------|---------|-------------------|
-| `internal/tui/model.go` | `fibcalc-tui` | `src/model.rs` | P1 | `Model` Elm architecture → Ratatui |
-| `internal/tui/bridge.go` | `fibcalc-tui` | `src/bridge.rs` | P1 | `TUIProgressReporter`, `TUIResultPresenter` |
-| `internal/tui/header.go` | `fibcalc-tui` | `src/header.rs` | P2 | Panneau header |
-| `internal/tui/footer.go` | `fibcalc-tui` | `src/footer.rs` | P2 | Panneau footer |
-| `internal/tui/logs.go` | `fibcalc-tui` | `src/logs.rs` | P2 | Panneau logs scrollable |
-| `internal/tui/metrics.go` | `fibcalc-tui` | `src/metrics.rs` | P2 | Panneau métriques runtime |
-| `internal/tui/chart.go` | `fibcalc-tui` | `src/chart.rs` | P2 | Graphique de progression |
-| `internal/tui/sparkline.go` | `fibcalc-tui` | `src/sparkline.rs` | P2 | Visualisation sparkline |
-| `internal/tui/styles.go` | `fibcalc-tui` | `src/styles.rs` | P2 | Styles Ratatui |
-| `internal/tui/keymap.go` | `fibcalc-tui` | `src/keymap.rs` | P2 | Raccourcis clavier |
-| `internal/tui/messages.go` | `fibcalc-tui` | `src/messages.rs` | P2 | Types de messages Elm |
-| `internal/tui/doc.go` | `fibcalc-tui` | `src/lib.rs` | — | Documentation module |
-| Tous les `*_test.go` tui | `fibcalc-tui` | `tests/*.rs` + inline | P2 | 10 fichiers de test |
+| Fichier Go                    | Crate Rust      | Fichier Rust            | Priorité | Notes de migration                              |
+| ----------------------------- | --------------- | ----------------------- | --------- | ----------------------------------------------- |
+| `internal/tui/model.go`     | `fibcalc-tui` | `src/model.rs`        | P1        | `Model` Elm architecture → Ratatui           |
+| `internal/tui/bridge.go`    | `fibcalc-tui` | `src/bridge.rs`       | P1        | `TUIProgressReporter`, `TUIResultPresenter` |
+| `internal/tui/header.go`    | `fibcalc-tui` | `src/header.rs`       | P2        | Panneau header                                  |
+| `internal/tui/footer.go`    | `fibcalc-tui` | `src/footer.rs`       | P2        | Panneau footer                                  |
+| `internal/tui/logs.go`      | `fibcalc-tui` | `src/logs.rs`         | P2        | Panneau logs scrollable                         |
+| `internal/tui/metrics.go`   | `fibcalc-tui` | `src/metrics.rs`      | P2        | Panneau métriques runtime                      |
+| `internal/tui/chart.go`     | `fibcalc-tui` | `src/chart.rs`        | P2        | Graphique de progression                        |
+| `internal/tui/sparkline.go` | `fibcalc-tui` | `src/sparkline.rs`    | P2        | Visualisation sparkline                         |
+| `internal/tui/styles.go`    | `fibcalc-tui` | `src/styles.rs`       | P2        | Styles Ratatui                                  |
+| `internal/tui/keymap.go`    | `fibcalc-tui` | `src/keymap.rs`       | P2        | Raccourcis clavier                              |
+| `internal/tui/messages.go`  | `fibcalc-tui` | `src/messages.rs`     | P2        | Types de messages Elm                           |
+| `internal/tui/doc.go`       | `fibcalc-tui` | `src/lib.rs`          | —        | Documentation module                            |
+| Tous les `*_test.go` tui    | `fibcalc-tui` | `tests/*.rs` + inline | P2        | 10 fichiers de test                             |
 
 #### Crate `fibcalc-calibration`
 
-| Fichier Go | Crate Rust | Fichier Rust | Priorité | Notes de migration |
-|-----------|-----------|-------------|---------|-------------------|
-| `internal/calibration/calibration.go` | `fibcalc-calibration` | `src/calibration.rs` | P2 | Mode calibration complet |
-| `internal/calibration/runner.go` | `fibcalc-calibration` | `src/runner.rs` | P2 | Exécuteur de benchmarks |
-| `internal/calibration/adaptive.go` | `fibcalc-calibration` | `src/adaptive.rs` | P1 | Estimation adaptative des seuils |
-| `internal/calibration/profile.go` | `fibcalc-calibration` | `src/profile.rs` | P2 | Profil de calibration (serde JSON) |
-| `internal/calibration/io.go` | `fibcalc-calibration` | `src/io.rs` | P2 | Persistance profil |
-| `internal/calibration/microbench.go` | `fibcalc-calibration` | `src/microbench.rs` | P2 | Micro-benchmarks |
-| `internal/calibration/doc.go` | `fibcalc-calibration` | `src/lib.rs` | — | Documentation module |
-| Tous les `*_test.go` calibration | `fibcalc-calibration` | `tests/*.rs` + inline | P2 | 6 fichiers de test |
+| Fichier Go                              | Crate Rust              | Fichier Rust            | Priorité | Notes de migration                 |
+| --------------------------------------- | ----------------------- | ----------------------- | --------- | ---------------------------------- |
+| `internal/calibration/calibration.go` | `fibcalc-calibration` | `src/calibration.rs`  | P2        | Mode calibration complet           |
+| `internal/calibration/runner.go`      | `fibcalc-calibration` | `src/runner.rs`       | P2        | Exécuteur de benchmarks           |
+| `internal/calibration/adaptive.go`    | `fibcalc-calibration` | `src/adaptive.rs`     | P1        | Estimation adaptative des seuils   |
+| `internal/calibration/profile.go`     | `fibcalc-calibration` | `src/profile.rs`      | P2        | Profil de calibration (serde JSON) |
+| `internal/calibration/io.go`          | `fibcalc-calibration` | `src/io.rs`           | P2        | Persistance profil                 |
+| `internal/calibration/microbench.go`  | `fibcalc-calibration` | `src/microbench.rs`   | P2        | Micro-benchmarks                   |
+| `internal/calibration/doc.go`         | `fibcalc-calibration` | `src/lib.rs`          | —        | Documentation module               |
+| Tous les `*_test.go` calibration      | `fibcalc-calibration` | `tests/*.rs` + inline | P2        | 6 fichiers de test                 |
 
 #### Fichiers E2E et Données de Test
 
-| Fichier Go | Crate Rust | Fichier Rust | Priorité | Notes de migration |
-|-----------|-----------|-------------|---------|-------------------|
-| `test/e2e/cli_e2e_test.go` | `fibcalc` | `tests/e2e/cli_e2e_test.rs` | P1 | Tests E2E via `assert_cmd` |
-| `internal/fibonacci/testdata/fibonacci_golden.json` | `fibcalc-core` | `testdata/fibonacci_golden.json` | P0 | Données de référence (copie directe) |
+| Fichier Go                                            | Crate Rust       | Fichier Rust                       | Priorité | Notes de migration                      |
+| ----------------------------------------------------- | ---------------- | ---------------------------------- | --------- | --------------------------------------- |
+| `test/e2e/cli_e2e_test.go`                          | `fibcalc`      | `tests/e2e/cli_e2e_test.rs`      | P1        | Tests E2E via `assert_cmd`            |
+| `internal/fibonacci/testdata/fibonacci_golden.json` | `fibcalc-core` | `testdata/fibonacci_golden.json` | P0        | Données de référence (copie directe) |
 
 ### 7.1.3 Résumé des priorités
 
-| Priorité | Nombre de fichiers | Description |
-|----------|-------------------|-------------|
-| **P0** | 35 | Noyau algorithmique, interfaces, framework, point d'entrée |
-| **P1** | 38 | Observateurs, calibration adaptative, formatage, tests critiques |
-| **P2** | 30 | TUI, calibration complète, complétion shell, GMP |
-| **P3** | 2 | Monitoring système |
+| Priorité    | Nombre de fichiers | Description                                                      |
+| ------------ | ------------------ | ---------------------------------------------------------------- |
+| **P0** | 35                 | Noyau algorithmique, interfaces, framework, point d'entrée      |
+| **P1** | 38                 | Observateurs, calibration adaptative, formatage, tests critiques |
+| **P2** | 30                 | TUI, calibration complète, complétion shell, GMP               |
+| **P3** | 2                  | Monitoring système                                              |
 
 ---
 
@@ -8403,6 +8400,7 @@ pub trait TempAllocator: Send + Sync {
 ```
 
 **Cycle de vie du ownership** :
+
 1. `main()` : `AppConfig` owned par `Application`
 2. `Application::run()` : `Options` emprunté (`&Options`) par les calculatrices
 3. `calculate()` : `BigUint` créé, owned par `CalculationResult`
@@ -8448,6 +8446,7 @@ pub trait TempAllocator: Send + Sync {
 ```
 
 **Ownership TUI** :
+
 - `Model` possède tous les panneaux par valeur
 - Les messages sont `Send` pour traverser les frontières de threads
 - `BigUint` dans `ResultMsg` est moved (pas cloné) depuis l'orchestration
@@ -8667,63 +8666,63 @@ pub trait TempAllocator: Send + Sync {
 
 ### Table de 55 cas limites
 
-| # | Composant | Cas Limite | Traitement Attendu | Priorité |
-|---|----------|-----------|-------------------|---------|
-| 1 | Calculator | n = 0 | Retourne `BigUint::from(0u32)`, pas de progression envoyée au-delà de 1.0 | P0 |
-| 2 | Calculator | n = 1 | Retourne `BigUint::from(1u32)`, chemin rapide itératif | P0 |
-| 3 | Calculator | n = 2 | Retourne `BigUint::from(1u32)`, chemin rapide itératif | P0 |
-| 4 | Calculator | n = 93 (MaxFibU64) | Dernier Fibonacci tenant dans u64 : 12200160415121876738 | P0 |
-| 5 | Calculator | n = 94 | Premier Fibonacci nécessitant BigUint, bascule vers algorithme complet | P0 |
-| 6 | Calculator | n = u64::MAX | Estimation mémoire > RAM disponible → erreur mémoire ou validation de budget | P1 |
-| 7 | Calculator | Annulation contexte pendant calcul | `Err(FibError::Cancelled)` retourné proprement, pas de fuite mémoire | P0 |
-| 8 | Calculator | Timeout expiré | `Err(FibError::Timeout)`, code sortie 2 | P0 |
-| 9 | Calculator | Progression canal plein | Envoi non-bloquant, mise à jour droppée silencieusement | P1 |
-| 10 | Calculator | Progression canal None | Callback no-op, aucune panique | P0 |
-| 11 | FastDoubling | n = 2 (après fast-path) | Si n > 93 forcé, le framework gère correctement n = 2 | P1 |
-| 12 | FastDoubling | Bit de poids fort = 0 | Itération skip correcte, pas de division par zéro | P0 |
-| 13 | FastDoubling | n est puissance de 2 | Uniquement des pas de doublement, aucun pas d'addition | P1 |
-| 14 | FastDoubling | n = 2^64 - 1 | 64 bits d'itération, vérifier que le compteur de bits est correct | P1 |
-| 15 | FastDoubling | Tous les bits à 1 | Maximum de pas d'addition, stress test mémoire | P1 |
-| 16 | Matrix | n = 1 (exponent = 0) | Matrice identité retournée, F(1) = 1 | P0 |
-| 17 | Matrix | n = 2 (exponent = 1) | Une seule multiplication matricielle | P0 |
-| 18 | Matrix | Strassen threshold = 0 | Strassen désactivé, multiplication standard 8-mul | P1 |
-| 19 | FFTBased | n très petit (100) | FFT sur petits opérandes — surcoût acceptable, résultat correct | P1 |
-| 20 | FFTBased | Erreur FFT interne | Propagation correcte vers l'appelant | P0 |
-| 21 | Strategy | fft_threshold = 0 | FFT désactivé, math/big uniquement | P1 |
-| 22 | Strategy | parallel_threshold = 0 | Parallélisme désactivé, exécution séquentielle | P1 |
-| 23 | Strategy | fft_threshold = 1 | FFT activé pour tous les opérandes > 1 bit | P2 |
-| 24 | Observer | Enregistrement observateur nil/None | No-op, pas de panique | P0 |
-| 25 | Observer | Désenregistrement observateur non enregistré | No-op silencieux | P1 |
-| 26 | Observer | Freeze() sans observateurs | Retourne callback no-op | P0 |
-| 27 | Observer | Freeze() avec 100 observateurs | Snapshot correct, pas de deadlock | P2 |
-| 28 | Observer | progress > 1.0 | Clamped à 1.0 par ChannelObserver | P1 |
-| 29 | Observer | progress négatif | Accepté (pas de clamp bas dans le code Go actuel) — à valider | P2 |
-| 30 | Factory | Nom de calculatrice inconnu | `Err(FibError::UnknownCalculator("xyz"))` | P0 |
-| 31 | Factory | Double enregistrement même nom | Le nouveau remplace l'ancien, cache invalidé | P1 |
-| 32 | Factory | Get concurrent depuis 10 threads | Thread-safe via `RwLock`, pas de data race | P0 |
-| 33 | Factory | Liste vide (aucun enregistrement) | Retourne `Vec::new()`, pas de panique | P1 |
-| 34 | Generator | next() sans reset préalable | Retourne F(0) = 0 au premier appel | P0 |
-| 35 | Generator | skip(0) | Retourne F(0), index = 0 | P1 |
-| 36 | Generator | skip(u64::MAX) | Même considérations mémoire que Calculator | P2 |
-| 37 | Generator | reset() après 1000 next() | Retourne à l'état initial, F(0) au prochain next() | P1 |
-| 38 | Config | -n négatif (chaîne) | Erreur de parsing clap, message d'aide | P0 |
-| 39 | Config | -n 0 | Valide, calcule F(0) = 0 | P0 |
-| 40 | Config | --timeout 0s | Erreur de validation : "timeout must be positive" | P0 |
-| 41 | Config | --timeout 1ns | Timeout quasi-immédiat, probablement Err(Timeout) | P1 |
-| 42 | Config | --algo "inexistant" | Erreur ConfigError avec liste des algos valides | P0 |
-| 43 | Config | --threshold -1 | Erreur : "threshold cannot be negative" | P0 |
-| 44 | Config | Variables env invalides | Ignorées silencieusement ou erreur claire | P1 |
-| 45 | Orchestration | 0 calculatrices | Retourne Vec vide, pas de panique | P1 |
-| 46 | Orchestration | 1 calculatrice | Chemin rapide sans errgroup/rayon | P0 |
-| 47 | Orchestration | Résultats incohérents | Code sortie 3 (ExitErrorMismatch) | P0 |
-| 48 | Orchestration | Toutes les calculatrices échouent | Code sortie basé sur la première erreur | P0 |
-| 49 | Modular | m = 0 | Erreur : "modulus must be positive" | P0 |
-| 50 | Modular | m = 1 | Retourne 0 (tout mod 1 = 0) | P1 |
-| 51 | Modular | m négatif | Erreur : "modulus must be positive" | P0 |
-| 52 | Memory | Estimation pour n = 0 | Retourne 0 pour tous les champs | P1 |
-| 53 | Memory | ParseMemoryLimit("") | Erreur : "empty memory limit" | P0 |
-| 54 | Memory | ParseMemoryLimit("abc") | Erreur de parsing | P0 |
-| 55 | Memory | Budget dépassé | Avertissement et code sortie 4 (ExitErrorConfig) | P0 |
+| #  | Composant     | Cas Limite                                     | Traitement Attendu                                                              | Priorité |
+| -- | ------------- | ---------------------------------------------- | ------------------------------------------------------------------------------- | --------- |
+| 1  | Calculator    | n = 0                                          | Retourne `BigUint::from(0u32)`, pas de progression envoyée au-delà de 1.0   | P0        |
+| 2  | Calculator    | n = 1                                          | Retourne `BigUint::from(1u32)`, chemin rapide itératif                       | P0        |
+| 3  | Calculator    | n = 2                                          | Retourne `BigUint::from(1u32)`, chemin rapide itératif                       | P0        |
+| 4  | Calculator    | n = 93 (MaxFibU64)                             | Dernier Fibonacci tenant dans u64 : 12200160415121876738                        | P0        |
+| 5  | Calculator    | n = 94                                         | Premier Fibonacci nécessitant BigUint, bascule vers algorithme complet         | P0        |
+| 6  | Calculator    | n = u64::MAX                                   | Estimation mémoire > RAM disponible → erreur mémoire ou validation de budget | P1        |
+| 7  | Calculator    | Annulation contexte pendant calcul             | `Err(FibError::Cancelled)` retourné proprement, pas de fuite mémoire        | P0        |
+| 8  | Calculator    | Timeout expiré                                | `Err(FibError::Timeout)`, code sortie 2                                       | P0        |
+| 9  | Calculator    | Progression canal plein                        | Envoi non-bloquant, mise à jour droppée silencieusement                       | P1        |
+| 10 | Calculator    | Progression canal None                         | Callback no-op, aucune panique                                                  | P0        |
+| 11 | FastDoubling  | n = 2 (après fast-path)                       | Si n > 93 forcé, le framework gère correctement n = 2                         | P1        |
+| 12 | FastDoubling  | Bit de poids fort = 0                          | Itération skip correcte, pas de division par zéro                             | P0        |
+| 13 | FastDoubling  | n est puissance de 2                           | Uniquement des pas de doublement, aucun pas d'addition                          | P1        |
+| 14 | FastDoubling  | n = 2^64 - 1                                   | 64 bits d'itération, vérifier que le compteur de bits est correct             | P1        |
+| 15 | FastDoubling  | Tous les bits à 1                             | Maximum de pas d'addition, stress test mémoire                                 | P1        |
+| 16 | Matrix        | n = 1 (exponent = 0)                           | Matrice identité retournée, F(1) = 1                                          | P0        |
+| 17 | Matrix        | n = 2 (exponent = 1)                           | Une seule multiplication matricielle                                            | P0        |
+| 18 | Matrix        | Strassen threshold = 0                         | Strassen désactivé, multiplication standard 8-mul                             | P1        |
+| 19 | FFTBased      | n très petit (100)                            | FFT sur petits opérandes — surcoût acceptable, résultat correct             | P1        |
+| 20 | FFTBased      | Erreur FFT interne                             | Propagation correcte vers l'appelant                                            | P0        |
+| 21 | Strategy      | fft_threshold = 0                              | FFT désactivé, math/big uniquement                                            | P1        |
+| 22 | Strategy      | parallel_threshold = 0                         | Parallélisme désactivé, exécution séquentielle                             | P1        |
+| 23 | Strategy      | fft_threshold = 1                              | FFT activé pour tous les opérandes > 1 bit                                    | P2        |
+| 24 | Observer      | Enregistrement observateur nil/None            | No-op, pas de panique                                                           | P0        |
+| 25 | Observer      | Désenregistrement observateur non enregistré | No-op silencieux                                                                | P1        |
+| 26 | Observer      | Freeze() sans observateurs                     | Retourne callback no-op                                                         | P0        |
+| 27 | Observer      | Freeze() avec 100 observateurs                 | Snapshot correct, pas de deadlock                                               | P2        |
+| 28 | Observer      | progress > 1.0                                 | Clamped à 1.0 par ChannelObserver                                              | P1        |
+| 29 | Observer      | progress négatif                              | Accepté (pas de clamp bas dans le code Go actuel) — à valider                | P2        |
+| 30 | Factory       | Nom de calculatrice inconnu                    | `Err(FibError::UnknownCalculator("xyz"))`                                     | P0        |
+| 31 | Factory       | Double enregistrement même nom                | Le nouveau remplace l'ancien, cache invalidé                                   | P1        |
+| 32 | Factory       | Get concurrent depuis 10 threads               | Thread-safe via `RwLock`, pas de data race                                    | P0        |
+| 33 | Factory       | Liste vide (aucun enregistrement)              | Retourne `Vec::new()`, pas de panique                                         | P1        |
+| 34 | Generator     | next() sans reset préalable                   | Retourne F(0) = 0 au premier appel                                              | P0        |
+| 35 | Generator     | skip(0)                                        | Retourne F(0), index = 0                                                        | P1        |
+| 36 | Generator     | skip(u64::MAX)                                 | Même considérations mémoire que Calculator                                   | P2        |
+| 37 | Generator     | reset() après 1000 next()                     | Retourne à l'état initial, F(0) au prochain next()                            | P1        |
+| 38 | Config        | -n négatif (chaîne)                          | Erreur de parsing clap, message d'aide                                          | P0        |
+| 39 | Config        | -n 0                                           | Valide, calcule F(0) = 0                                                        | P0        |
+| 40 | Config        | --timeout 0s                                   | Erreur de validation : "timeout must be positive"                               | P0        |
+| 41 | Config        | --timeout 1ns                                  | Timeout quasi-immédiat, probablement Err(Timeout)                              | P1        |
+| 42 | Config        | --algo "inexistant"                            | Erreur ConfigError avec liste des algos valides                                 | P0        |
+| 43 | Config        | --threshold -1                                 | Erreur : "threshold cannot be negative"                                         | P0        |
+| 44 | Config        | Variables env invalides                        | Ignorées silencieusement ou erreur claire                                      | P1        |
+| 45 | Orchestration | 0 calculatrices                                | Retourne Vec vide, pas de panique                                               | P1        |
+| 46 | Orchestration | 1 calculatrice                                 | Chemin rapide sans errgroup/rayon                                               | P0        |
+| 47 | Orchestration | Résultats incohérents                        | Code sortie 3 (ExitErrorMismatch)                                               | P0        |
+| 48 | Orchestration | Toutes les calculatrices échouent             | Code sortie basé sur la première erreur                                       | P0        |
+| 49 | Modular       | m = 0                                          | Erreur : "modulus must be positive"                                             | P0        |
+| 50 | Modular       | m = 1                                          | Retourne 0 (tout mod 1 = 0)                                                     | P1        |
+| 51 | Modular       | m négatif                                     | Erreur : "modulus must be positive"                                             | P0        |
+| 52 | Memory        | Estimation pour n = 0                          | Retourne 0 pour tous les champs                                                 | P1        |
+| 53 | Memory        | ParseMemoryLimit("")                           | Erreur : "empty memory limit"                                                   | P0        |
+| 54 | Memory        | ParseMemoryLimit("abc")                        | Erreur de parsing                                                               | P0        |
+| 55 | Memory        | Budget dépassé                               | Avertissement et code sortie 4 (ExitErrorConfig)                                | P0        |
 
 ---
 
@@ -8795,14 +8794,14 @@ pub enum FibError {
 
 ### 7.5.2 Codes de sortie
 
-| Code | Constante Rust | Variantes `FibError` | Description |
-|------|---------------|---------------------|-------------|
-| 0 | `EXIT_SUCCESS` | — (pas d'erreur) | Exécution réussie |
-| 1 | `EXIT_ERROR_GENERIC` | `Calculation`, `FftError`, `MultiplicationFailed`, `MatrixMultiplicationFailed`, `Io` | Erreur générique |
-| 2 | `EXIT_ERROR_TIMEOUT` | `Timeout` | Dépassement du délai |
-| 3 | `EXIT_ERROR_MISMATCH` | `ResultMismatch` | Incohérence entre algorithmes |
-| 4 | `EXIT_ERROR_CONFIG` | `Config`, `UnknownCalculator`, `InvalidMemoryLimit`, `MemoryBudgetExceeded`, `InvalidModulus` | Erreur de configuration |
-| 130 | `EXIT_ERROR_CANCELED` | `Cancelled` | Annulation (SIGINT) |
+| Code | Constante Rust          | Variantes `FibError`                                                                                  | Description                    |
+| ---- | ----------------------- | ------------------------------------------------------------------------------------------------------- | ------------------------------ |
+| 0    | `EXIT_SUCCESS`        | — (pas d'erreur)                                                                                       | Exécution réussie            |
+| 1    | `EXIT_ERROR_GENERIC`  | `Calculation`, `FftError`, `MultiplicationFailed`, `MatrixMultiplicationFailed`, `Io`         | Erreur générique             |
+| 2    | `EXIT_ERROR_TIMEOUT`  | `Timeout`                                                                                             | Dépassement du délai         |
+| 3    | `EXIT_ERROR_MISMATCH` | `ResultMismatch`                                                                                      | Incohérence entre algorithmes |
+| 4    | `EXIT_ERROR_CONFIG`   | `Config`, `UnknownCalculator`, `InvalidMemoryLimit`, `MemoryBudgetExceeded`, `InvalidModulus` | Erreur de configuration        |
+| 130  | `EXIT_ERROR_CANCELED` | `Cancelled`                                                                                           | Annulation (SIGINT)            |
 
 ### 7.5.3 Carte de propagation
 
@@ -8915,24 +8914,24 @@ rug = { version = "1.24", optional = true, features = ["integer"] }
 
 **Correspondance build tags Go → Cargo features** :
 
-| Go Build Tag | Cargo Feature | Effet |
-|-------------|--------------|-------|
-| `//go:build gmp` | `#[cfg(feature = "gmp")]` | Compile le module GMP |
-| `//go:build !gmp` (défaut) | `#[cfg(not(feature = "gmp"))]` | Module GMP absent |
-| `//go:build amd64` | `#[cfg(target_arch = "x86_64")]` | Optimisations amd64 |
+| Go Build Tag                  | Cargo Feature                      | Effet                 |
+| ----------------------------- | ---------------------------------- | --------------------- |
+| `//go:build gmp`            | `#[cfg(feature = "gmp")]`        | Compile le module GMP |
+| `//go:build !gmp` (défaut) | `#[cfg(not(feature = "gmp"))]`   | Module GMP absent     |
+| `//go:build amd64`          | `#[cfg(target_arch = "x86_64")]` | Optimisations amd64   |
 
 ### 7.6.2 Inventaire des blocs `unsafe`
 
 Le portage Rust vise à **minimiser** l'utilisation de `unsafe`. Voici l'inventaire exhaustif des blocs `unsafe` nécessaires :
 
-| # | Fichier Rust | Bloc `unsafe` | Raison | Preuve de sécurité |
-|---|-------------|--------------|--------|-------------------|
-| 1 | `fibcalc-core/src/calculator_gmp.rs` | `rug::Integer::from_raw()` | Conversion FFI depuis pointeur mpz_t brut | `rug` gère la lifetime ; le pointeur est valide car créé par `rug::Integer::new()`. Aucune aliasing possible car `rug::Integer` est `!Sync`. |
-| 2 | `fibcalc-core/src/calculator_gmp.rs` | `rug::Integer::as_raw()` | Accès au pointeur interne pour optimisation | En lecture seule, pas de mutation. Le `rug::Integer` reste vivant pendant tout l'accès. |
-| 3 | `fibcalc-bigfft/src/arith_amd64.rs` | `std::arch::x86_64::_mm256_*` | Instructions SIMD AVX2 pour arithmétique vectorielle | Les tampons sont alignés à 32 octets via `repr(align(32))`. Les longueurs sont vérifiées avant l'appel. Le runtime vérifie la disponibilité AVX2 via `is_x86_feature_detected!()`. |
-| 4 | `fibcalc-bigfft/src/arith_amd64.rs` | `std::arch::x86_64::_mm512_*` | Instructions SIMD AVX-512 (optionnel) | Même garanties que AVX2. Feature gate supplémentaire via `is_x86_feature_detected!("avx512f")`. |
-| 5 | `fibcalc-bigfft/src/bump.rs` | `slice::from_raw_parts_mut()` | Allocation bump O(1) depuis buffer pré-alloué | Le buffer est alloué via `Vec<Word>` avec capacité suffisante. L'offset est vérifié contre la capacité avant chaque allocation. Pas d'aliasing : chaque allocation retourne une tranche disjointe. |
-| 6 | `fibcalc-bigfft/src/fermat.rs` | Arithmétique sur pointeurs bruts | Opérations bit-à-bit sur mots machine pour nombres de Fermat | Les tailles sont vérifiées. Les opérations sont des add/sub/shift sur des tranches `&mut [Word]` avec bounds checking désactivé pour performance (`get_unchecked`). Les indices sont validés en amont. |
+| # | Fichier Rust                           | Bloc `unsafe`                   | Raison                                                         | Preuve de sécurité                                                                                                                                                                                             |
+| - | -------------------------------------- | --------------------------------- | -------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 1 | `fibcalc-core/src/calculator_gmp.rs` | `rug::Integer::from_raw()`      | Conversion FFI depuis pointeur mpz_t brut                      | `rug` gère la lifetime ; le pointeur est valide car créé par `rug::Integer::new()`. Aucune aliasing possible car `rug::Integer` est `!Sync`.                                                          |
+| 2 | `fibcalc-core/src/calculator_gmp.rs` | `rug::Integer::as_raw()`        | Accès au pointeur interne pour optimisation                   | En lecture seule, pas de mutation. Le `rug::Integer` reste vivant pendant tout l'accès.                                                                                                                       |
+| 3 | `fibcalc-bigfft/src/arith_amd64.rs`  | `std::arch::x86_64::_mm256_*`   | Instructions SIMD AVX2 pour arithmétique vectorielle          | Les tampons sont alignés à 32 octets via `repr(align(32))`. Les longueurs sont vérifiées avant l'appel. Le runtime vérifie la disponibilité AVX2 via `is_x86_feature_detected!()`.                     |
+| 4 | `fibcalc-bigfft/src/arith_amd64.rs`  | `std::arch::x86_64::_mm512_*`   | Instructions SIMD AVX-512 (optionnel)                          | Même garanties que AVX2. Feature gate supplémentaire via `is_x86_feature_detected!("avx512f")`.                                                                                                              |
+| 5 | `fibcalc-bigfft/src/bump.rs`         | `slice::from_raw_parts_mut()`   | Allocation bump O(1) depuis buffer pré-alloué                | Le buffer est alloué via `Vec<Word>` avec capacité suffisante. L'offset est vérifié contre la capacité avant chaque allocation. Pas d'aliasing : chaque allocation retourne une tranche disjointe.        |
+| 6 | `fibcalc-bigfft/src/fermat.rs`       | Arithmétique sur pointeurs bruts | Opérations bit-à-bit sur mots machine pour nombres de Fermat | Les tailles sont vérifiées. Les opérations sont des add/sub/shift sur des tranches `&mut [Word]` avec bounds checking désactivé pour performance (`get_unchecked`). Les indices sont validés en amont. |
 
 ### 7.6.3 Documentation `rug::Integer`
 
@@ -8988,14 +8987,14 @@ pub mod gmp {
 
 ### 7.6.4 Matrice de compatibilité
 
-| Plateforme | `num-bigint` (défaut) | `rug` (feature gmp) | SIMD amd64 |
-|-----------|----------------------|---------------------|------------|
-| Linux x86_64 | Oui | Oui (libgmp-dev) | Oui (AVX2/AVX-512) |
-| Linux aarch64 | Oui | Oui (libgmp-dev) | Non (NEON futur) |
-| macOS x86_64 | Oui | Oui (brew gmp) | Oui (AVX2) |
-| macOS aarch64 | Oui | Oui (brew gmp) | Non |
-| Windows x86_64 | Oui | Partiel (MinGW) | Oui (AVX2) |
-| WASM | Oui | Non | Non |
+| Plateforme     | `num-bigint` (défaut) | `rug` (feature gmp) | SIMD amd64         |
+| -------------- | ------------------------ | --------------------- | ------------------ |
+| Linux x86_64   | Oui                      | Oui (libgmp-dev)      | Oui (AVX2/AVX-512) |
+| Linux aarch64  | Oui                      | Oui (libgmp-dev)      | Non (NEON futur)   |
+| macOS x86_64   | Oui                      | Oui (brew gmp)        | Oui (AVX2)         |
+| macOS aarch64  | Oui                      | Oui (brew gmp)        | Non                |
+| Windows x86_64 | Oui                      | Partiel (MinGW)       | Oui (AVX2)         |
+| WASM           | Oui                      | Non                   | Non                |
 
 ---
 
@@ -9003,33 +9002,33 @@ pub mod gmp {
 
 ### Table de 25 scénarios E2E
 
-| ID | Description | Setup | Exécution | Vérification | Résultat Attendu | Code |
-|----|-----------|-------|-----------|-------------|-----------------|------|
-| E2E-01 | Calcul basique F(10) | Binaire compilé | `fibcalc -n 10 -c` | stdout contient "F(10) = 55" | F(10) = 55 affiché | 0 |
-| E2E-02 | Affichage aide | — | `fibcalc --help` | stdout contient "usage" (insensible casse) | Aide affichée | 0 |
-| E2E-03 | Comparaison tous algos | — | `fibcalc -n 100 --algo all -c` | stdout contient "F(100)" | Résultats cohérents | 0 |
-| E2E-04 | Mode silencieux | — | `fibcalc -n 10 --quiet -c` | stdout contient "55", pas de bannière | Sortie minimale | 0 |
-| E2E-05 | Timeout très court | — | `fibcalc -n 10000000 --timeout 1ms` | Code sortie non-zéro | Timeout ou erreur | 2 |
-| E2E-06 | F(0) valide | — | `fibcalc -n 0 -c` | stdout contient "F(0)" | F(0) = 0 | 0 |
-| E2E-07 | F(1000) grand nombre | — | `fibcalc -n 1000 -c` | stdout contient "F(1000)" | Résultat correct | 0 |
-| E2E-08 | Flag version | — | `fibcalc --version` | stdout contient "fibcalc" | Version affichée | 0 |
-| E2E-09 | Algo spécifique "fast" | — | `fibcalc -n 500 --algo fast -c` | stdout contient "Fast Doubling" | Algo fast utilisé | 0 |
-| E2E-10 | Algo spécifique "matrix" | — | `fibcalc -n 500 --algo matrix -c` | stdout contient "Matrix" | Algo matrix utilisé | 0 |
-| E2E-11 | Algo spécifique "fft" | — | `fibcalc -n 500 --algo fft -c` | stdout contient "FFT" | Algo FFT utilisé | 0 |
-| E2E-12 | Algo invalide | — | `fibcalc --algo xyz` | stderr contient "unrecognized" ou erreur | Message d'erreur | 4 |
-| E2E-13 | Sortie fichier | TempDir | `fibcalc -n 100 -c -o {tmp}/result.txt` | Fichier créé, contient le résultat | Fichier écrit | 0 |
-| E2E-14 | Mode verbose | — | `fibcalc -n 100 -v -c` | stdout contient la valeur complète | Valeur complète affichée | 0 |
-| E2E-15 | Mode détails | — | `fibcalc -n 100 -d -c` | stdout contient métriques performance | Détails affichés | 0 |
-| E2E-16 | Last digits | — | `fibcalc -n 1000000 --last-digits 10` | stdout contient 10 chiffres | Derniers 10 chiffres corrects | 0 |
-| E2E-17 | Complétion bash | — | `fibcalc --completion bash` | stdout est un script bash valide | Script complétion | 0 |
-| E2E-18 | Complétion zsh | — | `fibcalc --completion zsh` | stdout est un script zsh valide | Script complétion | 0 |
-| E2E-19 | Variable env FIBCALC_N | `FIBCALC_N=42` | `fibcalc -c` | stdout contient "F(42)" | Env var respectée | 0 |
-| E2E-20 | NO_COLOR respecté | `NO_COLOR=1` | `fibcalc -n 10 -c` | Pas de codes ANSI dans stdout | Pas de couleurs | 0 |
-| E2E-21 | Memory limit suffisant | — | `fibcalc -n 1000 --memory-limit 1G -c` | Calcul réussi | Sous la limite | 0 |
-| E2E-22 | Memory limit insuffisant | — | `fibcalc -n 1000000000 --memory-limit 1K` | Message "exceeds limit" | Budget dépassé | 4 |
-| E2E-23 | GC control aggressive | — | `fibcalc -n 10000 --gc-control aggressive -c` | Calcul réussi | Mode GC respecté | 0 |
-| E2E-24 | Calibration mode | — | `fibcalc --calibrate` (timeout 30s) | stdout contient résultats calibration | Calibration exécutée | 0 |
-| E2E-25 | Signal SIGINT | — | `fibcalc -n 10000000` + SIGINT après 100ms | Code sortie 130 | Annulation propre | 130 |
+| ID     | Description               | Setup            | Exécution                                      | Vérification                              | Résultat Attendu             | Code |
+| ------ | ------------------------- | ---------------- | ----------------------------------------------- | ------------------------------------------ | ----------------------------- | ---- |
+| E2E-01 | Calcul basique F(10)      | Binaire compilé | `fibcalc -n 10 -c`                            | stdout contient "F(10) = 55"               | F(10) = 55 affiché           | 0    |
+| E2E-02 | Affichage aide            | —               | `fibcalc --help`                              | stdout contient "usage" (insensible casse) | Aide affichée                | 0    |
+| E2E-03 | Comparaison tous algos    | —               | `fibcalc -n 100 --algo all -c`                | stdout contient "F(100)"                   | Résultats cohérents         | 0    |
+| E2E-04 | Mode silencieux           | —               | `fibcalc -n 10 --quiet -c`                    | stdout contient "55", pas de bannière     | Sortie minimale               | 0    |
+| E2E-05 | Timeout très court       | —               | `fibcalc -n 10000000 --timeout 1ms`           | Code sortie non-zéro                      | Timeout ou erreur             | 2    |
+| E2E-06 | F(0) valide               | —               | `fibcalc -n 0 -c`                             | stdout contient "F(0)"                     | F(0) = 0                      | 0    |
+| E2E-07 | F(1000) grand nombre      | —               | `fibcalc -n 1000 -c`                          | stdout contient "F(1000)"                  | Résultat correct             | 0    |
+| E2E-08 | Flag version              | —               | `fibcalc --version`                           | stdout contient "fibcalc"                  | Version affichée             | 0    |
+| E2E-09 | Algo spécifique "fast"   | —               | `fibcalc -n 500 --algo fast -c`               | stdout contient "Fast Doubling"            | Algo fast utilisé            | 0    |
+| E2E-10 | Algo spécifique "matrix" | —               | `fibcalc -n 500 --algo matrix -c`             | stdout contient "Matrix"                   | Algo matrix utilisé          | 0    |
+| E2E-11 | Algo spécifique "fft"    | —               | `fibcalc -n 500 --algo fft -c`                | stdout contient "FFT"                      | Algo FFT utilisé             | 0    |
+| E2E-12 | Algo invalide             | —               | `fibcalc --algo xyz`                          | stderr contient "unrecognized" ou erreur   | Message d'erreur              | 4    |
+| E2E-13 | Sortie fichier            | TempDir          | `fibcalc -n 100 -c -o {tmp}/result.txt`       | Fichier créé, contient le résultat      | Fichier écrit                | 0    |
+| E2E-14 | Mode verbose              | —               | `fibcalc -n 100 -v -c`                        | stdout contient la valeur complète        | Valeur complète affichée    | 0    |
+| E2E-15 | Mode détails             | —               | `fibcalc -n 100 -d -c`                        | stdout contient métriques performance     | Détails affichés            | 0    |
+| E2E-16 | Last digits               | —               | `fibcalc -n 1000000 --last-digits 10`         | stdout contient 10 chiffres                | Derniers 10 chiffres corrects | 0    |
+| E2E-17 | Complétion bash          | —               | `fibcalc --completion bash`                   | stdout est un script bash valide           | Script complétion            | 0    |
+| E2E-18 | Complétion zsh           | —               | `fibcalc --completion zsh`                    | stdout est un script zsh valide            | Script complétion            | 0    |
+| E2E-19 | Variable env FIBCALC_N    | `FIBCALC_N=42` | `fibcalc -c`                                  | stdout contient "F(42)"                    | Env var respectée            | 0    |
+| E2E-20 | NO_COLOR respecté        | `NO_COLOR=1`   | `fibcalc -n 10 -c`                            | Pas de codes ANSI dans stdout              | Pas de couleurs               | 0    |
+| E2E-21 | Memory limit suffisant    | —               | `fibcalc -n 1000 --memory-limit 1G -c`        | Calcul réussi                             | Sous la limite                | 0    |
+| E2E-22 | Memory limit insuffisant  | —               | `fibcalc -n 1000000000 --memory-limit 1K`     | Message "exceeds limit"                    | Budget dépassé              | 4    |
+| E2E-23 | GC control aggressive     | —               | `fibcalc -n 10000 --gc-control aggressive -c` | Calcul réussi                             | Mode GC respecté             | 0    |
+| E2E-24 | Calibration mode          | —               | `fibcalc --calibrate` (timeout 30s)           | stdout contient résultats calibration     | Calibration exécutée        | 0    |
+| E2E-25 | Signal SIGINT             | —               | `fibcalc -n 10000000` + SIGINT après 100ms   | Code sortie 130                            | Annulation propre             | 130  |
 
 ### 7.7.1 Framework de test recommandé
 
@@ -9220,33 +9219,33 @@ docs/
 
 ### 7.8.2 Contenu attendu par fichier
 
-| Fichier | Contenu | Source de migration |
-|---------|---------|-------------------|
-| `BUILD.md` | Instructions `cargo build`, features, cross-compilation, PGO | Adaptation depuis Go `BUILD.md` |
-| `CALIBRATION.md` | `--calibrate`, `--auto-calibrate`, profils JSON | Migration directe |
-| `PERFORMANCE.md` | Benchmarks `criterion`, flamegraphs, comparaison Go/Rust | Adaptation + nouveaux benchmarks |
-| `TESTING.md` | `cargo test`, `cargo fuzz`, proptest, golden files, coverage | Adaptation majeure |
-| `TUI_GUIDE.md` | Ratatui, raccourcis, personnalisation | Adaptation pour Ratatui |
-| `MIGRATION.md` | Guide détaillé du portage, décisions architecturales, pièges | **Nouveau** |
-| `UNSAFE_AUDIT.md` | Liste complète des `unsafe`, preuves de sécurité | **Nouveau** |
-| `algorithms/*.md` | Identiques au Go avec exemples Rust | Adaptation code samples |
-| `CRATE_DEPENDENCIES.md` | Graphe inter-crate, dépendances externes, versions | **Nouveau** |
-| `OWNERSHIP_MODEL.md` | Patterns de propriété, borrowing, lifetimes clés | **Nouveau** |
-| `TRAIT_CONTRACTS.md` | Spécification formelle (reprise de T7.2) | **Nouveau** |
-| `api/RUSTDOC_CONFIG.md` | Configuration `#![doc]`, exemples, `doc-cfg` | **Nouveau** |
+| Fichier                   | Contenu                                                          | Source de migration               |
+| ------------------------- | ---------------------------------------------------------------- | --------------------------------- |
+| `BUILD.md`              | Instructions `cargo build`, features, cross-compilation, PGO   | Adaptation depuis Go `BUILD.md` |
+| `CALIBRATION.md`        | `--calibrate`, `--auto-calibrate`, profils JSON              | Migration directe                 |
+| `PERFORMANCE.md`        | Benchmarks `criterion`, flamegraphs, comparaison Go/Rust       | Adaptation + nouveaux benchmarks  |
+| `TESTING.md`            | `cargo test`, `cargo fuzz`, proptest, golden files, coverage | Adaptation majeure                |
+| `TUI_GUIDE.md`          | Ratatui, raccourcis, personnalisation                            | Adaptation pour Ratatui           |
+| `MIGRATION.md`          | Guide détaillé du portage, décisions architecturales, pièges | **Nouveau**                 |
+| `UNSAFE_AUDIT.md`       | Liste complète des `unsafe`, preuves de sécurité            | **Nouveau**                 |
+| `algorithms/*.md`       | Identiques au Go avec exemples Rust                              | Adaptation code samples           |
+| `CRATE_DEPENDENCIES.md` | Graphe inter-crate, dépendances externes, versions              | **Nouveau**                 |
+| `OWNERSHIP_MODEL.md`    | Patterns de propriété, borrowing, lifetimes clés              | **Nouveau**                 |
+| `TRAIT_CONTRACTS.md`    | Spécification formelle (reprise de T7.2)                        | **Nouveau**                 |
+| `api/RUSTDOC_CONFIG.md` | Configuration `#![doc]`, exemples, `doc-cfg`                 | **Nouveau**                 |
 
 ### 7.8.3 Outillage de génération documentaire
 
-| Outil | Usage | Configuration |
-|-------|-------|--------------|
-| **rustdoc** | Documentation API automatique | `cargo doc --no-deps --all-features` |
-| **mdBook** | Site de documentation narrative | `docs/book.toml` + `docs/src/SUMMARY.md` |
-| **mermaid-cli** | Rendu des diagrammes Mermaid | `mmdc -i input.mermaid -o output.svg` |
-| **cargo-tarpaulin** | Couverture de code | `cargo tarpaulin --all-features --out Html` |
-| **cargo-criterion** | Benchmarks avec rapports HTML | `cargo criterion` |
-| **cargo-fuzz** | Fuzzing continu | `cargo fuzz run fuzz_fast_doubling` |
-| **clippy** | Linting Rust | `cargo clippy --all-features --all-targets -- -D warnings` |
-| **cargo-deny** | Audit licences et vulnérabilités | `cargo deny check` |
+| Outil                     | Usage                              | Configuration                                                |
+| ------------------------- | ---------------------------------- | ------------------------------------------------------------ |
+| **rustdoc**         | Documentation API automatique      | `cargo doc --no-deps --all-features`                       |
+| **mdBook**          | Site de documentation narrative    | `docs/book.toml` + `docs/src/SUMMARY.md`                 |
+| **mermaid-cli**     | Rendu des diagrammes Mermaid       | `mmdc -i input.mermaid -o output.svg`                      |
+| **cargo-tarpaulin** | Couverture de code                 | `cargo tarpaulin --all-features --out Html`                |
+| **cargo-criterion** | Benchmarks avec rapports HTML      | `cargo criterion`                                          |
+| **cargo-fuzz**      | Fuzzing continu                    | `cargo fuzz run fuzz_fast_doubling`                        |
+| **clippy**          | Linting Rust                       | `cargo clippy --all-features --all-targets -- -D warnings` |
+| **cargo-deny**      | Audit licences et vulnérabilités | `cargo deny check`                                         |
 
 ### 7.8.4 Configuration `book.toml` (mdBook)
 
@@ -9338,23 +9337,23 @@ jobs:
 
 ## Annexe A — Dépendances Cargo recommandées
 
-| Crate Rust | Remplace (Go) | Usage |
-|-----------|--------------|-------|
-| `num-bigint` + `num-traits` | `math/big` | Arithmétique grande précision |
-| `rug` (feature gmp) | `github.com/ncw/gmp` | Liaison GMP |
-| `rayon` | `golang.org/x/sync/errgroup` | Parallélisme work-stealing |
-| `tokio` | goroutines + channels | Runtime async (optionnel, pour TUI) |
-| `clap` + `clap_complete` | `flag` | Parsing CLI + complétion shell |
-| `ratatui` + `crossterm` | `bubbletea` + `lipgloss` | TUI framework |
-| `indicatif` | `github.com/briandowns/spinner` | Spinners et barres de progression CLI |
-| `tracing` + `tracing-subscriber` | `github.com/rs/zerolog` | Logging structuré |
-| `sysinfo` | `github.com/shirou/gopsutil/v4` | Métriques système |
-| `thiserror` + `anyhow` | `errors` + `fmt.Errorf` | Gestion d'erreurs |
-| `serde` + `serde_json` | `encoding/json` | Sérialisation |
-| `proptest` | `github.com/leanovate/gopter` | Tests basés sur les propriétés |
-| `criterion` | `testing.B` | Benchmarks |
-| `assert_cmd` + `predicates` | `os/exec` (tests E2E) | Tests d'intégration binaire |
-| `tempfile` | `t.TempDir()` | Répertoires temporaires pour tests |
+| Crate Rust                           | Remplace (Go)                     | Usage                                 |
+| ------------------------------------ | --------------------------------- | ------------------------------------- |
+| `num-bigint` + `num-traits`      | `math/big`                      | Arithmétique grande précision       |
+| `rug` (feature gmp)                | `github.com/ncw/gmp`            | Liaison GMP                           |
+| `rayon`                            | `golang.org/x/sync/errgroup`    | Parallélisme work-stealing           |
+| `tokio`                            | goroutines + channels             | Runtime async (optionnel, pour TUI)   |
+| `clap` + `clap_complete`         | `flag`                          | Parsing CLI + complétion shell       |
+| `ratatui` + `crossterm`          | `bubbletea` + `lipgloss`      | TUI framework                         |
+| `indicatif`                        | `github.com/briandowns/spinner` | Spinners et barres de progression CLI |
+| `tracing` + `tracing-subscriber` | `github.com/rs/zerolog`         | Logging structuré                    |
+| `sysinfo`                          | `github.com/shirou/gopsutil/v4` | Métriques système                   |
+| `thiserror` + `anyhow`           | `errors` + `fmt.Errorf`       | Gestion d'erreurs                     |
+| `serde` + `serde_json`           | `encoding/json`                 | Sérialisation                        |
+| `proptest`                         | `github.com/leanovate/gopter`   | Tests basés sur les propriétés     |
+| `criterion`                        | `testing.B`                     | Benchmarks                            |
+| `assert_cmd` + `predicates`      | `os/exec` (tests E2E)           | Tests d'intégration binaire          |
+| `tempfile`                         | `t.TempDir()`                   | Répertoires temporaires pour tests   |
 
 ## Annexe B — Checklist de validation du portage
 
@@ -9378,16 +9377,16 @@ jobs:
 
 ## Récapitulatif des phases
 
-| Phase | Tâches | Focus | Lignes |
-|-------|--------|-------|--------|
-| Phase 1 | 12 (T1.1-T1.12) | Fondations, exigences, évaluation dépendances, risques | ~1500 |
-| Phase 2 | 18 (T2.1-T2.18) | Algorithmes détaillés (Fast Doubling, Matrix, FFT, Modular) | ~1700 |
-| Phase 3 | 10 (T3.1-T3.10) | Observer, progression, modèle géométrique | ~1200 |
-| Phase 4 | 12 (T4.1-T4.12) | Mémoire (arena, pool, bump), concurrence, annulation | ~1200 |
-| Phase 5 | 8 (T5.1-T5.8) | Seuils dynamiques, calibration, profils | ~1000 |
-| Phase 6 | 10 (T6.1-T6.10) | TUI (layout, messages, sparklines, bridge) | ~1000 |
-| Phase 7 | 8 (T7.1-T7.8) | Intégration (migration map, DFD, edge cases, tests) | ~1600 |
-| **Total** | **78** | **PRD complet pour le portage Go → Rust** | **~9300** |
+| Phase           | Tâches         | Focus                                                         | Lignes          |
+| --------------- | --------------- | ------------------------------------------------------------- | --------------- |
+| Phase 1         | 12 (T1.1-T1.12) | Fondations, exigences, évaluation dépendances, risques      | ~1500           |
+| Phase 2         | 18 (T2.1-T2.18) | Algorithmes détaillés (Fast Doubling, Matrix, FFT, Modular) | ~1700           |
+| Phase 3         | 10 (T3.1-T3.10) | Observer, progression, modèle géométrique                  | ~1200           |
+| Phase 4         | 12 (T4.1-T4.12) | Mémoire (arena, pool, bump), concurrence, annulation         | ~1200           |
+| Phase 5         | 8 (T5.1-T5.8)   | Seuils dynamiques, calibration, profils                       | ~1000           |
+| Phase 6         | 10 (T6.1-T6.10) | TUI (layout, messages, sparklines, bridge)                    | ~1000           |
+| Phase 7         | 8 (T7.1-T7.8)   | Intégration (migration map, DFD, edge cases, tests)          | ~1600           |
+| **Total** | **78**    | **PRD complet pour le portage Go → Rust**              | **~9300** |
 
 ## Graphe de dépendances critiques
 
