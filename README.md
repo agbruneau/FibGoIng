@@ -538,7 +538,7 @@ fibcalc/
 │       └── validation/      # Architecture validation reports
 ├── test/
 │   └── e2e/                 # End-to-end CLI integration tests
-├── .golangci.yml            # Linter configuration (24 linters)
+├── .golangci.yml            # Linter configuration (26 linters)
 ├── .env.example             # Environment variable reference
 ├── Makefile                 # Build, test, lint, PGO targets
 ├── CHANGELOG.md             # Version history (Keep a Changelog)

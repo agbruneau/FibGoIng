@@ -2,6 +2,76 @@
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
+Behavioral guidelines to reduce common LLM coding mistakes. Merge with project-specific instructions as needed.
+
+**Tradeoff:** These guidelines bias toward caution over speed. For trivial tasks, use judgment.
+
+## 1. Think Before Coding
+
+**Don't assume. Don't hide confusion. Surface tradeoffs.**
+
+Before implementing:
+
+- State your assumptions explicitly. If uncertain, ask.
+- If multiple interpretations exist, present them - don't pick silently.
+- If a simpler approach exists, say so. Push back when warranted.
+- If something is unclear, stop. Name what's confusing. Ask.
+
+## 2. Simplicity First
+
+**Minimum code that solves the problem. Nothing speculative.**
+
+- No features beyond what was asked.
+- No abstractions for single-use code.
+- No "flexibility" or "configurability" that wasn't requested.
+- No error handling for impossible scenarios.
+- If you write 200 lines and it could be 50, rewrite it.
+
+Ask yourself: "Would a senior engineer say this is overcomplicated?" If yes, simplify.
+
+## 3. Surgical Changes
+
+**Touch only what you must. Clean up only your own mess.**
+
+When editing existing code:
+
+- Don't "improve" adjacent code, comments, or formatting.
+- Don't refactor things that aren't broken.
+- Match existing style, even if you'd do it differently.
+- If you notice unrelated dead code, mention it - don't delete it.
+
+When your changes create orphans:
+
+- Remove imports/variables/functions that YOUR changes made unused.
+- Don't remove pre-existing dead code unless asked.
+
+The test: Every changed line should trace directly to the user's request.
+
+## 4. Goal-Driven Execution
+
+**Define success criteria. Loop until verified.**
+
+Transform tasks into verifiable goals:
+
+- "Add validation" → "Write tests for invalid inputs, then make them pass"
+- "Fix the bug" → "Write a test that reproduces it, then make it pass"
+- "Refactor X" → "Ensure tests pass before and after"
+
+For multi-step tasks, state a brief plan:
+
+```
+1. [Step] → verify: [check]
+2. [Step] → verify: [check]
+3. [Step] → verify: [check]
+```
+
+Strong success criteria let you loop independently. Weak criteria ("make it work") require constant clarification.
+
+---
+
+**These guidelines are working if:** fewer unnecessary changes in diffs, fewer rewrites due to overcomplication, and clarifying questions come before implementation rather than after mistakes.
+
+
 ## Build & Test Commands
 
 ```bash
@@ -14,6 +84,7 @@ go test -fuzz=FuzzFastDoubling ./internal/fibonacci/    # Run fuzz tests
 ```
 
 Makefile targets (require `make`, not available on all systems):
+
 ```bash
 make build          # Build binary to ./build/fibcalc
 make test           # go test -v -race -cover ./...
@@ -76,65 +147,65 @@ Support packages: `internal/calibration`, `internal/config`, `internal/app`, `in
 
 ### Core Packages
 
-| Package | Key Files | Responsibility |
-|---------|-----------|----------------|
-| `cmd/fibcalc` | `main.go` | Entry point: delegates to `app.New()` and `app.Run()` |
-| `cmd/generate-golden` | `main.go` | Golden file generator for test data |
-| `internal/fibonacci` | `fastdoubling.go`, `matrix.go`, `fft_based.go` | Algorithm implementations (coreCalculator) |
-| `internal/fibonacci` | `doubling_framework.go`, `matrix_framework.go` | Shared computation frameworks |
-| `internal/fibonacci` | `registry.go`, `calculator.go`, `strategy.go` | Factory, public interfaces, strategies |
-| `internal/fibonacci` | `options.go`, `constants.go` | Calculation options, default thresholds |
-| `internal/fibonacci` | `observer.go`, `observers.go`, `progress.go` | Observer pattern, progress utilities |
-| `internal/fibonacci` | `common.go` | Task semaphore, state pool, `executeTasks` generics |
-| `internal/fibonacci` | `fft.go` | FFT wrappers (`mulFFT`, `sqrFFT`, `smartMultiply`, `smartSquare`) |
-| `internal/fibonacci` | `dynamic_threshold.go`, `threshold_types.go` | Runtime threshold adjustment |
-| `internal/fibonacci` | `generator.go`, `generator_iterative.go` | Sequence generation interface and implementation |
-| `internal/fibonacci` | `matrix_ops.go`, `matrix_types.go` | Matrix operations and types (`matrix`, `matrixState`) |
-| `internal/fibonacci` | `calculator_gmp.go` | GMP calculator (build tag `gmp`) |
-| `internal/fibonacci` | `testing.go` | Test helpers (exported for test packages) |
-| `internal/fibonacci` | `arena.go` | `CalculationArena` bump allocator for calculation state |
-| `internal/fibonacci` | `gc_control.go` | `GCController` for GC management during computation |
-| `internal/fibonacci` | `memory_budget.go` | Memory estimation and budget validation |
-| `internal/fibonacci` | `modular.go` | `FastDoublingMod` for modular arithmetic (`--last-digits`) |
-| `internal/bigfft` | `fft.go`, `fft_core.go`, `fft_recursion.go` | FFT multiplication core |
-| `internal/bigfft` | `fft_poly.go` | Polynomial operations for FFT |
-| `internal/bigfft` | `fft_cache.go` | Thread-safe LRU cache for FFT transforms |
-| `internal/bigfft` | `fermat.go` | Fermat number arithmetic |
-| `internal/bigfft` | `pool.go`, `pool_warming.go` | `sync.Pool` for `big.Int` and pre-warming |
-| `internal/bigfft` | `bump.go` | O(1) bump allocator for FFT temporaries |
-| `internal/bigfft` | `allocator.go` | `TempAllocator` interface (`PoolAllocator`, `BumpAllocator`) |
-| `internal/bigfft` | `memory_est.go`, `scan.go` | Memory estimation, scanning utilities |
-| `internal/bigfft` | `arith_amd64.go`, `arith_generic.go`, `arith_decl.go` | Vector arithmetic via `go:linkname` to `math/big` |
-| `internal/bigfft` | `cpu_amd64.go` | Runtime CPU feature detection (AVX2/AVX-512) |
-| `internal/orchestration` | `orchestrator.go`, `interfaces.go` | Parallel execution via `errgroup`, result analysis |
-| `internal/orchestration` | `calculator_selection.go` | Calculator selection logic from config |
-| `internal/cli` | `output.go`, `presenter.go` | CLI output formatting, result presentation |
-| `internal/cli` | `ui.go`, `ui_display.go`, `ui_format.go` | UI helpers (spinners, formatting, display) |
-| `internal/cli` | `progress_eta.go` | ETA calculation and progress display |
-| `internal/cli` | `completion.go` | Shell completion generation (bash, zsh, fish, powershell) |
-| `internal/cli` | `provider.go` | Progress reporter and config display providers |
-| `internal/cli` | `calculate.go` | Calculation result display helpers |
-| `internal/tui` | `model.go` | Bubble Tea model (Elm architecture), main Update/View |
-| `internal/tui` | `bridge.go` | `TUIProgressReporter` / `TUIResultPresenter` adapters |
-| `internal/tui` | `header.go`, `footer.go` | Header (title, elapsed) and footer (keys, status) panels |
-| `internal/tui` | `logs.go` | Scrollable calculation log panel |
-| `internal/tui` | `metrics.go` | Runtime metrics panel (memory, GC, goroutines) |
-| `internal/tui` | `chart.go`, `sparkline.go` | Progress chart and sparkline visualization |
-| `internal/tui` | `styles.go`, `keymap.go`, `messages.go` | Lipgloss styles, key bindings, Bubble Tea messages |
-| `internal/calibration` | `calibration.go`, `runner.go` | Full calibration mode, benchmark runner |
-| `internal/calibration` | `adaptive.go` | Hardware-adaptive threshold estimation |
-| `internal/calibration` | `profile.go`, `io.go` | Calibration profile persistence (JSON) |
-| `internal/calibration` | `microbench.go` | Micro-benchmarks for threshold determination |
-| `internal/config` | `config.go`, `env.go`, `usage.go` | Flag parsing, env var overrides, custom usage |
-| `internal/app` | `app.go`, `version.go` | Application lifecycle, dispatching, version info |
-| `internal/errors` | `errors.go`, `handler.go` | Custom error types (`ConfigError`, `CalculationError`), exit codes |
-| `internal/parallel` | `errors.go` | `ErrorCollector` for concurrent error aggregation |
-| `internal/format` | `duration.go`, `numbers.go`, `progress_eta.go` | Duration/number formatting, ETA display (shared by CLI and TUI) |
-| `internal/metrics` | `indicators.go` | Performance indicators (bits/s, digits/s, steps/s) |
-| `internal/metrics` | `memory.go` | `MemoryCollector`, `MemorySnapshot` — runtime memory statistics |
-| `internal/sysmon` | `sysmon.go` | System-wide CPU/memory monitoring via gopsutil |
-| `internal/ui` | `colors.go`, `themes.go` | Color themes, `NO_COLOR` support |
-| `internal/testutil` | `ansi.go` | ANSI escape code stripping for test assertions |
+| Package                    | Key Files                                                   | Responsibility                                                            |
+| -------------------------- | ----------------------------------------------------------- | ------------------------------------------------------------------------- |
+| `cmd/fibcalc`            | `main.go`                                                 | Entry point: delegates to `app.New()` and `app.Run()`                 |
+| `cmd/generate-golden`    | `main.go`                                                 | Golden file generator for test data                                       |
+| `internal/fibonacci`     | `fastdoubling.go`, `matrix.go`, `fft_based.go`        | Algorithm implementations (coreCalculator)                                |
+| `internal/fibonacci`     | `doubling_framework.go`, `matrix_framework.go`          | Shared computation frameworks                                             |
+| `internal/fibonacci`     | `registry.go`, `calculator.go`, `strategy.go`         | Factory, public interfaces, strategies                                    |
+| `internal/fibonacci`     | `options.go`, `constants.go`                            | Calculation options, default thresholds                                   |
+| `internal/fibonacci`     | `observer.go`, `observers.go`, `progress.go`          | Observer pattern, progress utilities                                      |
+| `internal/fibonacci`     | `common.go`                                               | Task semaphore, state pool,`executeTasks` generics                      |
+| `internal/fibonacci`     | `fft.go`                                                  | FFT wrappers (`mulFFT`, `sqrFFT`, `smartMultiply`, `smartSquare`) |
+| `internal/fibonacci`     | `dynamic_threshold.go`, `threshold_types.go`            | Runtime threshold adjustment                                              |
+| `internal/fibonacci`     | `generator.go`, `generator_iterative.go`                | Sequence generation interface and implementation                          |
+| `internal/fibonacci`     | `matrix_ops.go`, `matrix_types.go`                      | Matrix operations and types (`matrix`, `matrixState`)                 |
+| `internal/fibonacci`     | `calculator_gmp.go`                                       | GMP calculator (build tag `gmp`)                                        |
+| `internal/fibonacci`     | `testing.go`                                              | Test helpers (exported for test packages)                                 |
+| `internal/fibonacci`     | `arena.go`                                                | `CalculationArena` bump allocator for calculation state                 |
+| `internal/fibonacci`     | `gc_control.go`                                           | `GCController` for GC management during computation                     |
+| `internal/fibonacci`     | `memory_budget.go`                                        | Memory estimation and budget validation                                   |
+| `internal/fibonacci`     | `modular.go`                                              | `FastDoublingMod` for modular arithmetic (`--last-digits`)            |
+| `internal/bigfft`        | `fft.go`, `fft_core.go`, `fft_recursion.go`           | FFT multiplication core                                                   |
+| `internal/bigfft`        | `fft_poly.go`                                             | Polynomial operations for FFT                                             |
+| `internal/bigfft`        | `fft_cache.go`                                            | Thread-safe LRU cache for FFT transforms                                  |
+| `internal/bigfft`        | `fermat.go`                                               | Fermat number arithmetic                                                  |
+| `internal/bigfft`        | `pool.go`, `pool_warming.go`                            | `sync.Pool` for `big.Int` and pre-warming                             |
+| `internal/bigfft`        | `bump.go`                                                 | O(1) bump allocator for FFT temporaries                                   |
+| `internal/bigfft`        | `allocator.go`                                            | `TempAllocator` interface (`PoolAllocator`, `BumpAllocator`)        |
+| `internal/bigfft`        | `memory_est.go`, `scan.go`                              | Memory estimation, scanning utilities                                     |
+| `internal/bigfft`        | `arith_amd64.go`, `arith_generic.go`, `arith_decl.go` | Vector arithmetic via `go:linkname` to `math/big`                     |
+| `internal/bigfft`        | `cpu_amd64.go`                                            | Runtime CPU feature detection (AVX2/AVX-512)                              |
+| `internal/orchestration` | `orchestrator.go`, `interfaces.go`                      | Parallel execution via `errgroup`, result analysis                      |
+| `internal/orchestration` | `calculator_selection.go`                                 | Calculator selection logic from config                                    |
+| `internal/cli`           | `output.go`, `presenter.go`                             | CLI output formatting, result presentation                                |
+| `internal/cli`           | `ui.go`, `ui_display.go`, `ui_format.go`              | UI helpers (spinners, formatting, display)                                |
+| `internal/cli`           | `progress_eta.go`                                         | ETA calculation and progress display                                      |
+| `internal/cli`           | `completion.go`                                           | Shell completion generation (bash, zsh, fish, powershell)                 |
+| `internal/cli`           | `provider.go`                                             | Progress reporter and config display providers                            |
+| `internal/cli`           | `calculate.go`                                            | Calculation result display helpers                                        |
+| `internal/tui`           | `model.go`                                                | Bubble Tea model (Elm architecture), main Update/View                     |
+| `internal/tui`           | `bridge.go`                                               | `TUIProgressReporter` / `TUIResultPresenter` adapters                 |
+| `internal/tui`           | `header.go`, `footer.go`                                | Header (title, elapsed) and footer (keys, status) panels                  |
+| `internal/tui`           | `logs.go`                                                 | Scrollable calculation log panel                                          |
+| `internal/tui`           | `metrics.go`                                              | Runtime metrics panel (memory, GC, goroutines)                            |
+| `internal/tui`           | `chart.go`, `sparkline.go`                              | Progress chart and sparkline visualization                                |
+| `internal/tui`           | `styles.go`, `keymap.go`, `messages.go`               | Lipgloss styles, key bindings, Bubble Tea messages                        |
+| `internal/calibration`   | `calibration.go`, `runner.go`                           | Full calibration mode, benchmark runner                                   |
+| `internal/calibration`   | `adaptive.go`                                             | Hardware-adaptive threshold estimation                                    |
+| `internal/calibration`   | `profile.go`, `io.go`                                   | Calibration profile persistence (JSON)                                    |
+| `internal/calibration`   | `microbench.go`                                           | Micro-benchmarks for threshold determination                              |
+| `internal/config`        | `config.go`, `env.go`, `usage.go`                     | Flag parsing, env var overrides, custom usage                             |
+| `internal/app`           | `app.go`, `version.go`                                  | Application lifecycle, dispatching, version info                          |
+| `internal/errors`        | `errors.go`, `handler.go`                               | Custom error types (`ConfigError`, `CalculationError`), exit codes    |
+| `internal/parallel`      | `errors.go`                                               | `ErrorCollector` for concurrent error aggregation                       |
+| `internal/format`        | `duration.go`, `numbers.go`, `progress_eta.go`        | Duration/number formatting, ETA display (shared by CLI and TUI)           |
+| `internal/metrics`       | `indicators.go`                                           | Performance indicators (bits/s, digits/s, steps/s)                        |
+| `internal/metrics`       | `memory.go`                                               | `MemoryCollector`, `MemorySnapshot` — runtime memory statistics      |
+| `internal/sysmon`        | `sysmon.go`                                               | System-wide CPU/memory monitoring via gopsutil                            |
+| `internal/ui`            | `colors.go`, `themes.go`                                | Color themes,`NO_COLOR` support                                         |
+| `internal/testutil`      | `ansi.go`                                                 | ANSI escape code stripping for test assertions                            |
 
 ### Data Flow
 
@@ -160,7 +231,7 @@ Support packages: `internal/calibration`, `internal/config`, `internal/app`, `in
 
 **Testing**: Table-driven with subtests. >75% coverage target. Golden file tests in `internal/fibonacci/testdata/fibonacci_golden.json`. 5 fuzz targets in `internal/fibonacci/fibonacci_fuzz_test.go` (`FuzzFastDoublingConsistency`, `FuzzFFTBasedConsistency`, `FuzzFibonacciIdentities`, `FuzzProgressMonotonicity`, `FuzzFastDoublingMod`). Property-based tests via `gopter`. Example tests in `example_test.go`. E2E tests in `test/e2e/`.
 
-**Linting**: `.golangci.yml` — 24 linters enabled. Key limits: cyclomatic complexity 15, cognitive complexity 30, function length 100 lines / 50 statements. Relaxed in `_test.go` files.
+**Linting**: `.golangci.yml` — 26 linters enabled. Key limits: cyclomatic complexity 15, cognitive complexity 30, function length 100 lines / 50 statements. Relaxed in `_test.go` files.
 
 **Commits**: [Conventional Commits](https://www.conventionalcommits.org/) — `feat`, `fix`, `docs`, `refactor`, `perf`, `test`, `chore`. Format: `<type>(<scope>): <description>`
 
@@ -193,6 +264,7 @@ Support packages: `internal/calibration`, `internal/config`, `internal/app`, `in
 ## Naming Conventions
 
 **CLI Package** (`internal/cli/output.go`):
+
 - `Display*`: Write formatted output to `io.Writer`
 - `Format*`: Return formatted string, no I/O
 - `Write*`: Write data to filesystem
@@ -212,15 +284,15 @@ CLI flags > Environment variables (`FIBCALC_*` prefix) > Adaptive hardware estim
 
 ## Key Dependencies
 
-| Dependency | Purpose |
-|-----------|---------|
-| `golang.org/x/sync` | `errgroup` for concurrent calculator execution |
-| `golang.org/x/sys` | System calls (signal handling, platform detection) |
-| `github.com/rs/zerolog` | Structured logging |
-| `github.com/briandowns/spinner` | CLI spinner animation |
-| `github.com/shirou/gopsutil/v4` | System metrics (CPU/memory usage for TUI) |
-| `github.com/ncw/gmp` | GMP bindings (optional, build tag `gmp`) |
-| `github.com/leanovate/gopter` | Property-based testing |
-| `github.com/charmbracelet/bubbletea` | TUI framework (Elm architecture) |
-| `github.com/charmbracelet/lipgloss` | TUI styling and layout |
-| `github.com/charmbracelet/bubbles` | TUI components (key bindings, viewport) |
+| Dependency                             | Purpose                                            |
+| -------------------------------------- | -------------------------------------------------- |
+| `golang.org/x/sync`                  | `errgroup` for concurrent calculator execution   |
+| `golang.org/x/sys`                   | System calls (signal handling, platform detection) |
+| `github.com/rs/zerolog`              | Structured logging                                 |
+| `github.com/briandowns/spinner`      | CLI spinner animation                              |
+| `github.com/shirou/gopsutil/v4`      | System metrics (CPU/memory usage for TUI)          |
+| `github.com/ncw/gmp`                 | GMP bindings (optional, build tag `gmp`)         |
+| `github.com/leanovate/gopter`        | Property-based testing                             |
+| `github.com/charmbracelet/bubbletea` | TUI framework (Elm architecture)                   |
+| `github.com/charmbracelet/lipgloss`  | TUI styling and layout                             |
+| `github.com/charmbracelet/bubbles`   | TUI components (key bindings, viewport)            |
