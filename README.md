@@ -5,7 +5,7 @@
 ![Coverage](https://img.shields.io/badge/Coverage-80%25-green?style=for-the-badge)
 ![Status](https://img.shields.io/badge/Status-Production--Ready-success?style=for-the-badge)
 
-**FibCalc** is a state-of-the-art command-line tool and library designed for computing arbitrarily large Fibonacci numbers with extreme speed and efficiency. Written in Go, it leverages advanced algorithmic optimizations — including Fast Doubling, Matrix Exponentiation with Strassen's algorithm, and FFT-based multiplication — to handle indices in the hundreds of millions.
+**FibCalc**, that is an academic project in software engineering, is a state-of-the-art command-line tool and library designed for computing arbitrarily large Fibonacci numbers with extreme speed and efficiency. Written in Go, it leverages advanced algorithmic optimizations — including Fast Doubling, Matrix Exponentiation with Strassen's algorithm, and FFT-based multiplication — to handle indices in the hundreds of millions.
 
 > **"The fastest, most over-engineered Fibonacci calculator you will ever use."**
 
@@ -167,26 +167,26 @@ graph TD
 
 ### Core Components
 
-| Component | Responsibility |
-|-----------|----------------|
-| `cmd/fibcalc` | Application entry point. Delegates to `app.New()` and `app.Run()`. |
-| `cmd/generate-golden` | Golden file generator for test data. |
-| `internal/fibonacci` | Core domain logic. Algorithms (`FastDoubling`, `MatrixExponentiation`, `FFTBased`), frameworks, interfaces, strategies (ISP: `Multiplier`/`DoublingStepExecutor`), state pooling, sequence generation. Sub-packages: `memory/` (arena, GC control, budget), `threshold/` (dynamic threshold manager). |
-| `internal/bigfft` | Specialized FFT arithmetic for `big.Int`: Fermat ring arithmetic, FFT core and recursion with runtime-configurable parallelism, polynomial operations, thread-safe LRU transform cache, bump allocator, memory pool with pre-warming. |
-| `internal/progress` | Observer pattern for progress events (`ProgressSubject`/`ProgressObserver`), concrete observers (`ChannelObserver`, `LoggingObserver`, `NoOpObserver`). |
-| `internal/orchestration` | Concurrent calculator execution via `errgroup`, result aggregation and comparison, calculator selection, progress aggregation. Defines `ProgressReporter`/`ResultPresenter` interfaces. |
-| `internal/cli` | Progress bar with ETA, spinner, output formatting (Display\*/Format\*/Write\*/Print\*), shell completion (bash/zsh/fish/powershell). |
-| `internal/tui` | Interactive TUI dashboard (btop-style) powered by Bubble Tea: model (Elm architecture), header/footer panels, scrollable logs, runtime metrics, progress chart with sparklines. |
-| `internal/calibration` | Auto-tuning: full calibration mode, adaptive hardware-based threshold estimation, micro-benchmarks, calibration profile persistence (JSON). |
-| `internal/config` | Configuration parsing (`flag`), environment variable overrides (`FIBCALC_*` prefix), adaptive threshold estimation, validation. |
-| `internal/app` | Application lifecycle, calculation dispatch, command dispatching (completion/calibration/TUI/CLI modes), version info with ldflags injection. |
-| `internal/errors` | Custom error types (`ConfigError`, `CalculationError`) with standardized exit codes (0-4, 130). |
-| `internal/parallel` | `ErrorCollector` for thread-safe first-error aggregation across goroutines. |
-| `internal/format` | Duration/number formatting and ETA display utilities shared by CLI and TUI. |
-| `internal/metrics` | Performance indicators (bits/s, digits/s, steps/s) and runtime memory statistics (`MemoryCollector`, `MemorySnapshot`). |
-| `internal/sysmon` | System-wide CPU and memory monitoring via gopsutil (used by TUI metrics panel). |
-| `internal/ui` | Color themes, terminal formatting, `NO_COLOR` support. |
-| `internal/testutil` | Shared test utilities (ANSI escape code stripping). |
+| Component                  | Responsibility                                                                                                                                                                                                                                                                                                      |
+| -------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `cmd/fibcalc`            | Application entry point. Delegates to `app.New()` and `app.Run()`.                                                                                                                                                                                                                                              |
+| `cmd/generate-golden`    | Golden file generator for test data.                                                                                                                                                                                                                                                                                |
+| `internal/fibonacci`     | Core domain logic. Algorithms (`FastDoubling`, `MatrixExponentiation`, `FFTBased`), frameworks, interfaces, strategies (ISP: `Multiplier`/`DoublingStepExecutor`), state pooling, sequence generation. Sub-packages: `memory/` (arena, GC control, budget), `threshold/` (dynamic threshold manager). |
+| `internal/bigfft`        | Specialized FFT arithmetic for `big.Int`: Fermat ring arithmetic, FFT core and recursion with runtime-configurable parallelism, polynomial operations, thread-safe LRU transform cache, bump allocator, memory pool with pre-warming.                                                                             |
+| `internal/progress`      | Observer pattern for progress events (`ProgressSubject`/`ProgressObserver`), concrete observers (`ChannelObserver`, `LoggingObserver`, `NoOpObserver`).                                                                                                                                                   |
+| `internal/orchestration` | Concurrent calculator execution via `errgroup`, result aggregation and comparison, calculator selection, progress aggregation. Defines `ProgressReporter`/`ResultPresenter` interfaces.                                                                                                                       |
+| `internal/cli`           | Progress bar with ETA, spinner, output formatting (Display\*/Format\*/Write\*/Print\*), shell completion (bash/zsh/fish/powershell).                                                                                                                                                                                |
+| `internal/tui`           | Interactive TUI dashboard (btop-style) powered by Bubble Tea: model (Elm architecture), header/footer panels, scrollable logs, runtime metrics, progress chart with sparklines.                                                                                                                                     |
+| `internal/calibration`   | Auto-tuning: full calibration mode, adaptive hardware-based threshold estimation, micro-benchmarks, calibration profile persistence (JSON).                                                                                                                                                                         |
+| `internal/config`        | Configuration parsing (`flag`), environment variable overrides (`FIBCALC_*` prefix), adaptive threshold estimation, validation.                                                                                                                                                                                 |
+| `internal/app`           | Application lifecycle, calculation dispatch, command dispatching (completion/calibration/TUI/CLI modes), version info with ldflags injection.                                                                                                                                                                       |
+| `internal/errors`        | Custom error types (`ConfigError`, `CalculationError`) with standardized exit codes (0-4, 130).                                                                                                                                                                                                                 |
+| `internal/parallel`      | `ErrorCollector` for thread-safe first-error aggregation across goroutines.                                                                                                                                                                                                                                       |
+| `internal/format`        | Duration/number formatting and ETA display utilities shared by CLI and TUI.                                                                                                                                                                                                                                         |
+| `internal/metrics`       | Performance indicators (bits/s, digits/s, steps/s) and runtime memory statistics (`MemoryCollector`, `MemorySnapshot`).                                                                                                                                                                                         |
+| `internal/sysmon`        | System-wide CPU and memory monitoring via gopsutil (used by TUI metrics panel).                                                                                                                                                                                                                                     |
+| `internal/ui`            | Color themes, terminal formatting,`NO_COLOR` support.                                                                                                                                                                                                                                                             |
+| `internal/testutil`      | Shared test utilities (ANSI escape code stripping).                                                                                                                                                                                                                                                                 |
 
 > **Full architecture documentation**: [docs/architecture/README.md](docs/architecture/README.md) | [Interface Hierarchy](docs/architecture/patterns/interface-hierarchy.mermaid)
 
@@ -218,28 +218,28 @@ fibcalc [flags]
 
 ### Common Flags
 
-| Flag | Short | Default | Description |
-|------|-------|---------|-------------|
-| `-n` | | `100,000,000` | The Fibonacci index to calculate. |
-| `-algo` | | `all` | Algorithm: `fast`, `matrix`, `fft`, or `all`. |
-| `-calculate` | `-c` | `false` | Display the calculated Fibonacci value. |
-| `-verbose` | `-v` | `false` | Display the full value of the result. |
-| `-details` | `-d` | `false` | Display performance details and result metadata. |
-| `-output` | `-o` | | Write result to a file. |
-| `-quiet` | `-q` | `false` | Minimal output for scripting. |
-| `-calibrate` | | `false` | Run system benchmarks to find optimal thresholds. |
-| `-auto-calibrate` | | `false` | Quick automatic calibration at startup. |
-| `-calibration-profile` | | | Path to calibration profile file. |
-| `-timeout` | | `5m` | Maximum calculation time (e.g. "10s", "1h"). |
-| `-threshold` | | `0` (auto) | Parallelism threshold (bits). 0 = hardware-adaptive. |
-| `-fft-threshold` | | `0` (auto) | FFT multiplication threshold (bits). 0 = hardware-adaptive. |
-| `-strassen-threshold` | | `0` (auto) | Strassen algorithm threshold (bits). 0 = hardware-adaptive. |
-| `-tui` | | `false` | Launch the interactive TUI dashboard instead of the standard CLI. |
-| `-completion` | | | Generate shell completion script (bash, zsh, fish, powershell). |
-| `--version` | `-V` | | Display version information. |
-| `--last-digits` | | `0` | Compute only the last K decimal digits (uses O(K) memory). |
-| `--memory-limit` | | | Maximum memory budget (e.g., 8G, 512M). Warns if estimate exceeds limit. |
-| `--gc-control` | | `auto` | GC control during calculation (auto, aggressive, disabled). |
+| Flag                     | Short  | Default         | Description                                                              |
+| ------------------------ | ------ | --------------- | ------------------------------------------------------------------------ |
+| `-n`                   |        | `100,000,000` | The Fibonacci index to calculate.                                        |
+| `-algo`                |        | `all`         | Algorithm:`fast`, `matrix`, `fft`, or `all`.                     |
+| `-calculate`           | `-c` | `false`       | Display the calculated Fibonacci value.                                  |
+| `-verbose`             | `-v` | `false`       | Display the full value of the result.                                    |
+| `-details`             | `-d` | `false`       | Display performance details and result metadata.                         |
+| `-output`              | `-o` |                 | Write result to a file.                                                  |
+| `-quiet`               | `-q` | `false`       | Minimal output for scripting.                                            |
+| `-calibrate`           |        | `false`       | Run system benchmarks to find optimal thresholds.                        |
+| `-auto-calibrate`      |        | `false`       | Quick automatic calibration at startup.                                  |
+| `-calibration-profile` |        |                 | Path to calibration profile file.                                        |
+| `-timeout`             |        | `5m`          | Maximum calculation time (e.g. "10s", "1h").                             |
+| `-threshold`           |        | `0` (auto)    | Parallelism threshold (bits). 0 = hardware-adaptive.                     |
+| `-fft-threshold`       |        | `0` (auto)    | FFT multiplication threshold (bits). 0 = hardware-adaptive.              |
+| `-strassen-threshold`  |        | `0` (auto)    | Strassen algorithm threshold (bits). 0 = hardware-adaptive.              |
+| `-tui`                 |        | `false`       | Launch the interactive TUI dashboard instead of the standard CLI.        |
+| `-completion`          |        |                 | Generate shell completion script (bash, zsh, fish, powershell).          |
+| `--version`            | `-V` |                 | Display version information.                                             |
+| `--last-digits`        |        | `0`           | Compute only the last K decimal digits (uses O(K) memory).               |
+| `--memory-limit`       |        |                 | Maximum memory budget (e.g., 8G, 512M). Warns if estimate exceeds limit. |
+| `--gc-control`         |        | `auto`        | GC control during calculation (auto, aggressive, disabled).              |
 
 > **Note**: Threshold defaults of `0` trigger automatic hardware-adaptive estimation based on CPU core count and architecture. Static defaults used by the algorithm internals: parallelism = 4,096 bits, FFT = 500,000 bits, Strassen = 3,072 bits (config level); the internal Strassen default is 256 bits, adjustable at runtime via `SetDefaultStrassenThreshold()`.
 
@@ -276,14 +276,14 @@ fibcalc --tui -n 1000000
 
 **Keyboard shortcuts:**
 
-| Key | Action |
-|-----|--------|
-| `q` / `Ctrl+C` | Quit (cancels calculations) |
-| `Space` | Pause/Resume display (calculations continue) |
-| `r` | Restart calculation (reset all panels) |
-| `Up` / `k` | Scroll logs up |
-| `Down` / `j` | Scroll logs down |
-| `PgUp` / `PgDn` | Fast scroll |
+| Key                 | Action                                       |
+| ------------------- | -------------------------------------------- |
+| `q` / `Ctrl+C`  | Quit (cancels calculations)                  |
+| `Space`           | Pause/Resume display (calculations continue) |
+| `r`               | Restart calculation (reset all panels)       |
+| `Up` / `k`      | Scroll logs up                               |
+| `Down` / `j`    | Scroll logs down                             |
+| `PgUp` / `PgDn` | Fast scroll                                  |
 
 The dashboard shows five panels: header with elapsed time, scrollable calculation logs (60% width), runtime memory metrics, a progress bar with ETA tracking and sparkline chart, and a footer with status indicator. The TUI uses the same `ProgressReporter`/`ResultPresenter` interfaces as the CLI, ensuring identical calculation behavior.
 
@@ -329,12 +329,14 @@ fibcalc -completion powershell >> $PROFILE
 
 **6. Last Digits Mode**
 Compute the last 100 digits of F(10 billion) using O(K) memory:
+
 ```bash
 fibcalc -n 10000000000 --last-digits 100
 ```
 
 **7. Memory Budget Validation**
 Check if your machine can handle the calculation before starting:
+
 ```bash
 fibcalc -n 1000000000 --memory-limit 8G
 ```
@@ -345,13 +347,13 @@ fibcalc -n 1000000000 --memory-limit 8G
 
 FibCalc is optimized for speed. Below is a summary of performance characteristics on a high-end workstation (Intel Core Ultra 9 275HX, 24 cores).
 
-| Index ($N$) | Fast Doubling | Matrix Exp. | FFT-Based | Result (digits) |
-| :--- | :--- | :--- | :--- | :--- |
-| **10,000** | 120us | 180us | 280us | 2,090 |
-| **1,000,000** | ~3ms | 55ms | 45ms | 208,988 |
-| **10,000,000** | ~60ms | 750ms | 600ms | 2,089,877 |
-| **100,000,000** | 30s | 42s | 33s | 20,898,764 |
-| **250,000,000** | 2m 10s | 3m 05s | 2m 25s | 52,246,909 |
+| Index ($N$)         | Fast Doubling | Matrix Exp. | FFT-Based | Result (digits) |
+| :-------------------- | :------------ | :---------- | :-------- | :-------------- |
+| **10,000**      | 120us         | 180us       | 280us     | 2,090           |
+| **1,000,000**   | ~3ms          | 55ms        | 45ms      | 208,988         |
+| **10,000,000**  | ~60ms         | 750ms       | 600ms     | 2,089,877       |
+| **100,000,000** | 30s           | 42s         | 33s       | 20,898,764      |
+| **250,000,000** | 2m 10s        | 3m 05s      | 2m 25s    | 52,246,909      |
 
 ### Algorithm Selection Guide
 
@@ -380,13 +382,13 @@ go test -bench=. -benchmem ./internal/fibonacci/        # Benchmarks
 
 5 fuzz targets in `internal/fibonacci/fibonacci_fuzz_test.go` use Go's built-in fuzzing framework:
 
-| Fuzz Test | Strategy | Input Limit |
-|-----------|----------|-------------|
-| `FuzzFastDoublingConsistency` | Cross-validates Fast Doubling vs Matrix | n up to 50,000 |
-| `FuzzFFTBasedConsistency` | Cross-validates FFT vs Fast Doubling | n up to 20,000 |
-| `FuzzFibonacciIdentities` | Verifies mathematical identities (doubling identity, d'Ocagne's identity) | n up to 10,000 |
-| `FuzzProgressMonotonicity` | Ensures progress is monotonically increasing | n 10 to 20,000 |
-| `FuzzFastDoublingMod` | Cross-validates modular Fast Doubling output range | n up to 100,000, mod up to 1B |
+| Fuzz Test                       | Strategy                                                                  | Input Limit                   |
+| ------------------------------- | ------------------------------------------------------------------------- | ----------------------------- |
+| `FuzzFastDoublingConsistency` | Cross-validates Fast Doubling vs Matrix                                   | n up to 50,000                |
+| `FuzzFFTBasedConsistency`     | Cross-validates FFT vs Fast Doubling                                      | n up to 20,000                |
+| `FuzzFibonacciIdentities`     | Verifies mathematical identities (doubling identity, d'Ocagne's identity) | n up to 10,000                |
+| `FuzzProgressMonotonicity`    | Ensures progress is monotonically increasing                              | n 10 to 20,000                |
+| `FuzzFastDoublingMod`         | Cross-validates modular Fast Doubling output range                        | n up to 100,000, mod up to 1B |
 
 ```bash
 go test -fuzz=FuzzFastDoublingConsistency -fuzztime=30s ./internal/fibonacci/
@@ -410,14 +412,17 @@ End-to-end CLI integration tests in `test/e2e/` validate the full application li
 Common issues and their solutions.
 
 ### 1. `runtime: out of memory`
+
 Calculating huge Fibonacci numbers requires significant RAM. $F(1,000,000,000)$ requires ~25 GB of RAM.
 **Solution**: Reduce $N$, add swap space, or use a machine with more RAM.
 
 ### 2. Calculation hangs / Timeout
+
 For very large $N$, the calculation might exceed the default 5-minute timeout.
 **Solution**: Increase the timeout with `-timeout 30m`.
 
 ### 3. Memory limit exceeded
+
 For very large N, the estimated memory may exceed available RAM.
 **Solution**: Use `--memory-limit 8G` to validate before starting, or `--last-digits 1000` to compute only the last K digits in O(K) memory.
 
@@ -427,31 +432,32 @@ For very large N, the estimated memory may exceed available RAM.
 
 Environment variables can override CLI flags. Priority: CLI flags > Environment variables > Adaptive hardware estimation > Static defaults.
 
-| Variable | Description | Default |
-|----------|-------------|---------|
-| `FIBCALC_N` | Fibonacci index to calculate | 100,000,000 |
-| `FIBCALC_ALGO` | Algorithm (`fast`, `matrix`, `fft`, `all`) | `all` |
-| `FIBCALC_TIMEOUT` | Calculation timeout | `5m` |
-| `FIBCALC_THRESHOLD` | Parallelism threshold (bits) | 0 (auto) |
-| `FIBCALC_FFT_THRESHOLD` | FFT multiplication threshold (bits) | 0 (auto) |
-| `FIBCALC_STRASSEN_THRESHOLD` | Strassen algorithm threshold (bits) | 0 (auto) |
-| `FIBCALC_VERBOSE` | Enable verbose output | `false` |
-| `FIBCALC_DETAILS` | Display performance details | `false` |
-| `FIBCALC_QUIET` | Enable quiet mode | `false` |
-| `FIBCALC_TUI` | Enable interactive TUI dashboard | `false` |
-| `FIBCALC_CALCULATE` | Display calculated value | `false` |
-| `FIBCALC_OUTPUT` | Output file path | |
-| `FIBCALC_CALIBRATE` | Enable calibration mode | `false` |
-| `FIBCALC_AUTO_CALIBRATE` | Enable automatic calibration | `false` |
-| `FIBCALC_CALIBRATION_PROFILE` | Path to calibration profile file | |
-| `FIBCALC_MEMORY_LIMIT` | Maximum memory budget | |
-| `NO_COLOR` | Disable colored output ([no-color.org](https://no-color.org/)) | |
+| Variable                        | Description                                                 | Default     |
+| ------------------------------- | ----------------------------------------------------------- | ----------- |
+| `FIBCALC_N`                   | Fibonacci index to calculate                                | 100,000,000 |
+| `FIBCALC_ALGO`                | Algorithm (`fast`, `matrix`, `fft`, `all`)          | `all`     |
+| `FIBCALC_TIMEOUT`             | Calculation timeout                                         | `5m`      |
+| `FIBCALC_THRESHOLD`           | Parallelism threshold (bits)                                | 0 (auto)    |
+| `FIBCALC_FFT_THRESHOLD`       | FFT multiplication threshold (bits)                         | 0 (auto)    |
+| `FIBCALC_STRASSEN_THRESHOLD`  | Strassen algorithm threshold (bits)                         | 0 (auto)    |
+| `FIBCALC_VERBOSE`             | Enable verbose output                                       | `false`   |
+| `FIBCALC_DETAILS`             | Display performance details                                 | `false`   |
+| `FIBCALC_QUIET`               | Enable quiet mode                                           | `false`   |
+| `FIBCALC_TUI`                 | Enable interactive TUI dashboard                            | `false`   |
+| `FIBCALC_CALCULATE`           | Display calculated value                                    | `false`   |
+| `FIBCALC_OUTPUT`              | Output file path                                            |             |
+| `FIBCALC_CALIBRATE`           | Enable calibration mode                                     | `false`   |
+| `FIBCALC_AUTO_CALIBRATE`      | Enable automatic calibration                                | `false`   |
+| `FIBCALC_CALIBRATION_PROFILE` | Path to calibration profile file                            |             |
+| `FIBCALC_MEMORY_LIMIT`        | Maximum memory budget                                       |             |
+| `NO_COLOR`                    | Disable colored output ([no-color.org](https://no-color.org/)) |             |
 
 ---
 
 ## Development
 
 ### Prerequisites
+
 - Go 1.25+
 - golangci-lint (optional, for linting)
 - gosec (optional, for security audits)
