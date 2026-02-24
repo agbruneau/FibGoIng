@@ -1,8 +1,9 @@
 # Package Consolidation Design
 
 **Date:** 2026-02-24
-**Goal:** Reduce internal package count from 18 to 11 for improved navigability and reduced cognitive overhead.
+**Goal:** Reduce internal package count from 18 to 12 for improved navigability and reduced cognitive overhead.
 **Approach:** Merge single-consumer leaf packages + absorb progress into fibonacci + add Calculate() facade.
+**Correction:** `internal/ui` has 14 importers (app, cli, tui, config, calibration) — kept separate.
 
 ## Current State (18 packages)
 
@@ -14,14 +15,14 @@ internal/
   progress/ sysmon/ testutil/ tui/ ui/
 ```
 
-## Target State (11 packages)
+## Target State (12 packages)
 
 ```
 internal/
   app/            # Lifecycle, dispatch, version (unchanged)
   bigfft/         # FFT multiplication (unchanged)
   calibration/    # Auto-calibration (unchanged)
-  cli/            # CLI + colors/themes (absorbs ui)
+  cli/            # CLI presentation (unchanged)
   config/         # Config parsing (unchanged)
   errors/         # Structured errors (unchanged)
   fibonacci/      # Core + memory + thresholds + progress + ErrorCollector
@@ -30,9 +31,10 @@ internal/
   orchestration/  # Concurrent execution (unchanged)
   testutil/       # Test utilities (unchanged)
   tui/            # TUI dashboard + sysmon (absorbs sysmon)
+  ui/             # Colors/themes (kept — 14 importers across all layers)
 ```
 
-**Eliminated:** fibonacci/memory, fibonacci/threshold, parallel, progress, ui, sysmon
+**Eliminated:** fibonacci/memory, fibonacci/threshold, parallel, progress, sysmon
 
 ## Merge Details
 
@@ -64,10 +66,10 @@ Consumers and their current fibonacci dependency (no new edges):
 - calibration/calibration.go → already imports fibonacci
 - orchestration/orchestrator.go, orchestration/progress.go → already imports fibonacci
 
-### 5. ui → cli
+### 5. ~~ui → cli~~ (CANCELLED)
 
-Move colors.go, themes.go into internal/cli/.
-Single consumer: cli/presenter.go (verified via grep of non-test imports).
+**Correction:** `internal/ui` has 14 importers across app, cli, tui, config, and calibration.
+It serves as the shared color/theme layer and must remain a separate package.
 
 ### 6. sysmon → tui
 
@@ -109,10 +111,9 @@ No circular dependencies. All leaf packages remain leaves.
 2. fibonacci/threshold → fibonacci
 3. parallel → fibonacci
 4. progress → fibonacci
-5. ui → cli
-6. sysmon → tui
-7. Add fibonacci.Calculate() facade
-8. Final validation: make test && make lint
+5. sysmon → tui
+6. Add fibonacci.Calculate() facade
+7. Final validation: make test && make lint
 
 Each step is independently verifiable with `go build ./...`.
 
