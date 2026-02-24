@@ -48,6 +48,9 @@ cover
 coverage
 coverage_new
 
+# Worktrees
+.worktrees/
+
 # OS Files
 .DS_Store
 Thumbs.db
