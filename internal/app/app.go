@@ -9,6 +9,7 @@ import (
 	"os/signal"
 	"syscall"
 
+	"github.com/agbru/fibcalc/internal/bigfft"
 	"github.com/agbru/fibcalc/internal/calibration"
 	"github.com/agbru/fibcalc/internal/cli"
 	"github.com/agbru/fibcalc/internal/config"
@@ -78,6 +79,10 @@ func (a *Application) Run(ctx context.Context, out io.Writer) int {
 
 	zerolog.SetGlobalLevel(zerolog.InfoLevel)
 	ui.InitTheme(false)
+
+	// Initialize global concurrency limits
+	fibonacci.InitTaskSemaphore(a.Config.MaxGoroutines)
+	bigfft.InitFFTSemaphore(a.Config.MaxGoroutines)
 
 	if a.Config.Calibrate {
 		return a.runCalibration(ctx, out)
