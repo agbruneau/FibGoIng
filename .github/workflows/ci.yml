@@ -171,6 +171,28 @@ jobs:
       - uses: actions/checkout@v7
         with:
           fetch-depth: 0  # git describe needs tags
+
+      # Resolve what the base-image tags point to right now.
+      #
+      # This runner is the only environment with a docker CLI and outbound
+      # registry access — the maintainer's host has neither, which is why the
+      # two TODO(SEC-04) digest pins in the Dockerfile stayed open through four
+      # audits. Rather than guess a digest, the values are read here.
+      #
+      # Deliberately non-fatal (`|| true` on the whole block): a registry hiccup
+      # must not fail an image build that does not depend on this step.
+      - name: base image digests
+        run: |
+          set -x
+          for ref in golang:1.26-bookworm gcr.io/distroless/base-debian12; do
+            echo "===================================================== $ref"
+            docker buildx imagetools inspect "$ref" --format '{{.Manifest.Digest}}' || echo "MANIFEST-DIGEST-FAILED"
+            docker buildx imagetools inspect "$ref" --format '{{.Manifest.MediaType}}' || true
+            docker buildx imagetools inspect "$ref" || true
+          done
+          set +x
+        continue-on-error: true
+
       - name: build image
         run: |
           docker build \
