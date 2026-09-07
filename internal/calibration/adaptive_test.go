@@ -5,6 +5,7 @@ import (
 	"runtime"
 	"testing"
 
+	"github.com/agbruneau/FibGo/internal/config"
 	"github.com/agbruneau/FibGo/internal/fibonacci"
 )
 
@@ -35,8 +36,15 @@ func TestGenerateParallelThresholds(t *testing.T) {
 		if len(thresholds) < 5 {
 			t.Errorf("For %d CPUs, expected at least 5 thresholds, got %d", numCPU, len(thresholds))
 		}
-		// Should include: 0, 512, 1024, 2048, 4096
-		expected := []int{0, 512, 1024, 2048, 4096}
+		// The sequential baseline is config.ThresholdDisabled (-1), not 0.
+		// FIB-02 changed the generator because normalizeOptions replaces a 0
+		// with the package default, so 0 silently duplicated the default
+		// candidate instead of measuring the no-parallelism run. This
+		// expectation was not updated with it, and it went unnoticed for
+		// months: the branch only runs on a host with 4 or fewer CPUs, which
+		// the maintainer's 24-core machine is not. The first CI run, on a
+		// 4-core GitHub runner, failed here immediately (audit PRO-01).
+		expected := []int{config.ThresholdDisabled, 512, 1024, 2048, 4096}
 		for _, exp := range expected {
 			found := false
 			for _, th := range thresholds {

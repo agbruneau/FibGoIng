@@ -21,8 +21,20 @@ import (
 // - 8+ cores: Include higher thresholds as more parallelism can be beneficial
 // - 16+ cores: Add even higher thresholds for very fine-grained parallelism
 func GenerateParallelThresholds() []int {
-	numCPU := runtime.NumCPU()
+	return parallelThresholdsFor(runtime.NumCPU())
+}
 
+// parallelThresholdsFor is the pure core of GenerateParallelThresholds, split
+// out so every core-count branch is reachable from a test (audit PRO-01).
+//
+// Reading the core count inside the function meant exactly one of the five
+// branches ran on any given machine, and the other four were dead as far as the
+// suite was concerned. That is how a stale expectation survived: the test
+// asserted a sequential baseline of 0 after FIB-02 had changed it to
+// ThresholdDisabled, and the assertion lived in the <=4-core branch, which the
+// maintainer's 24-core host never took. The first CI run, on a 4-core runner,
+// failed on it within three minutes.
+func parallelThresholdsFor(numCPU int) []int {
 	// Base thresholds always tested. ThresholdDisabled (-1, not 0) is the
 	// genuine sequential baseline: normalizeOptions only replaces ==0 with the
 	// package default, so 0 silently duplicated the default candidate and the
@@ -59,8 +71,13 @@ func GenerateParallelThresholds() []int {
 // GenerateQuickParallelThresholds generates a smaller set of thresholds for
 // quick auto-calibration at startup.
 func GenerateQuickParallelThresholds() []int {
-	numCPU := runtime.NumCPU()
+	return quickParallelThresholdsFor(runtime.NumCPU())
+}
 
+// quickParallelThresholdsFor is the pure core of
+// GenerateQuickParallelThresholds; see parallelThresholdsFor for why the core
+// count is a parameter rather than a runtime read.
+func quickParallelThresholdsFor(numCPU int) []int {
 	if numCPU == 1 {
 		return []int{config.ThresholdDisabled}
 	}

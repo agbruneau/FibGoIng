@@ -89,8 +89,13 @@ jobs:
       - name: go build
         run: go build ./...
 
+      # -coverprofile takes its value as a SEPARATE argument, not with '='.
+      # The Windows runner's default shell is pwsh, which splits
+      # `-coverprofile=coverage.out` on the '=' and hands `.out` to go test as a
+      # package path: "no required module provides package .out". scripts/check.ps1
+      # already carries this exact note; the workflow's first run reproduced it.
       - name: go test (race, shuffled, uncached)
-        run: go test -race -shuffle=on -count=1 -coverprofile=coverage.out ./...
+        run: go test -race -shuffle=on -count=1 -coverprofile coverage.out ./...
 
       - name: golangci-lint
         run: go run ${{ env.GOLANGCI_LINT }} run ./...
