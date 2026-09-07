@@ -48,7 +48,7 @@ This project adheres to a code of conduct. By participating, you are expected to
 
 ### Prerequisites
 
-- Go 1.26.0 or later (`go.mod` declares `go 1.26.0`, no `toolchain` directive)
+- Go 1.26.1 or later (`go.mod` declares `go 1.26.1`, no `toolchain` directive)
 - Make (optional but recommended) — POSIX/WSL only, see the note under Useful Commands
 - A C toolchain, if you want `-race` locally (both gates probe for it and skip the flag without it)
 

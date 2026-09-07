@@ -40,7 +40,7 @@ you can re-derive from a file in the tree.
 - **OS**: Linux 6.1
 - **Go**: 1.25.0
 
-> **Provenance — read before quoting any number below.** The two tables that follow are **historical figures with no backing artifact in this repository**: no benchmark output for them was ever archived, on this hardware or any other, and nothing in the tree can confirm them. They are kept only as a record of *relative ordering* between the three algorithms. Do not cite them as measurements. The project now targets Go 1.26.0+ (see `go.mod`) while these predate it. For a number you can defend, use the baseline table above or re-run `make benchmark` on your own runner.
+> **Provenance — read before quoting any number below.** The two tables that follow are **historical figures with no backing artifact in this repository**: no benchmark output for them was ever archived, on this hardware or any other, and nothing in the tree can confirm them. They are kept only as a record of *relative ordering* between the three algorithms. Do not cite them as measurements. The project now targets Go 1.26.1+ (see `go.mod`) while these predate it. For a number you can defend, use the baseline table above or re-run `make benchmark` on your own runner.
 >
 > **Current dated references.** Two later optimization rounds make HEAD measurably faster than these historical numbers: the 2026-06-09 parallel pointwise/butterfly work (FastDoubling/10M −27.6 %; [`CHANGELOG.md`](../CHANGELOG.md)) and the 2026-06-10 audit loop (commits `4e34b82` TestMain, `fa13bfd` state+arena cache, `7999c39` bump F-012: geomean sec/op −12.0 % vs the same-day baseline, FastDoubling/10M 33.30 ms → 28.20 ms, B/op at 10M ~−70 %; [`CHANGELOG.md`](../CHANGELOG.md)).
 
@@ -172,7 +172,7 @@ To compare performance across Git revisions on the **same machine**, use a fixed
 3. **CHANGELOG** (optional): add a one-line entry such as
    `Perf: benchmark snapshot @ <SHA> — FastDoubling ns/op ±X% vs previous main` when you publish a measured change.
 
-In [Reference Benchmarks](#reference-benchmarks) above, only the **historical** tables (Results, and the Intel comparison snapshot) are tied to the Ryzen / Go 1.25.0 environment; the project now targets Go 1.26.0+ (`go.mod`). The baseline medians table at the top of that section comes from `docs/audits/bench-baseline.txt` (linux/amd64, 24 threads, stamped `baseline-2026-07-07`) and carries no Go-version stamp at all. Either way, both document *someone else's* runner — your snapshots document *yours*.
+In [Reference Benchmarks](#reference-benchmarks) above, only the **historical** tables (Results, and the Intel comparison snapshot) are tied to the Ryzen / Go 1.25.0 environment; the project now targets Go 1.26.1+ (`go.mod`). The baseline medians table at the top of that section comes from `docs/audits/bench-baseline.txt` (linux/amd64, 24 threads, stamped `baseline-2026-07-07`) and carries no Go-version stamp at all. Either way, both document *someone else's* runner — your snapshots document *yours*.
 
 ## Hardware heuristic defaults
 

@@ -48,7 +48,7 @@ Sans figure, mais partie du même corpus :
 **FibGo** (module/library name: **FibCalc**) is a high-performance Fibonacci computation system implemented in Go.
 
 - **Go module path:** `github.com/agbruneau/FibGo`
-- **Go version:** 1.26.0+ (`go.mod` declares `go 1.26.0`, no `toolchain` directive)
+- **Go version:** 1.26.1+ (`go.mod` declares `go 1.26.1`, no `toolchain` directive). Raised from 1.26.0 on 2026-09-07: govulncheck found GO-2026-4602 (`os`, FileInfo escaping a Root) reachable through `gopsutil`'s `cpu.init`, fixed in go1.26.1.
 - **Primary binary:** `cmd/fibcalc`
 - **Codebase stats:** run `make stats` for the canonical Go-package and LOC counts (the totals drift on every refactor; encoding them statically here has historically caused divergence between this document and reality).
 - **Purpose:** compute very large Fibonacci values efficiently, compare multiple algorithms, and expose both CLI and TUI execution modes.

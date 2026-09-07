@@ -61,7 +61,7 @@ n'en est pas une non plus.*
 
 ## Démarrage rapide
 
-Prérequis : **Go 1.26.0+** (`go.mod` déclare `go 1.26.0`, sans directive `toolchain`). Sous Windows natif,
+Prérequis : **Go 1.26.1+** (`go.mod` déclare `go 1.26.1`, sans directive `toolchain`). Sous Windows natif,
 `-o fibcalc` produit un fichier **sans extension** que le shell refuse d'exécuter : écrire
 `go build -o fibcalc.exe ./cmd/fibcalc` puis `.\fibcalc.exe`.
 
