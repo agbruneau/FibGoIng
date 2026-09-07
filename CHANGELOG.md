@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [4.1.1] - 2026-09-07
+
 ### Clôture de l'audit 2026-09-07 (après `v4.1.0`)
 
 #### Modifié
@@ -1205,5 +1207,7 @@ been purged ; the ADR series is the surviving source of truth.
 <!-- v4.0.0 and v3.0.0 are the release tags; no v1.0.0/v0.1.0 tags exist,
 so the 1.0.0 and 0.1.0 sections above are intentionally unlinked. -->
 
-[Unreleased]: https://github.com/agbruneau/FibGo/compare/v4.0.0...HEAD
-[4.0.0]: https://github.com/agbruneau/FibGo/compare/v3.0.0...v4.0.0
+[Unreleased]: https://github.com/agbruneau/Fibonacci/compare/v4.1.1...HEAD
+[4.1.1]: https://github.com/agbruneau/Fibonacci/compare/v4.1.0...v4.1.1
+[4.1.0]: https://github.com/agbruneau/Fibonacci/compare/v4.0.0...v4.1.0
+[4.0.0]: https://github.com/agbruneau/Fibonacci/compare/v3.0.0...v4.0.0
