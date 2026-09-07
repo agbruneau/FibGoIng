@@ -1,9 +1,11 @@
 package config
 
 import (
+	"errors"
 	"flag"
 	"fmt"
 	"io"
+	"slices"
 	"strings"
 	"time"
 
@@ -128,6 +130,28 @@ type AppConfig struct {
 	MemoryLimitBytes uint64
 	// GCControl sets the GC control mode ("auto", "aggressive", "disabled").
 	GCControl string
+	// ProfileMaxAge is the freshness window for a cached calibration profile.
+	// Past it, --auto-calibrate re-measures instead of replaying the file.
+	// Zero means the package default (calibration.DefaultProfileMaxAge).
+	//
+	// It is here, rather than read straight from the environment by
+	// internal/calibration, because a setting the parser does not know about
+	// cannot be reported by --help, cannot be overridden by a flag, and is
+	// invisible to the test that keeps the flag set and the env table in sync
+	// (audit CFG-02).
+	ProfileMaxAge time.Duration
+	// TUITheme selects the TUI palette: "" or "dark" for the default,
+	// "high-contrast" for the accessible one. Same reasoning as ProfileMaxAge:
+	// internal/ui used to read FIBCALC_TUI_THEME itself.
+	TUITheme string
+	// CPUProfile and MemProfile, when set, write pprof profiles for the run to
+	// those paths. Empty disables each independently.
+	//
+	// pprof used to be reachable only through `go test -bench`, so a user who
+	// hit an unexpected slowdown at their own n could not profile the binary
+	// that produced it (audit OBS-02).
+	CPUProfile string
+	MemProfile string
 	// LogLevel selects the verbosity of the diagnostic log written to stderr:
 	// "off" (default), "error", "warn", "info" or "debug".
 	//
@@ -175,29 +199,54 @@ type AppConfig struct {
 //     (e.g., ["fast", "matrix"]).
 //
 // Returns:
-//   - error: An error of type ConfigError if the configuration is invalid,
-//     nil otherwise.
+//   - error: nil when the configuration is valid; otherwise every problem
+//     found, joined with errors.Join. Each joined element is an
+//     apperrors.ConfigError, so errors.As still recognizes the chain.
 func (c AppConfig) Validate(availableAlgos []string) error {
-	if c.Timeout <= 0 {
-		return apperrors.NewConfigError("timeout value must be strictly positive")
+	// Every check runs; the failures are joined (audit API-07 / CFG-01).
+	//
+	// This used to return on the first problem, so a command line with two bad
+	// flags took two runs to fix — the user corrected one, re-ran, and learned
+	// about the next. The book asks for the opposite (ch. 12, p. 342: the
+	// Validate method "joins all errors to return all incorrect configurations
+	// and make maintenance easy"), and nothing here is expensive enough to
+	// justify stopping early.
+	//
+	// errors.Join returns nil for an all-nil list, so the success path needs no
+	// special case. Each element stays an apperrors.ConfigError, so
+	// errors.As still finds one in the chain — the property
+	// TestValidationFailureReturnsTypedError pins.
+	var problems []error
+
+	add := func(format string, args ...any) {
+		problems = append(problems, apperrors.NewConfigError(format, args...))
 	}
+
+	if c.Timeout <= 0 {
+		add("timeout value must be strictly positive")
+	}
+
 	// ThresholdDisabled (-1) is accepted for the two thresholds whose consumers
 	// gate on `> 0`; see its doc comment for why Strassen is excluded.
 	if c.Threshold < ThresholdDisabled {
-		return apperrors.NewConfigError("parallelism threshold must be >= %d (%d disables parallelism, 0 is auto): %d", ThresholdDisabled, ThresholdDisabled, c.Threshold)
+		add("parallelism threshold must be >= %d (%d disables parallelism, 0 is auto): %d",
+			ThresholdDisabled, ThresholdDisabled, c.Threshold)
 	}
 	if c.FFTThreshold < ThresholdDisabled {
-		return apperrors.NewConfigError("FFT threshold must be >= %d (%d disables FFT, 0 is auto): %d", ThresholdDisabled, ThresholdDisabled, c.FFTThreshold)
+		add("FFT threshold must be >= %d (%d disables FFT, 0 is auto): %d",
+			ThresholdDisabled, ThresholdDisabled, c.FFTThreshold)
 	}
 	if c.StrassenThreshold < 0 {
-		return apperrors.NewConfigError("Strassen threshold cannot be negative: %d", c.StrassenThreshold)
+		add("Strassen threshold cannot be negative: %d", c.StrassenThreshold)
 	}
+
 	if c.LastDigits < 0 {
-		return apperrors.NewConfigError("last-digits cannot be negative: %d (0 disables, >0 computes the last K digits)", c.LastDigits)
+		add("last-digits cannot be negative: %d (0 disables, >0 computes the last K digits)", c.LastDigits)
 	}
 	if c.LastDigits > MaxLastDigits {
-		return apperrors.NewConfigError("last-digits %d exceeds the maximum of %d digits", c.LastDigits, MaxLastDigits)
+		add("last-digits %d exceeds the maximum of %d digits", c.LastDigits, MaxLastDigits)
 	}
+
 	// Parse --memory-limit here so a malformed value is a configuration error
 	// on every mode. It used to be parsed only by app.validateMemoryBudget,
 	// which the --last-digits and --calibrate paths never reach, so
@@ -206,44 +255,55 @@ func (c AppConfig) Validate(availableAlgos []string) error {
 	// ValidateMemoryBudget re-parses it when it actually needs the number.
 	if c.MemoryLimit != "" {
 		if _, err := memory.ParseMemoryLimit(c.MemoryLimit); err != nil {
-			return apperrors.NewConfigError("invalid memory limit %q: %v", c.MemoryLimit, err)
+			add("invalid memory limit %q: %v", c.MemoryLimit, err)
 		}
 	}
+
 	if c.TUI && c.LastDigits > 0 {
-		return apperrors.NewConfigError("--tui is incompatible with --last-digits: the TUI dashboard always computes the full value")
+		add("--tui is incompatible with --last-digits: the TUI dashboard always computes the full value")
 	}
 	if c.TUI && c.OutputFile != "" {
-		return apperrors.NewConfigError("--tui is incompatible with --output: the TUI dashboard does not save results to a file")
+		add("--tui is incompatible with --output: the TUI dashboard does not save results to a file")
 	}
+
 	switch c.GCControl {
 	case "", string(memory.GCModeAuto), string(memory.GCModeAggressive), string(memory.GCModeDisabled):
 		// valid
 	default:
-		return apperrors.NewConfigError("unrecognized gc-control mode: '%s'. Valid modes are: auto, aggressive, disabled", c.GCControl)
+		add("unrecognized gc-control mode: '%s'. Valid modes are: auto, aggressive, disabled", c.GCControl)
 	}
+
 	switch c.LogLevel {
 	case "", "off", "error", "warn", "info", "debug":
 		// valid
 	default:
-		return apperrors.NewConfigError("unrecognized log-level: '%s'. Valid levels are: off, error, warn, info, debug", c.LogLevel)
+		add("unrecognized log-level: '%s'. Valid levels are: off, error, warn, info, debug", c.LogLevel)
 	}
+
 	switch c.Completion {
 	case "", "bash", "zsh", "fish", "powershell":
 		// valid
 	default:
-		return apperrors.NewConfigError("unrecognized completion shell: '%s'. Valid shells are: bash, zsh, fish, powershell", c.Completion)
+		add("unrecognized completion shell: '%s'. Valid shells are: bash, zsh, fish, powershell", c.Completion)
 	}
-	isAlgoAvailable := false
-	for _, a := range availableAlgos {
-		if a == c.Algo {
-			isAlgoAvailable = true
-			break
-		}
+
+	if c.ProfileMaxAge < 0 {
+		add("profile-max-age cannot be negative: %v (0 uses the default)", c.ProfileMaxAge)
 	}
-	if c.Algo != "all" && !isAlgoAvailable {
-		return apperrors.NewConfigError("unrecognized algorithm: '%s'. Valid algorithms are: 'all' or [%s]", c.Algo, strings.Join(availableAlgos, ", "))
+
+	switch strings.ToLower(strings.TrimSpace(c.TUITheme)) {
+	case "", "dark", "high-contrast", "highcontrast":
+		// valid
+	default:
+		add("unrecognized tui-theme: '%s'. Valid themes are: dark, high-contrast", c.TUITheme)
 	}
-	return nil
+
+	if c.Algo != "all" && !slices.Contains(availableAlgos, c.Algo) {
+		add("unrecognized algorithm: '%s'. Valid algorithms are: 'all' or [%s]",
+			c.Algo, strings.Join(availableAlgos, ", "))
+	}
+
+	return errors.Join(problems...)
 }
 
 // registerFlags binds all CLI flags to the given AppConfig on the provided
@@ -280,6 +340,10 @@ func registerFlags(fs *flag.FlagSet, config *AppConfig, availableAlgos []string)
 	fs.StringVar(&config.MemoryLimit, "memory-limit", "", "Maximum memory budget (e.g., 8G, 512M). Aborts with a config error if the estimate exceeds it.")
 	fs.StringVar(&config.GCControl, "gc-control", "auto", "GC control during calculation (auto, aggressive, disabled).")
 	fs.StringVar(&config.LogLevel, "log-level", "off", "Diagnostic log verbosity on stderr (off, error, warn, info, debug).")
+	fs.DurationVar(&config.ProfileMaxAge, "profile-max-age", 0, "Freshness window for a cached calibration profile (0 uses the default of 7 days).")
+	fs.StringVar(&config.TUITheme, "tui-theme", "", "TUI palette: dark (default) or high-contrast.")
+	fs.StringVar(&config.CPUProfile, "cpuprofile", "", "Write a pprof CPU profile of the run to this file.")
+	fs.StringVar(&config.MemProfile, "memprofile", "", "Write a pprof heap profile, taken after the run, to this file.")
 	fs.BoolVar(&config.DynamicThresholds, "dynamic-thresholds", false, "Adjust the FFT and parallelism thresholds during the calculation from per-iteration timings.")
 }
 

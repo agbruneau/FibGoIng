@@ -129,21 +129,47 @@ var (
 	}
 )
 
-// GetCurrentTUITheme returns the TUI theme matching the currently active theme.
-// When NoColorTheme is active, returns NoColorTUITheme. If the environment
-// variable FIBCALC_TUI_THEME is set to "high-contrast" (case-insensitive),
-// returns HighContrastTUITheme; otherwise DarkTUITheme.
-func GetCurrentTUITheme() TUITheme {
+// TUIThemeFor returns the TUI palette for the named theme, honoring the
+// active color theme first: when NoColorTheme is installed the answer is
+// NoColorTUITheme whatever the caller asks for.
+//
+// name is "" or "dark" for the default palette, "high-contrast" (or
+// "highcontrast") for the accessible one; anything else falls back to dark,
+// since config.Validate has already rejected the values a user could type.
+//
+// It takes the name as a parameter rather than reading FIBCALC_TUI_THEME
+// itself (audit CFG-02). A setting read straight from the environment down here
+// is invisible to --help, cannot be overridden by a flag, and is missed by the
+// test that keeps the flag set and the env-override table in sync — which is
+// exactly what happened to this one.
+func TUIThemeFor(name string) TUITheme {
 	themeMutex.RLock()
-	defer themeMutex.RUnlock()
+	noColor := currentTheme.Name == "none"
+	themeMutex.RUnlock()
 
-	if currentTheme.Name == "none" {
+	if noColor {
 		return NoColorTUITheme
 	}
-	if v := strings.ToLower(strings.TrimSpace(os.Getenv("FIBCALC_TUI_THEME"))); v == "high-contrast" || v == "highcontrast" {
+	switch strings.ToLower(strings.TrimSpace(name)) {
+	case "high-contrast", "highcontrast":
 		return HighContrastTUITheme
+	default:
+		return DarkTUITheme
 	}
-	return DarkTUITheme
+}
+
+// NoColorRequested reports whether the NO_COLOR convention
+// (https://no-color.org/) is in effect: the variable is present, whatever its
+// value, including empty.
+//
+// Exported so internal/config's usage printer asks here instead of repeating
+// the os.LookupEnv call. NO_COLOR is a cross-tool convention rather than an
+// application setting, so unlike FIBCALC_* it is read at the point of use and
+// not routed through AppConfig; having one reader keeps the "presence, not
+// value" rule in a single place.
+func NoColorRequested() bool {
+	_, present := os.LookupEnv("NO_COLOR")
+	return present
 }
 
 // GetCurrentTheme returns the currently active theme in a thread-safe manner.
@@ -185,7 +211,7 @@ func InitTheme(noColor bool) {
 	// notch stricter than no-color.org, which exempts the empty string; the
 	// behavior is deliberate and pinned by TestInitThemeWithNO_COLOREnv
 	// ("NO_COLOR empty value still disables colors").
-	if _, exists := os.LookupEnv("NO_COLOR"); exists {
+	if NoColorRequested() {
 		currentTheme = NoColorTheme
 		return
 	}

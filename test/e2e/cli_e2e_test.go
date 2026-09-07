@@ -1,42 +1,66 @@
 package e2e
 
 import (
+	"fmt"
 	"os"
 	"os/exec"
 	"path/filepath"
 	"runtime"
 	"strings"
-	"sync"
 	"testing"
 )
 
-// buildOnce ensures the binary is built only once across all tests.
-var buildOnce sync.Once
+// sharedBinPath holds the path to the binary compiled by TestMain, and
+// sharedBuildErr the failure if it could not be built.
+var (
+	sharedBinPath  string
+	sharedBuildErr error
+)
 
-// sharedBinPath holds the path to the compiled binary.
-var sharedBinPath string
+// TestMain compiles the binary once, into a directory of its own, and removes
+// it afterwards.
+//
+// This is the case the book allows TestMain for (ch. 7, p. 212): genuine shared
+// setup that every test in the package needs and that must not run twice. The
+// directory is what changed (audit TST-06). The build used to go to a FIXED
+// path — os.TempDir()/fibcalc_e2e_test — so two concurrent `go test` runs, two
+// terminals or two working trees, raced to write and execute the same file. The
+// book's rule is unqualified: do not write to /tmp or fixed locations.
+//
+// t.TempDir() is not available here because the directory has to outlive any
+// single test and be created before the first one runs.
+func TestMain(m *testing.M) {
+	dir, err := os.MkdirTemp("", "fibcalc-e2e-*")
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "e2e: cannot create a build directory: %v\n", err)
+		os.Exit(1)
+	}
 
-// sharedBuildErr holds any error from the build step.
-var sharedBuildErr error
+	binName := "fibcalc_e2e_test"
+	if runtime.GOOS == "windows" {
+		binName += ".exe"
+	}
+	sharedBinPath = filepath.Join(dir, binName)
 
-// buildBinary builds the fibcalc binary once and returns the path to it.
-// It is safe to call from multiple tests concurrently.
+	cmd := exec.Command("go", "build", "-o", sharedBinPath, "./cmd/fibcalc")
+	cmd.Dir = "../.."
+	cmd.Stdout = os.Stdout
+	cmd.Stderr = os.Stderr
+	sharedBuildErr = cmd.Run()
+
+	code := m.Run()
+
+	// Remove the whole directory, not just the binary: os.MkdirTemp made it,
+	// nothing else writes into it.
+	if err := os.RemoveAll(dir); err != nil {
+		fmt.Fprintf(os.Stderr, "e2e: cannot remove %s: %v\n", dir, err)
+	}
+	os.Exit(code)
+}
+
+// buildBinary returns the path to the binary TestMain compiled.
 func buildBinary(t *testing.T) string {
 	t.Helper()
-	buildOnce.Do(func() {
-		tmpDir := os.TempDir()
-		binName := "fibcalc_e2e_test"
-		if runtime.GOOS == "windows" {
-			binName = "fibcalc_e2e_test.exe"
-		}
-		sharedBinPath = filepath.Join(tmpDir, binName)
-		rootDir := "../.."
-		cmd := exec.Command("go", "build", "-o", sharedBinPath, "./cmd/fibcalc")
-		cmd.Dir = rootDir
-		cmd.Stdout = os.Stdout
-		cmd.Stderr = os.Stderr
-		sharedBuildErr = cmd.Run()
-	})
 	if sharedBuildErr != nil {
 		t.Fatalf("Failed to build fibcalc: %v", sharedBuildErr)
 	}

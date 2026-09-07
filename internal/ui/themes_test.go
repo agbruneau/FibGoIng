@@ -178,19 +178,62 @@ func TestColorFunctions(t *testing.T) {
 	})
 }
 
-func TestGetCurrentTUITheme_HighContrastEnv(t *testing.T) {
+// The palette is chosen by name, not by reading FIBCALC_TUI_THEME here
+// (audit CFG-02): internal/config parses that variable like every other one.
+// This test therefore needs no environment at all, which is the improvement.
+func TestTUIThemeFor(t *testing.T) {
+	t.Parallel()
+
+	orig := GetCurrentTheme()
+	t.Cleanup(func() { setCurrentTheme(orig) })
+	setCurrentTheme(DarkTheme)
+
+	tests := []struct {
+		name string
+		want TUITheme
+	}{
+		{"high-contrast", HighContrastTUITheme},
+		{"highcontrast", HighContrastTUITheme},
+		{"HIGH-CONTRAST", HighContrastTUITheme},
+		{"  high-contrast  ", HighContrastTUITheme},
+		{"", DarkTUITheme},
+		{"dark", DarkTUITheme},
+		{"nonsense", DarkTUITheme},
+	}
+	for _, tt := range tests {
+		if got := TUIThemeFor(tt.name); got != tt.want {
+			t.Errorf("TUIThemeFor(%q) = %+v, want %+v", tt.name, got, tt.want)
+		}
+	}
+}
+
+// The active color theme wins over the requested palette: under NO_COLOR or
+// --machine there is nothing to color, whatever the caller asked for.
+func TestTUIThemeFor_NoColorWins(t *testing.T) {
 	orig := GetCurrentTheme()
 	t.Cleanup(func() { setCurrentTheme(orig) })
 
-	setCurrentTheme(DarkTheme)
-	t.Setenv("FIBCALC_TUI_THEME", "high-contrast")
-	ht := GetCurrentTUITheme()
-	if ht != HighContrastTUITheme {
-		t.Errorf("GetCurrentTUITheme() with FIBCALC_TUI_THEME=high-contrast: got %+v, want HighContrastTUITheme", ht)
+	setCurrentTheme(NoColorTheme)
+	if got := TUIThemeFor("high-contrast"); got != NoColorTUITheme {
+		t.Errorf("TUIThemeFor with the no-color theme active = %+v, want NoColorTUITheme", got)
+	}
+}
+
+// NoColorRequested follows the no-color.org convention: presence decides,
+// including an empty value.
+func TestNoColorRequested(t *testing.T) {
+	testutil.Unsetenv(t, "NO_COLOR")
+	if NoColorRequested() {
+		t.Error("NoColorRequested() is true with NO_COLOR unset")
 	}
 
-	t.Setenv("FIBCALC_TUI_THEME", "")
-	if got := GetCurrentTUITheme(); got != DarkTUITheme {
-		t.Errorf("with empty FIBCALC_TUI_THEME: got %+v, want DarkTUITheme", got)
+	t.Setenv("NO_COLOR", "")
+	if !NoColorRequested() {
+		t.Error("NoColorRequested() is false with NO_COLOR set to the empty string")
+	}
+
+	t.Setenv("NO_COLOR", "1")
+	if !NoColorRequested() {
+		t.Error("NoColorRequested() is false with NO_COLOR=1")
 	}
 }

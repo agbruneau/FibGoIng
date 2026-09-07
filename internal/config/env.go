@@ -80,6 +80,8 @@ var envOverrides = []envOverride{
 	override("MEMORY_LIMIT", flagsOf("memory-limit"), func(c *AppConfig) *string { return &c.MemoryLimit }, parseString),
 	override("GC_CONTROL", flagsOf("gc-control"), func(c *AppConfig) *string { return &c.GCControl }, parseString),
 	override("LOG_LEVEL", flagsOf("log-level"), func(c *AppConfig) *string { return &c.LogLevel }, parseString),
+	override("TUI_THEME", flagsOf("tui-theme"), func(c *AppConfig) *string { return &c.TUITheme }, parseString),
+	override("PROFILE_MAX_AGE", flagsOf("profile-max-age"), func(c *AppConfig) *time.Duration { return &c.ProfileMaxAge }, time.ParseDuration),
 
 	// Boolean overrides
 	override("VERBOSE", flagsOf("v", "verbose"), func(c *AppConfig) *bool { return &c.Verbose }, parseBoolEnv),
@@ -142,7 +144,7 @@ func markExplicitThresholds(config *AppConfig, fs *flag.FlagSet) {
 //   - N, ALGO, TIMEOUT, THRESHOLD, FFT_THRESHOLD, STRASSEN_THRESHOLD, LAST_DIGITS,
 //     VERBOSE, DETAILS, QUIET, MACHINE_OUTPUT, CALIBRATE, AUTO_CALIBRATE, CALCULATE,
 //     OUTPUT, CALIBRATION_PROFILE, MEMORY_LIMIT, GC_CONTROL, TUI, DYNAMIC_THRESHOLDS
-//   - FIBCALC_TUI_THEME: TUI palette (read by ui.GetCurrentTUITheme), e.g. high-contrast
+//   - FIBCALC_TUI_THEME: TUI palette, e.g. high-contrast
 //
 // It returns a structured ConfigError (without mutating further) the first
 // time an explicitly-set environment variable holds an unparsable value, so

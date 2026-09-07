@@ -535,36 +535,28 @@ func TestCalibrationRunner(t *testing.T) {
 	}
 }
 
-func TestProfileMaxAgeFromEnv(t *testing.T) {
-	// Not parallel: mutates process-wide environment variable.
+// The freshness window comes from the config, not from an os.Getenv down here
+// (audit CFG-02). FIBCALC_PROFILE_MAX_AGE still works — internal/config maps it
+// alongside --profile-max-age — but parsing and validation happen there, which
+// is why this test no longer touches the environment and can run in parallel.
+func TestProfileMaxAge(t *testing.T) {
+	t.Parallel()
 
-	t.Run("Unset returns default", func(t *testing.T) {
-		t.Setenv(ProfileMaxAgeEnv, "")
-		if got := profileMaxAgeFromEnv(); got != DefaultProfileMaxAge {
-			t.Errorf("profileMaxAgeFromEnv() = %v, want %v", got, DefaultProfileMaxAge)
+	tests := []struct {
+		name string
+		cfg  config.AppConfig
+		want time.Duration
+	}{
+		{"unset uses the default", config.AppConfig{}, DefaultProfileMaxAge},
+		{"a positive value is honored", config.AppConfig{ProfileMaxAge: 30 * time.Minute}, 30 * time.Minute},
+		{"zero uses the default", config.AppConfig{ProfileMaxAge: 0}, DefaultProfileMaxAge},
+		{"a negative value uses the default", config.AppConfig{ProfileMaxAge: -time.Hour}, DefaultProfileMaxAge},
+	}
+	for _, tt := range tests {
+		if got := profileMaxAge(tt.cfg); got != tt.want {
+			t.Errorf("%s: profileMaxAge() = %v, want %v", tt.name, got, tt.want)
 		}
-	})
-
-	t.Run("Valid override is honored", func(t *testing.T) {
-		t.Setenv(ProfileMaxAgeEnv, "30m")
-		if got := profileMaxAgeFromEnv(); got != 30*time.Minute {
-			t.Errorf("profileMaxAgeFromEnv() = %v, want 30m", got)
-		}
-	})
-
-	t.Run("Invalid value falls back to default", func(t *testing.T) {
-		t.Setenv(ProfileMaxAgeEnv, "not-a-duration")
-		if got := profileMaxAgeFromEnv(); got != DefaultProfileMaxAge {
-			t.Errorf("profileMaxAgeFromEnv() = %v, want %v", got, DefaultProfileMaxAge)
-		}
-	})
-
-	t.Run("Non-positive value falls back to default", func(t *testing.T) {
-		t.Setenv(ProfileMaxAgeEnv, "0s")
-		if got := profileMaxAgeFromEnv(); got != DefaultProfileMaxAge {
-			t.Errorf("profileMaxAgeFromEnv() = %v, want %v", got, DefaultProfileMaxAge)
-		}
-	})
+	}
 }
 
 func TestAutoCalibrateWithProfile_StaleProfileTriggersRecalibration(t *testing.T) {
@@ -594,14 +586,13 @@ func TestAutoCalibrateWithProfile_StaleProfileTriggersRecalibration(t *testing.T
 		t.Fatalf("Failed to save profile: %v", err)
 	}
 
-	// Force the default max-age (7d) regardless of caller environment.
-	t.Setenv(ProfileMaxAgeEnv, "")
-
 	registry := map[string]fibonacci.Calculator{
 		"fast":   &MockCalculator{name: "fast"},
 		"matrix": &MockCalculator{name: "matrix"},
 	}
 
+	// ProfileMaxAge left at zero, which profileMaxAge resolves to the 7-day
+	// default. No environment to force any more (audit CFG-02).
 	cfg := config.AppConfig{
 		Timeout: 5 * time.Second,
 	}

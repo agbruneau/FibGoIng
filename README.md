@@ -11,37 +11,25 @@ Le nombre de Fibonacci n'est pas la finalité; c'est le banc d'essai. Il a l'ava
 
 Ce qu'on y expérimente : algorithmique (Fast Doubling, exponentiation matricielle Strassen-Winograd, multiplication FFT Schönhage-Strassen), ingénierie de performance (pooling, allocateur bump, contrôle du GC, parallélisme adaptatif, PGO, auto-calibration), et méthode logicielle (Clean Architecture, tests golden et property-based, ADR, gate de qualité local). Toute affirmation chiffrée doit venir d'un artefact de mesure du dépôt; ce qui n'a pas été réexécuté est signalé comme tel. **FibCalc**, le binaire qui en sort, calcule des nombres de Fibonacci arbitrairement grands à très haute vitesse. Écrit en Go; gère des indices de plusieurs centaines de millions.
 
-### Historique des audits et jalons
+### Historique
 
-| Date | Portée | Résultats clés |
-|---|---|---|
-| **2026-06** | Audit complet, refactorisation et optimisation — [Claude Fable 5](https://www.anthropic.com/news/claude-fable-5-mythos-5) (Anthropic), effort Max | Temps de calcul geomean **−12 %** (FastDoubling/10M −15,3 %), allocations **~−70 %** B/op à F(10M), couverture 88,9 % → **95,0 %**, une data race réelle corrigée — [`CHANGELOG.md`](CHANGELOG.md) |
-| **2026-06-24** | Revue Go exhaustive — Claude Opus 4.8, orchestration multi-agents, vérification adversariale | Trois défauts de correctness corrigés (panic de la récursion FFT parallèle re-propagée au lieu de crasher — ADR-0002 ; `--algo all --quiet` ne masque plus une divergence — exit 3 ; messages TUI obsolètes ignorés après *Restart*), durcissements (`GOMEMLIMIT`, troncature UTF-8, complétion shell, codes de sortie), purge de code mort. Chemin critique validé sans régression (`benchstat`) — [`CHANGELOG.md`](CHANGELOG.md) |
-| **2026-07** | Audit exhaustif multi-agents (8 dimensions) — Claude Opus 4.8 pilote, exécuteurs Sonnet, vérification adversariale — **exécuté** (6 phases, ~30 commits) | ~40 findings corrigés (dont panic pointeur/tri, `--gc-control` inerte, complétions shell, data race spinner, correctifs calibration + re-validation profil forgé SEC-01, `bigfft` alloc pool non initialisée + ordonnancement panic FFT-02), ~500 LOC de code mort retiré, couverture 95,0 % → **95,2 %**, build `gmp` réparé, `benchstat` global **sans régression réelle**. FIB-05 (réduction du multiplicateur d'arène) initialement **rejetée sur preuve Ryzen** (+18 à +34 % à F(10M)) → [ADR-0009](docs/adr/0009-audit-2026-07-cleanup-and-rejected-fib05.md) / [`CHANGELOG.md`](CHANGELOG.md) |
-| **2026-07-07** | Suivi post-audit — exécution des 5 tâches à plus fort levier + **release v4.0.0** | Tag `v4.0.0` (première coupe CHANGELOG depuis 1.0.0) ; backend **GMP branché au gate local** (`check.sh` étape 3b, libgmp dans WSL) ; profil **PGO régénéré** ; **balayage complet du multiplicateur d'arène** (protocole ADR-0009 R4) → **×15 → ×10 adopté** : mémoire FFT 10M **−16 % B/op** à coût CPU nul, confirmé en ordre inversé (addendum [ADR-0009](docs/adr/0009-audit-2026-07-cleanup-and-rejected-fib05.md)) |
-| **2026-08-07** | Audit qualité et documentation — Claude Opus 5, boucle bâtisseur/critique sur cinq tours (source Go entière, 30 documents markdown, 11 diagrammes Mermaid) | Outillage **mesuré, non affirmé** : `golangci-lint` **152 → 0**, `gosec` **19 → 0**, `gofmt -l` **1 → 0**, build/vet/test verts de bout en bout — **sans desserrer les outils** (`.golangci.yml` inchangé hors commentaires, `//nolint` stable à 4, `#nosec` **22 → 13** par retrait des sites, non par annotation). Tests **gagnés** : 877 → **879** fonctions, 408 → **410** sous-tests, 2 291 → **2 305** assertions (⚠ la même ligne affirmait « zéro `t.Skip` » ; recompté le 2026-09-04, l'arbre en porte **19 dans 13 fichiers**, tous des gardes `-short` ou d'architecture — aucun test désactivé sans condition). Documentation confrontée à la source, une commande par affirmation ; **121 → 3** renvois `fichier:ligne` vers du Go, convertis en ancres de symbole. **Deux comportements documentés et délibérément inchangés** : un profil de calibration valide écrase les trois seuils explicites (⚠ tous les documents affirmaient l'inverse) et `GetDefaultProfilePath` retombe sur un nom relatif si `os.UserHomeDir` échoue. *Le premier a été renversé par l'audit 2026-09 (M-03) : le flag explicite l'emporte désormais, et le test qui épinglait l'ancien sens est devenu `TestNewExplicitFlagsBeatCachedProfile`.* Chiffre de performance sans artefact : **retiré**, non reformulé — [`CHANGELOG.md`](CHANGELOG.md) |
-| **2026-09-03** *(1)* | Audit exhaustif du code Go de production — Claude Opus 5, exécution phase par phase du plan (`audit.md`, 23 constats) | Trois défauts hauts corrigés, **mesurés** : le code de sortie TUI d'un calcul terminé était écrasé par une annulation ultérieure (exit 2 ou 130 sur un succès) ; la sentinelle `-1` de la calibration était rejetée par la validation, faisant **jeter le profil en silence à chaque démarrage** ; `--memory-limit` sous-estimait la mémoire réelle d'un facteur **5 à 12** (12 Mo annoncés pour 141 Mo réels à F(10M)). Outillage : `golangci-lint` **ne pouvait plus s'exécuter** sous go1.27 alors que les scripts écrivaient `Overall: PASS` — migration v2 et lint rendu **bloquant** ; `-race` activé sous Windows (21 paquets verts). Deux recommandations **rejetées sur preuve** : le plafond de cache FFT à ×4 (+22 % sec/op sur MatrixExp/10M) et la suppression de quatre « symboles morts » qui sont des oracles de test. Le gain DTM de 5-6 % d'ADR-0001 **ne se reproduit pas** à `-count=8` — flag livré, défaut laissé à `false` — [ADR-0010](docs/adr/0010-audit-2026-09-decisions.md) / [`CHANGELOG.md`](CHANGELOG.md) |
-| **2026-09-03** *(2)* | Audit de sur-ingénierie sur tout le code Go de production — Claude Opus 5, passe « ponytail » (ce qui ne fait que déléguer, la flexibilité sans appelant, la bibliothèque standard réécrite) | Un défaut trouvé en chemin : **`go build -tags gmp` ne compilait plus** — `calculator_gmp.go` appelait trois symboles de `progress` supprimés par L-01. Réparé sans pouvoir être recompilé (⚠ toujours vrai ici : `go build -tags gmp ./internal/fibonacci/` échoue sur `gmp.h: No such file or directory`, faute d'en-têtes libgmp). Une optimisation : `--details` payait une **seconde conversion décimale complète** pour la ligne « Scientific notation » — `fmt.Sprintf("%.6e", big.Float.SetInt(x))` matérialise l'entier entier, mesuré à **345 ms** à F(10M), soit le coût du `String()` que L-11 venait justement de dédupliquer ; la notation est désormais dérivée de la chaîne déjà en main, arrondi demi-pair épinglé par `TestScientificNotation_MatchesBigFloat`. Puis ~25 suppressions ou replis **sans changement de comportement observable** (`app.ExitAction` et son aller-retour int → enum → int, la table de parsing d'`env.go` réduite de 140 à 20 lignes, trois `findBest*Threshold` identiques repliés en un, la queue de réduction dupliquée entre `fermat.Mul` et `fermat.Sqr`). Trois familles de candidats **écartées, avec le motif** : les wrappers `*Safe` de `fermat.go` (supprimés puis restaurés — ADR-0002 §5 les garde comme documentation testée du contrat de pré-conditions), la flexibilité que seuls les tests exercent (la retirer supprimerait les tests avec elle), les triplications qu'impose `TestArchitectureLayering`. `benchstat` A/B en **double ordre** : le chemin chaud bouge de moins de 1 %, et le +4 % de `FastDoubling/1M` s'inverse quand l'ordre s'inverse — bruit d'ordre, sous le seuil de 5 % — [ADR-0011](docs/adr/0011-audit-2026-09-ponytail.md) / [`CHANGELOG.md`](CHANGELOG.md) |
+Huit campagnes d'audit entre mai 2026 et septembre 2026, avec pour chacune ce
+qui a été mesuré, ce qui a été rejeté et pourquoi :
+[`docs/audits/HISTORY.md`](docs/audits/HISTORY.md). Le détail commit par commit
+est dans [`CHANGELOG.md`](CHANGELOG.md), les décisions dans
+[`docs/adr/`](docs/adr/).
 
-⚠ **Limites déclarées par la passe du 2026-08-07.** La première est **levée** : `-race` tourne
-désormais sur l'hôte et passe sur les 21 paquets (2026-09-03), et `check.ps1` l'active
-automatiquement quand CGO et un compilateur C sont présents. La seconde tient — revérifiée le
-2026-09-04, `GOARCH=386 go build ./...` échoue toujours : l'arbre **ne compile pas pour une cible
-32 bits**, `maxReasonableWords` (`1 << 60`, `internal/fibonacci/memory/arena.go`) débordant un `int`
-32 bits.
-`TestStateBump_PinnedAcrossCachedCalls` est *flaky* au même taux sur le commit parent (un test
-antérieur laisse une arène surdimensionnée dans le pool d'état global).
+**État vérifié le 2026-09-07** (Windows 11, `go1.27.0`, `golangci-lint v2.13.2`) :
+`scripts/check.ps1` vert de bout en bout — build, vet, `go test -race -shuffle=on
+-count=1` sur les 22 paquets, lint à **0 finding**, couverture **96,1 %** (plancher
+80 %), `govulncheck` sans vulnérabilité. La même séquence tourne en CI sur Ubuntu
+et Windows à chaque poussée, avec en plus le backend `gmp`, un build 32 bits et
+l'image Docker.
 
-☑ **Gate rejoué le 2026-09-04 sur `d2aa36a`** (Windows 11, `go1.27.0`, `golangci-lint v2.13.2`) :
-`go build`, `go vet`, `go test ./...`, `go test -race ./...` sur les 21 paquets, `gofmt -l .` sans
-sortie et `golangci-lint run ./...` à **zéro finding**. Une seule cible reste hors gate sur cet hôte :
-`go build -tags gmp`, faute d'en-têtes libgmp (voir le tableau ci-dessus).
-⚠ Le relevé du 2026-08-10 annonçait `golangci-lint` à 0 avec la v1.64.8 ; sous `go1.27` ce binaire
-**ne peut plus s'exécuter du tout** (`export data version 4`), et les scripts de gate traitaient le
-lint comme consultatif — ils affichaient l'échec puis `Overall: PASS`. Le zéro publié restait vrai à
-sa date, mais il a cessé d'être vérifié sans que rien ne le signale. Le lint est désormais bloquant.
-*Un décompte publié sans avoir été réexécuté n'est pas une mesure ; un outil qui ne peut plus tourner
-n'en est pas une non plus.*
+⚠ **Limites déclarées.** Le backend `gmp` ne se compile pas sur cet hôte (pas
+d'en-têtes libgmp) ; il est couvert par le job CI `gmp`. Les cibles 32 bits
+compilent depuis le 2026-09-07 mais ne sont ni testées ni distribuées
+([`docs/PORTABILITY.md`](docs/PORTABILITY.md) §1).
 
 ---
 
@@ -54,8 +42,11 @@ n'en est pas une non plus.*
 5. [Guide d'utilisation](#guide-dutilisation)
 6. [Configuration](#configuration)
 7. [Développement et tests](#développement-et-tests)
-8. [Dépannage](#dépannage)
-9. [Contribution et licence](#contribution-et-licence)
+8. [Contribution et licence](#contribution-et-licence)
+
+Dépannage : [`docs/BUILD.md` § Dépannage](docs/BUILD.md#dépannage). Historique des
+audits : [`docs/audits/HISTORY.md`](docs/audits/HISTORY.md). Chemin complet d'un
+calcul : [`docs/ARCH.md`](docs/ARCH.md).
 
 ---
 
@@ -197,78 +188,6 @@ Vue d'ensemble : [`docs/ARCH.md`](docs/ARCH.md) ; référence détaillée :
 | `internal/progress` | Pattern observer (chemin de production : `Freeze`) |
 | `internal/{errors,format,metrics,ui,testutil}` | Packages de support (feuilles) |
 | `test/e2e` | Tests bout-en-bout du binaire CLI (hors `internal/`) |
-
-### Le chemin d'un calcul
-
-Ce qui se passe quand vous tapez `./fibcalc -n 1000000 -algo fast`, de `main` au code de sortie. Les
-chemins que ce parcours écarte (TUI, calibration, `-last-digits`, exponentiation matricielle) et le détail
-de chaque couche sont dans [`docs/ARCH.md`](docs/ARCH.md).
-
-```mermaid
-flowchart TD
-  A["cmd/fibcalc/main.go — run()"] --> B["app.New — ParseConfig : flags puis FIBCALC_*"]
-  B --> C{"Profil de calibration<br/>chargé et valide ?"}
-  C -->|oui| D["applyProfileThresholds<br/>remplit les seuils non fixés"]
-  C -->|non| E["ApplyAdaptiveThresholds<br/>table matérielle CPU / SIMD / mot"]
-  D --> F["Application.Run — aiguillage<br/>completion · calibrate · tui · calcul"]
-  E --> F
-  F --> G["runCalculate<br/>garde --memory-limit, timeout, SIGINT/SIGTERM"]
-  G --> H["orchestration.ExecuteCalculations<br/>1 calculateur direct, errgroup si -algo all"]
-  H --> I["FibCalculator.CalculateWithObservers<br/>n ≤ 93 direct · cache FFT · GCController"]
-  I --> J["FastDoublingCalculator.CalculateCore<br/>état + arène empruntés, AdaptiveStrategy"]
-  J --> K["ExecuteDoublingLoop<br/>bits.Len64(n) tours — 20 pour n = 1 000 000"]
-  K --> L{"FK1.BitLen() dépasse<br/>le seuil FFT ?"}
-  L -->|oui| M["executeDoublingStepFFT<br/>internal/bigfft, transformées réutilisées"]
-  L -->|non| N["smartMultiply / smartSquare<br/>re-test par opérande, sinon math/big"]
-  M --> O["F(2k) = 2·T3 − T2 ; F(2k+1) = T1 + T2<br/>rotation des pointeurs, pas d'addition si bit = 1"]
-  N --> O
-  O --> K
-  K --> P["releaseStateWithResult<br/>résultat recopié hors de l'arène"]
-  P --> Q["AnalyzeComparisonResults + CLIResultPresenter<br/>code de sortie POSIX vers os.Exit"]
-```
-
-1. **`cmd/fibcalc/main.go` — `run`.** `-V` / `-version` court-circuite tout le reste
-   (`app.HasVersionFlag`). Sinon `app.New` construit l'application ; il n'échoue qu'en analysant ou en
-   validant la configuration, donc son erreur vaut le code 4 (`ExitErrorConfig`) — sauf `--help`, qui vaut 0.
-2. **`internal/app/app.go` — `New`.** `config.ParseConfig` lit les flags, puis les `FIBCALC_*` pour ceux
-   qui sont absents de la ligne de commande. Les trois seuils sont résolus juste après : un profil de
-   calibration qui charge **et** valide remplit ceux que vous n'avez pas fixés ; à défaut,
-   `config.ApplyAdaptiveThresholds` les lit dans la table matérielle (encadré du seuil FFT plus haut).
-3. **`Run` — aiguillage.** `-completion`, `-calibrate`, `-auto-calibrate` et `-tui` partent chacun
-   ailleurs ; tout le reste tombe dans `runCalculate`.
-4. **`internal/app/calculate.go` — `runCalculate`.** `-last-digits K` dévie vers
-   `orchestration.ComputeLastDigits` (mémoire O(K), aucun `big.Int` de la taille de F(n)). Sinon :
-   vérification du budget `--memory-limit`, puis `context.WithTimeout(-timeout)` enveloppé dans
-   `signal.NotifyContext(SIGINT, SIGTERM)` — c'est ce contexte unique qui porte l'annulation jusqu'au
-   cœur de la boucle.
-5. **`executeCalculations`.** `orchestration.GetCalculatorsToRun("fast", factory)` rend un calculateur ;
-   `all` en rend trois, triés par nom. Les seuils et le mode GC de la configuration deviennent ici un
-   `fibonacci.Options`, seul véhicule des réglages vers les couches basses.
-6. **`internal/orchestration/orchestrator.go` — `ExecuteCalculations`.** Une goroutine consomme le canal
-   de progression. Un calculateur unique emprunte un chemin direct ; plusieurs passent par `errgroup`, où
-   l'échec de l'un annule les autres par le contexte partagé.
-7. **`internal/fibonacci/calculator.go` — `CalculateWithObservers`.** n ≤ 93 : addition itérative et
-   retour immédiat. Au-delà : garde mémoire de défense en profondeur, cache FFT configuré, pools `bigfft`
-   préchauffés, puis exécution sous `GCController` — en mode `auto`, le GC est coupé à partir de
-   n ≥ 1 000 000 et restauré même en cas de panic (`WithGC`).
-8. **`fastdoubling.go` — `CalculateCore`.** Emprunte un `CalculationState` et son arène (slot GC-immune du
-   calculateur, sinon `sync.Pool`), retient `AdaptiveStrategy`, puis lance la boucle.
-9. **`doubling_framework.go` — `ExecuteDoublingLoop`.** `bits.Len64(n)` tours — **20** pour
-   n = 1 000 000 — du bit de poids fort au bit de poids faible. Par tour : trois produits
-   (T3 = FK·FK1, T1 = FK1², T2 = FK²), puis F(2k) = 2·T3 − T2 et F(2k+1) = T1 + T2, rotation des
-   pointeurs, et un pas d'addition si le bit courant vaut 1.
-10. **`strategy.go` — `AdaptiveStrategy.ExecuteStep`.** Le seul endroit où la FFT est choisie :
-    `FK1.BitLen() > FFTThreshold` envoie le pas entier dans `executeDoublingStepFFT`, qui ne transforme
-    F(k) et F(k+1) qu'une fois pour les trois produits ; sinon `smartMultiply` / `smartSquare`
-    re-testent le seuil opérande par opérande et retombent sur `math/big`. À `-n 1000000` sur cet hôte,
-    cette branche n'est jamais prise.
-11. **Retour.** `releaseStateWithResult` recopie le résultat hors de l'arène avant de rendre l'état au
-    pool — sans quoi le résultat aliaserait de la mémoire réutilisée au prochain appel.
-    `AnalyzeComparisonResults` trie les résultats, vérifie leur concordance (c'est là que `-algo all`
-    détecte une divergence, code 3) et les rend via `cli.CLIResultPresenter` ; le code POSIX remonte
-    jusqu'à `os.Exit`.
-
----
 
 ## Performance
 
@@ -461,22 +380,9 @@ Stratégie de test (table-driven, `t.Parallel()`, doubles de test, fuzzing, gold
 
 ---
 
-## Dépannage
-
-| Symptôme | Cause / remède |
-|---|---|
-| `-race` échoue : « cgo: C compiler not found » | Le race detector exige gcc/clang. Sous Windows : WSL (`wsl go test -race ./...`) ou `make test-win` (sans race). |
-| `go test -bench=.` ne lance rien sous PowerShell | Quirk de parsing PowerShell : utiliser `-bench=BenchmarkFibonacci` (préfixe explicite). |
-| Build tag `gmp` : « gmp.h: No such file » | Installer les en-têtes : `sudo apt-get install libgmp-dev` (Linux/WSL). Sans eux, l'étape 3b de `check.sh` est proprement sautée (SKIP). |
-| `bash scripts/check.sh` : « syntax error near `$'{\r'` » | Fins de ligne CRLF (checkout antérieur au pin `*.sh eol=lf`) : `git checkout -- scripts/check.sh` ou `sed -i 's/\r$//' scripts/check.sh`. |
-| Le TUI ne se lance pas | `-tui` exige un terminal interactif (TTY) ; indisponible dans les pipes/CI. |
-| Calcul interrompu à 5 minutes | Défaut `-timeout 5m` — augmenter, p. ex. `-timeout 30m`. |
-
----
-
 ## Contribution et licence
 
-- Changements notables : [`CHANGELOG.md`](CHANGELOG.md) (format Keep-a-Changelog, SemVer — release courante : `v4.0.0`).
+- Changements notables : [`CHANGELOG.md`](CHANGELOG.md) (format Keep-a-Changelog, SemVer — release courante : `v4.1.0`).
 - Workflow de contribution : [`CONTRIBUTING.md`](CONTRIBUTING.md) — test rouge → fix → vert,
   validation locale complète avant chaque commit.
 - Licence : **Apache 2.0** — voir [`LICENSE`](LICENSE).

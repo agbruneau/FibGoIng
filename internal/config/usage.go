@@ -3,7 +3,6 @@ package config
 import (
 	"flag"
 	"fmt"
-	"os"
 
 	"github.com/agbruneau/FibGo/internal/ui"
 )
@@ -13,7 +12,7 @@ func setCustomUsage(fs *flag.FlagSet) {
 	fs.Usage = func() {
 		// Respect NO_COLOR even before app initialization
 		t := ui.GetCurrentTheme()
-		if _, ok := os.LookupEnv("NO_COLOR"); ok {
+		if ui.NoColorRequested() {
 			t = ui.NoColorTheme
 		}
 		// ui.InitTheme runs in app.Run, i.e. after parsing, so --machine and

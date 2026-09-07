@@ -806,6 +806,18 @@ Exécution menée directement sur `main` (le mainteneur pousse sur `main` à la
 fin de chaque phase), et non sur la branche `audit/2026-09-livre` prévue en
 T00.
 
+**Résultat : 33 tâches sur 33 exécutées et vérifiées** (T00 à T32, les deux
+optionnelles T20 et T30 incluses), en cinq commits poussés sur `main`. Un seul
+écart au plan, dans T25, consigné dans sa ligne.
+
+La CI a trouvé cinq défauts qu'aucun gate local ne pouvait produire, sur ses
+trois premiers passages : un test attendant une valeur que le code ne produit
+plus depuis FIB-02 (branche jamais prise sur un hôte à 24 cœurs), la coupure
+PowerShell de `-coverprofile=`, le build 32 bits, la collision du nom `GOFLAGS`
+dans le `Makefile`, et une vulnérabilité de la bibliothèque standard atteignable
+dans la version de Go déclarée. C'est la justification de PRO-01, obtenue en
+trois minutes.
+
 | Phase | Tâche | Statut | Commit | Vérification |
 |---|---|---|---|---|
 | 0 | T00 Cadrage, base de référence, ADR-0012 | ☑ | — | base `benchstat` `-count=8` et couverture 96,7 % capturées ; ADR-0012 en *Proposed* |
@@ -831,16 +843,16 @@ T00.
 | 3 | T20 *(opt.)* Paquet `internal/fibmath` | ☑ |  | `GrowthFactor`, `MaxUint64Index`, `BitsFor` ; 2 des 3 duplications de log₂ φ et celle de 93 supprimées ; `bigfft` garde son littéral (kernel sans import interne) avec renvoi ; 4 tests contre la définition |
 | 3 | T21 Retrait de `briandowns/spinner` | ☑ |  | `progressLine` (dessin sur le ticker existant) ; `Spinner`, `realSpinner`, `newSpinner` et le test de course supprimés ; 2 dépendances directes en moins (198 modules) |
 | 3 | T22 Renommage `internal/apperrors` | ☑ |  | `git mv` + réécriture des imports et des renvois de documentation ; 21 paquets verts |
-| 4 | T23 Politique de commentaires | ☐ | | |
-| 4 | T24 Règle de langue | ☐ | | |
-| 4 | T25 README et ARCH recentrés | ☐ | | |
-| 4 | T26 Renommage des fichiers de test | ☐ | | |
-| 4 | T27 `errors.Join` dans `Validate` | ☐ | | |
-| 4 | T28 Variables d'environnement centralisées | ☐ | | |
+| 4 | T23 Politique de commentaires | ☑ |  | `docs/audits/INDEX.md` (toutes les familles de préfixes résolubles), politique dans `CONTRIBUTING.md`, et `TestAuditIdentifiersResolve` comme garde-fou — un test plutôt qu'un grep dupliqué dans deux shells. 8 familles non listées trouvées et ajoutées |
+| 4 | T24 Règle de langue | ☑ |  | inscrite dans `CONTRIBUTING.md` (français pour le narratif, anglais pour le code) ; conforme à ADR-0012 D4 |
+| 4 | T25 README et ARCH recentrés | ☑ |  | README 494 → 400 lignes ; historique → `docs/audits/HISTORY.md`, chemin de calcul → `ARCH.md`, dépannage → `BUILD.md`. **Écart au plan** : la cible ≤ 200 lignes n'est pas atteinte et est abandonnée — le reste est de la prose technique mesurée, la couper aurait supprimé des affirmations vérifiées. Le critère réel (« démarrage rapide sans défilement ») est tenu |
+| 4 | T26 Renommage des fichiers de test | ☑ |  | 10 fichiers renommés par thème ; plus aucun `_extra_`, `_more_`, `misc_`, `_advanced_`, `_exhaustive_` |
+| 4 | T27 `errors.Join` dans `Validate` | ☑ |  | toutes les vérifications s'exécutent, `errors.Join` les assemble ; `errors.As` trouve toujours un `ConfigError` ; 3 tests |
+| 4 | T28 Variables d'environnement centralisées | ☑ |  | `ProfileMaxAge` et `TUITheme` dans `AppConfig` avec drapeaux `--profile-max-age` / `--tui-theme` ; `os.Getenv` hors `config/env.go` réduit au seul `NO_COLOR` (convention externe, un seul lecteur) |
 | 4 | T29 Règles d'architecture complétées | ☑ |  | règles `cli → fibonacci` et `calibration → ui|format` ajoutées ; alias `orchestration.ThresholdTuning` pour que la TUI ne perce pas la façade ; 7 règles vertes |
-| 4 | T30 *(opt.)* Drapeaux de profilage | ☐ | | |
-| 4 | T31 Répertoire temporaire e2e | ☐ | | |
-| 4 | T32 Clôture, ADR-0012 *Accepted*, `v4.1.0` | ☐ | | |
+| 4 | T30 *(opt.)* Drapeaux de profilage | ☑ |  | `--cpuprofile` / `--memprofile` ; profils produits et relus par `go tool pprof` (29 nœuds) |
+| 4 | T31 Répertoire temporaire e2e | ☑ |  | `TestMain` crée un répertoire `os.MkdirTemp` propre et le supprime ; plus de chemin fixe partagé entre deux exécutions |
+| 4 | T32 Clôture, ADR-0012 *Accepted*, `v4.1.0` | ☑ |  | ADR-0012 accepté avec la section « Exécution » et les mesures ; entrée `[4.1.0]` au CHANGELOG ; documents resynchronisés (CI, `-shuffle=on`, 386, `slog`, épinglage) ; ce rapport archivé ici même |
 
 ---
 

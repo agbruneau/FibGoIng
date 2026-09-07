@@ -267,11 +267,41 @@ The project uses the Decorator pattern. To add a new algorithm, you only need to
    }
    ```
 
-3. **Error Handling**: Use the `internal/apperrors` package for custom errors
+3. **Comments carry the reason, not a reference.** A comment explains why the
+   code is the way it is, in words. An audit identifier (`FIB-02`, `OVR-10`,
+   `M-01`, `A2-04`) is a pointer to where the decision was recorded — never the
+   explanation itself. Erase the identifier and the comment must still make
+   sense.
 
-4. **Configuration**: Use functional options pattern for configurable components
+   ```go
+   // Bad — the reader has to run `git log -S` to learn anything:
+   //   // FIB-02
+   //   thresholds := []int{config.ThresholdDisabled}
 
-5. **Concurrency**: Use `sync.Pool` for frequently allocated objects
+   // Good — the reason is here, the identifier only says where to read more:
+   //   // ThresholdDisabled (-1, not 0) is the genuine sequential baseline:
+   //   // normalizeOptions replaces ==0 with the package default, so a 0
+   //   // candidate silently re-measured the default (FIB-02).
+   //   thresholds := []int{config.ThresholdDisabled}
+   ```
+
+   Only prefixes listed in [`docs/audits/INDEX.md`](docs/audits/INDEX.md) may be
+   cited, and an audit report is archived under `docs/audits/` when its work is
+   done rather than deleted. Roughly 350 identifiers in this code base pointed
+   at reports that no longer existed anywhere in the tree; the index and that
+   rule are what make them resolvable (audit DOC-01).
+
+4. **Language.** Narrative documentation — `README.md`, `CHANGELOG.md`, the
+   ADRs, `docs/*.md` — is written in **French**. Code, comments, identifiers,
+   error messages, linter configuration and commit subjects are in **English**.
+   The corpus was mixed with no stated rule, `docs/ARCH.md` alternating between
+   the two inside one document (audit DOC-02, ADR-0012 D4).
+
+5. **Error Handling**: Use the `internal/apperrors` package for custom errors
+
+6. **Configuration**: Use functional options pattern for configurable components
+
+7. **Concurrency**: Use `sync.Pool` for frequently allocated objects
 
 ### File Organization
 

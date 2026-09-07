@@ -118,6 +118,10 @@ func (a *Application) Run(ctx context.Context, out io.Writer) int {
 	a.logger = a.newDiagnosticLogger()
 	ui.InitTheme(a.Config.Quiet || a.Config.MachineOutput)
 
+	// --cpuprofile / --memprofile cover every computing mode, and the deferred
+	// stop runs on the error paths too (audit OBS-02).
+	defer a.startProfiling(a.ErrWriter)()
+
 	ctx, stopSignals := signal.NotifyContext(ctx, syscall.SIGINT, syscall.SIGTERM)
 	defer stopSignals()
 

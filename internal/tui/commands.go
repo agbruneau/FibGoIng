@@ -33,8 +33,9 @@ var runProgram = func(p *tea.Program) (tea.Model, error) { return p.Run() }
 // "TUI error: program was interrupted" and exited 1, so the documented
 // SIGINT-is-130 contract (APP-04) only held for a ^C typed in a terminal.
 func Run(ctx context.Context, calculators []orchestration.Calculator, cfg config.AppConfig, version string, errOut io.Writer, logger *slog.Logger, tuning orchestration.ThresholdTuning) int {
-	// Rebuild styles from the current ui theme (set by app.Run via InitTheme).
-	initTUIStyles()
+	// Rebuild styles from the current ui theme (set by app.Run via InitTheme)
+	// and the palette the caller selected with --tui-theme.
+	initTUIStyles(cfg.TUITheme)
 
 	model := NewModel(ctx, calculators, cfg, version, logger, tuning)
 	defer model.cancel()

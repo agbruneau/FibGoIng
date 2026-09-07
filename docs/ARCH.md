@@ -177,6 +177,83 @@ chain as this section: `cmd → app → orchestration → fibonacci → bigfft`,
 
 ---
 
+<!-- Moved here from README.md on 2026-09-07 (audit DOC-03): the README opened
+with eight audit rows and a full request-flow diagram before "Démarrage
+rapide". The diagram belongs with the architecture, not in front of the build
+instructions. Nothing was cut. -->
+
+## 2bis) Le chemin d'un calcul
+
+Ce qui se passe quand vous tapez `./fibcalc -n 1000000 -algo fast`, de `main` au code de sortie. Les
+chemins que ce parcours écarte (TUI, calibration, `-last-digits`, exponentiation matricielle) et le détail
+de chaque couche sont dans les sections suivantes de ce document.
+
+```mermaid
+flowchart TD
+  A["cmd/fibcalc/main.go — run()"] --> B["app.New — ParseConfig : flags puis FIBCALC_*"]
+  B --> C{"Profil de calibration<br/>chargé et valide ?"}
+  C -->|oui| D["applyProfileThresholds<br/>remplit les seuils non fixés"]
+  C -->|non| E["ApplyAdaptiveThresholds<br/>table matérielle CPU / SIMD / mot"]
+  D --> F["Application.Run — aiguillage<br/>completion · calibrate · tui · calcul"]
+  E --> F
+  F --> G["runCalculate<br/>garde --memory-limit, timeout, SIGINT/SIGTERM"]
+  G --> H["orchestration.ExecuteCalculations<br/>1 calculateur direct, errgroup si -algo all"]
+  H --> I["FibCalculator.CalculateWithObservers<br/>n ≤ 93 direct · cache FFT · GCController"]
+  I --> J["FastDoublingCalculator.CalculateCore<br/>état + arène empruntés, AdaptiveStrategy"]
+  J --> K["ExecuteDoublingLoop<br/>bits.Len64(n) tours — 20 pour n = 1 000 000"]
+  K --> L{"FK1.BitLen() dépasse<br/>le seuil FFT ?"}
+  L -->|oui| M["executeDoublingStepFFT<br/>internal/bigfft, transformées réutilisées"]
+  L -->|non| N["smartMultiply / smartSquare<br/>re-test par opérande, sinon math/big"]
+  M --> O["F(2k) = 2·T3 − T2 ; F(2k+1) = T1 + T2<br/>rotation des pointeurs, pas d'addition si bit = 1"]
+  N --> O
+  O --> K
+  K --> P["releaseStateWithResult<br/>résultat recopié hors de l'arène"]
+  P --> Q["AnalyzeComparisonResults + CLIResultPresenter<br/>code de sortie POSIX vers os.Exit"]
+```
+
+1. **`cmd/fibcalc/main.go` — `run`.** `-V` / `-version` court-circuite tout le reste
+   (`app.HasVersionFlag`). Sinon `app.New` construit l'application ; il n'échoue qu'en analysant ou en
+   validant la configuration, donc son erreur vaut le code 4 (`ExitErrorConfig`) — sauf `--help`, qui vaut 0.
+2. **`internal/app/app.go` — `New`.** `config.ParseConfig` lit les flags, puis les `FIBCALC_*` pour ceux
+   qui sont absents de la ligne de commande. Les trois seuils sont résolus juste après : un profil de
+   calibration qui charge **et** valide remplit ceux que vous n'avez pas fixés ; à défaut,
+   `config.ApplyAdaptiveThresholds` les lit dans la table matérielle (encadré du seuil FFT plus haut).
+3. **`Run` — aiguillage.** `-completion`, `-calibrate`, `-auto-calibrate` et `-tui` partent chacun
+   ailleurs ; tout le reste tombe dans `runCalculate`.
+4. **`internal/app/calculate.go` — `runCalculate`.** `-last-digits K` dévie vers
+   `orchestration.ComputeLastDigits` (mémoire O(K), aucun `big.Int` de la taille de F(n)). Sinon :
+   vérification du budget `--memory-limit`, puis `context.WithTimeout(-timeout)` enveloppé dans
+   `signal.NotifyContext(SIGINT, SIGTERM)` — c'est ce contexte unique qui porte l'annulation jusqu'au
+   cœur de la boucle.
+5. **`executeCalculations`.** `orchestration.GetCalculatorsToRun("fast", factory)` rend un calculateur ;
+   `all` en rend trois, triés par nom. Les seuils et le mode GC de la configuration deviennent ici un
+   `fibonacci.Options`, seul véhicule des réglages vers les couches basses.
+6. **`internal/orchestration/orchestrator.go` — `ExecuteCalculations`.** Une goroutine consomme le canal
+   de progression. Un calculateur unique emprunte un chemin direct ; plusieurs passent par `errgroup`, où
+   l'échec de l'un annule les autres par le contexte partagé.
+7. **`internal/fibonacci/calculator.go` — `CalculateWithObservers`.** n ≤ 93 : addition itérative et
+   retour immédiat. Au-delà : garde mémoire de défense en profondeur, cache FFT configuré, pools `bigfft`
+   préchauffés, puis exécution sous `GCController` — en mode `auto`, le GC est coupé à partir de
+   n ≥ 1 000 000 et restauré même en cas de panic (`WithGC`).
+8. **`fastdoubling.go` — `CalculateCore`.** Emprunte un `CalculationState` et son arène (slot GC-immune du
+   calculateur, sinon `sync.Pool`), retient `AdaptiveStrategy`, puis lance la boucle.
+9. **`doubling_framework.go` — `ExecuteDoublingLoop`.** `bits.Len64(n)` tours — **20** pour
+   n = 1 000 000 — du bit de poids fort au bit de poids faible. Par tour : trois produits
+   (T3 = FK·FK1, T1 = FK1², T2 = FK²), puis F(2k) = 2·T3 − T2 et F(2k+1) = T1 + T2, rotation des
+   pointeurs, et un pas d'addition si le bit courant vaut 1.
+10. **`strategy.go` — `AdaptiveStrategy.ExecuteStep`.** Le seul endroit où la FFT est choisie :
+    `FK1.BitLen() > FFTThreshold` envoie le pas entier dans `executeDoublingStepFFT`, qui ne transforme
+    F(k) et F(k+1) qu'une fois pour les trois produits ; sinon `smartMultiply` / `smartSquare`
+    re-testent le seuil opérande par opérande et retombent sur `math/big`. À `-n 1000000` sur cet hôte,
+    cette branche n'est jamais prise.
+11. **Retour.** `releaseStateWithResult` recopie le résultat hors de l'arène avant de rendre l'état au
+    pool — sans quoi le résultat aliaserait de la mémoire réutilisée au prochain appel.
+    `AnalyzeComparisonResults` trie les résultats, vérifie leur concordance (c'est là que `-algo all`
+    détecte une divergence, code 3) et les rend via `cli.CLIResultPresenter` ; le code POSIX remonte
+    jusqu'à `os.Exit`.
+
+---
+
 ## 3) Directory Structure
 
 > **Figure — [`architecture/dependency-graph.md`](architecture/dependency-graph.md).**

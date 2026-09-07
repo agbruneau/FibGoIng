@@ -7,6 +7,116 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [4.1.0] - 2026-09-07
+
+### Audit 2026-09-07 « livre » — exécution complète du plan
+
+Audit du dépôt à l'aune de Saeed Shahsavan, *Building Enterprise Projects with
+Go* (Apress 2026, 20 chapitres lus intégralement), puis exécution des 33 tâches
+de son plan, les deux optionnelles comprises. Rapport et suivi :
+[`docs/audits/audit-2026-09-livre.md`](docs/audits/audit-2026-09-livre.md).
+Décisions : [ADR-0012](docs/adr/0012-audit-2026-09-livre-decisions.md).
+
+Verdict de l'audit : le projet dépasse le livre sur le modèle d'erreurs, la
+concurrence, la profondeur des tests et la traçabilité des décisions ; il restait
+en deçà sur l'exécution garantie du gate, l'épinglage des outils et l'étanchéité
+des couches.
+
+#### Ajouté
+
+- **CI GitHub Actions** (`.github/workflows/ci.yml`), en renversement d'ADR-0004
+  §B3 et d'ADR-0010 D4. Cinq jobs : le gate sur Ubuntu et Windows, la suite
+  `-tags gmp` avec libgmp, un build 32/64 bits croisé, la construction de l'image
+  Docker, et un fuzzing hebdomadaire. La clause de révision d'ADR-0010 D4 était
+  atteinte : `govulncheck`, `gosec` et `staticcheck` étaient **tous trois
+  incapables de démarrer** sur l'hôte de référence, binaires go1.26 sous go1.27,
+  et rien ne le signalait.
+- **Journal de diagnostic** : `--log-level` / `FIBCALC_LOG_LEVEL`, texte sur
+  stderr, JSON sous `--machine`. Il rend atteignables quatre enregistrements qui
+  existaient déjà dans le code sans qu'aucun ne puisse être vu depuis le binaire :
+  GC coupé et rétabli avec taille du tas et cycles, ajustement des seuils
+  dynamiques, taux de succès de la cache FFT, résumé par calcul.
+- **`--cpuprofile` / `--memprofile`** : `pprof` n'était atteignable que par
+  `go test -bench`.
+- **`--profile-max-age` et `--tui-theme`**, avec leurs variables
+  `FIBCALC_*` : les deux réglages étaient lus directement par `os.Getenv` au fond
+  du code, donc absents de `--help`, non surchargeables par un drapeau et invisibles
+  au test qui garde la table d'environnement synchronisée.
+- **`scripts/tools.env`** : versions d'outils épinglées, lues par les deux gates,
+  le `Makefile` et la CI ; exécution par `go run <pkg>@<version>`.
+- **`docs/audits/INDEX.md`** : les ~350 identifiants d'audit cités dans les
+  commentaires deviennent résolubles. `TestAuditIdentifiersResolve` refuse tout
+  nouveau préfixe non listé.
+
+#### Corrigé
+
+- **`--calibrate` et `--auto-calibrate` ignoraient Ctrl-C et `--timeout`.**
+  `signal.NotifyContext` était dupliqué dans trois fonctions et absent de ces
+  deux modes, qui tournaient sur le contexte brut de `main` ; la branche
+  « Calibration interrupted » était inatteignable depuis le binaire. Un seul
+  point d'installation dans `Run`, un délai par mode qui calcule, et le code de
+  sortie distingue désormais l'expiration (2) de l'annulation (130).
+- **`GOARCH=386` ne compilait pas** : `maxReasonableWords = 1 << 60`, déclaré
+  deux fois, ne tient pas dans un `int` 32 bits. Une seule définition,
+  relative à la taille du mot. `386`, `arm` et `arm64` compilent.
+- **Test *flaky* connu, corrigé à la cause** :
+  `TestStateBump_PinnedAcrossCachedCalls` échouait parce qu'un autre test laissait
+  une arène surdimensionnée dans le `statePool` global. 50 passes isolées et 10
+  passes `-race -shuffle=on` du paquet, toutes vertes.
+- **`--memory-limit` n'atteignait pas les calculateurs** : `Options.MemoryLimitBytes`
+  et `CanCalculate`, documentés comme défense en profondeur, n'étaient renseignés
+  par aucun appelant de production.
+- **Les graines de fuzzing de `bigfft` n'atteignaient pas la FFT** : toutes sous
+  le seuil, donc chaque rejeu comparait `math/big` à lui-même. Le rejeu couvre
+  maintenant `fftmul` et `fftsqr` à 100 %.
+- **`Register` acceptait tout** : nom vide, créateur nil, et remplaçait
+  silencieusement un calculateur existant, tout en obligeant l'appelant à vérifier
+  une erreur qui ne pouvait pas survenir.
+- **Vulnérabilité atteignable dans la bibliothèque standard** : GO-2026-4602
+  (`os`, `FileInfo` s'échappant d'un `Root`) via `gopsutil`. Plancher Go porté à
+  1.26.1 ; `golang.org/x/text` monté à v0.39.0 pour GO-2026-5970.
+- **`make build` cassé partout où `GOFLAGS` est défini** (devcontainer,
+  Dockerfile, CI) : le `Makefile` avait nommé sa propre variable `GOFLAGS`.
+- **Test dépendant du nombre de cœurs** : `TestGenerateParallelThresholds`
+  attendait une valeur que FIB-02 avait cessé de produire, dans une branche que
+  l'hôte à 24 cœurs du mainteneur ne prenait jamais.
+- **Tests écrivant hors de leur bac à sable** : le profil de calibration allait
+  dans le répertoire personnel réel, le binaire e2e dans un chemin fixe partagé.
+
+#### Modifié
+
+- **Frontières.** `internal/apperrors` ne fait plus de présentation
+  (`ExitCodeFor` pur, `cli.WriteCalculationStatus` pour le texte) ;
+  `internal/calibration` n'importe plus `internal/ui` et parle par un port
+  `Reporter` de quatre méthodes ; l'interface de fabrique à cinq méthodes est
+  remplacée par deux interfaces définies côté consommateur. Le gate
+  d'architecture passe de 5 à 7 règles.
+- **État mutable de paquet supprimé** : `threshold.Tuning` voyage par valeur dans
+  chaque manager. Les cinq variables non synchronisées, `SetTuning`, le `sync.Once`
+  qui les protégeait et le commentaire d'invariant qui admettait la course
+  disparaissent ensemble.
+- **`internal/errors` renommé `internal/apperrors`** : le répertoire porte enfin
+  le nom du paquet.
+- **Deux dépendances directes retirées** : `zerolog` (inerte) et
+  `briandowns/spinner` (une ligne de progression payée d'une course contournée en
+  relançant une goroutine cinq fois par seconde). Graphe de modules 201 → 198.
+- **`AppConfig.Validate` rapporte tous les problèmes**, joints par `errors.Join`,
+  au lieu de s'arrêter au premier.
+- **`-shuffle=on -count=1`** dans les deux gates, `make test` et la CI.
+- **Documentation** : historique des audits sorti du README (494 → 400 lignes),
+  chemin d'un calcul déplacé dans `ARCH.md`, dépannage dans `BUILD.md`, règle de
+  langue et politique de commentaires inscrites dans `CONTRIBUTING.md`, dix
+  fichiers de test renommés par thème.
+
+#### Vérification
+
+Gate vert de bout en bout : build, vet, `go test -race -shuffle=on -count=1` sur
+22 paquets, `golangci-lint` à 0 finding, couverture **96,1 %** (plancher 80 %),
+`govulncheck` sans vulnérabilité. `benchstat` sur 10 séries de 3 itérations :
+geomean sec/op −3,45 %, B/op et allocations plats ; les écarts signalés se
+reproduisent sur une comparaison A/A à code identique.
+
+
 ### Documentation resynchronisée sur la source, et dédupliquée (2026-09-04)
 
 Trois passes sur tout le corpus Markdown, chaque affirmation confrontée au code, à

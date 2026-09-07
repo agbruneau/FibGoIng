@@ -7,7 +7,7 @@
 //     [ColorRed], [ColorGreen], … helpers and [GetCurrentTheme].
 //   - TUI themes ([TUITheme], [DarkTUITheme], [HighContrastTUITheme], [NoColorTUITheme])
 //     hold lipgloss-compatible colors used by the Bubble Tea dashboard via
-//     [GetCurrentTUITheme].
+//     [TUIThemeFor].
 //
 // Both systems honor the NO_COLOR environment variable through [InitTheme]
 // (per https://no-color.org/). There is no --no-color flag: the boolean

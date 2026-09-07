@@ -1,9 +1,9 @@
 # ADR-0012: Audit 2026-09-07 « livre » — décisions D1 à D5
 
-- **Status**: Proposed
+- **Status**: Accepted
 - **Date**: 2026-09-07
 - **Deciders**: André-Guy Bruneau (mainteneur)
-- **Context source**: [`audit.md`](../../audit.md) — audit du dépôt à l'aune de
+- **Context source**: [`audit-2026-09-livre.md`](../audits/audit-2026-09-livre.md) — audit du dépôt à l'aune de
   Saeed Shahsavan, *Building Enterprise Projects with Go*, Apress 2026 (20
   chapitres). Gate rejoué le 2026-09-07 sur `c6ce7fb` : build / vet /
   `golangci-lint` / `gofmt` / `go mod tidy -diff` à zéro, 21 paquets verts,
@@ -36,7 +36,8 @@ trois outils, et de nouveau silencieux : aucun gate ne les appelle, donc rien ne
 le signale.
 
 Cinq décisions conditionnaient le plan d'exécution de l'audit
-([`audit.md` § 7.2](../../audit.md)). Elles sont tranchées ici.
+([`audit-2026-09-livre.md` § 7.2](../audits/audit-2026-09-livre.md)). Elles
+sont tranchées ici.
 
 ## Decision
 
@@ -53,10 +54,17 @@ lui-même n'est plus supposable**, et l'échec est muet.
 Le workflow n'est pas un remplacement du gate local mais son exécution
 garantie : matrice `ubuntu-latest` / `windows-latest`, version Go lue depuis
 `go.mod`, `gofmt` / `go vet` / `go build` / `go test -race -shuffle=on
--count=1` avec le plancher de couverture, lint et `govulncheck` épinglés (D2 de
-l'outillage, voir T02), un job Ubuntu `libgmp-dev` qui exécute enfin l'étape
-`-tags gmp` restée en SKIP sur l'hôte Windows, un build `GOARCH=386` et un job
-planifié de fuzzing.
+-count=1` avec le plancher de couverture, lint et `govulncheck` épinglés (T02),
+un job Ubuntu `libgmp-dev` qui exécute enfin l'étape `-tags gmp` restée en SKIP
+sur l'hôte Windows, un build `GOARCH=386`, une construction de l'image Docker et
+un job planifié de fuzzing.
+
+L'épinglage retenu en T02 n'est pas celui que l'audit proposait. La directive
+`tool` de `go.mod` a été essayée puis **rejetée sur mesure** : elle fait passer
+le graphe de modules de 201 à 450 et, par MVS, remonte une dépendance de
+production (`gopsutil` v4.26.3 → v4.26.7). Les versions vivent donc dans
+`scripts/tools.env` et les outils s'exécutent par `go run <pkg>@<version>`, ce
+qui donne la même garantie de reconstruction sans toucher au graphe.
 
 Cette décision **renverse** ADR-0004 §B3 (volet « pas de CI ») et ADR-0010 D4.
 ADR-0004 §B3 reste valide sur son objet propre : pas de *bench cross-arch*
@@ -125,8 +133,8 @@ fichiers *golden* correspondants sont régénérés puis relus.
 ### Positive
 
 - Le gate cesse de dépendre de la mémoire du mainteneur et de l'état de son
-  `PATH` ; la classe de défaillance GATE-01 est fermée par construction (outils
-  reconstruits par `go tool` à chaque changement de chaîne Go).
+  `PATH` ; la classe de défaillance GATE-01 est fermée par construction (les
+  outils sont reconstruits à chaque changement de chaîne Go).
 - L'étape `-tags gmp` et le build 32 bits, jamais exécutés sur l'hôte de
   développement, entrent dans le cycle.
 - Deux dépendances directes disparaissent (`zerolog`, `spinner`), et le domaine
@@ -147,8 +155,8 @@ fichiers *golden* correspondants sont régénérés puis relus.
   `CalculateWithObservers`) : `slog.DiscardHandler` court-circuite avant
   formatage ; vérification `benchstat` en double ordre au seuil de 5 %
   (protocole [ADR-0009](0009-audit-2026-07-cleanup-and-rejected-fib05.md) R4).
-- **CI qui diverge du gate local** : les deux appellent les mêmes outils par
-  `go tool`, à la même version épinglée dans `go.mod`.
+- **CI qui diverge du gate local** : les deux lisent `scripts/tools.env`, donc
+  les mêmes outils aux mêmes versions.
 - **Renommage D3 qui casse un renvoi documentaire** : recherche des occurrences
   dans `docs/` et `README` incluse dans la tâche.
 
@@ -165,9 +173,58 @@ fichiers *golden* correspondants sont régénérés puis relus.
 - **D5 — garder `spinner` et vivre avec le contournement** : rejeté ; le
   contournement est plus long que le remplacement.
 
+## Exécution
+
+Les cinq décisions ont été appliquées le 2026-09-07, en quatre phases et cinq
+commits sur `main` : `fd0f21c` (outillage et CI), `24e3cdb` (correctifs de
+comportement), `44e3520` (défauts trouvés par la CI), `c2329f3` (frontières et
+dépendances), puis la clôture. Les 33 tâches du plan sont exécutées, les deux
+optionnelles comprises ; le seul écart est consigné dans la ligne T25 du tableau
+de suivi.
+
+### Ce que la décision D1 a rapporté immédiatement
+
+La CI a trouvé cinq défauts sur ses trois premiers passages, aucun reproductible
+par le gate local :
+
+1. `TestGenerateParallelThresholds` attendait un seuil séquentiel de `0`, valeur
+   que FIB-02 avait remplacée par `ThresholdDisabled`. L'assertion vivait dans
+   la branche « 4 cœurs ou moins », que l'hôte à 24 cœurs du mainteneur ne prend
+   jamais : elle était morte depuis FIB-02. Un *runner* à 4 cœurs l'a touchée en
+   trois minutes. Corrigé à la cause : le `switch` sur le nombre de cœurs est
+   devenu une fonction pure, et les quinze cas de branche sont couverts sur
+   n'importe quel hôte.
+2. `go test -coverprofile=…` échoue sur le *runner* Windows, dont le shell par
+   défaut est pwsh — le piège que `scripts/check.ps1` documentait déjà et que le
+   workflow a répété.
+3. `GOARCH=386` ne compilait pas (TYP-01), corrigé en phase 2.
+4. `make build` était cassé partout où `GOFLAGS` est défini dans
+   l'environnement — le devcontainer, le `Dockerfile` et la CI — parce que le
+   `Makefile` avait nommé sa propre variable `GOFLAGS`. `make build` n'avait
+   simplement jamais été lancé dans aucun des trois.
+5. `govulncheck` a signalé GO-2026-4602 (`os`, `FileInfo` s'échappant d'un
+   `Root`) **atteignable** : `gopsutil` appelle `os.File.Readdir` depuis
+   `cpu.init`, et `internal/tui` l'importe. Présente dans go1.26.0, la version
+   que `go.mod` déclarait ; le plancher est passé à go1.26.1. L'hôte du
+   mainteneur tourne sous go1.27 et ne pouvait pas la voir.
+
+Le job `gmp` a par ailleurs exécuté la suite `-tags gmp` pour la première fois
+depuis que l'étape existe : elle était en SKIP sur l'hôte de développement,
+faute d'en-têtes libgmp.
+
+### Mesures
+
+`benchstat`, 10 séries de 3 itérations, protocole ADR-0009 R4 : geomean sec/op
+**−3,45 %**, B/op plat, allocations plates. Les deux écarts que `benchstat`
+signale se reproduisent sur une comparaison A/A à code identique — la dispersion
+de l'hôte dépasse le seuil de 5 % sur ce jeu de benchmarks.
+
+Couverture 96,6 % → **96,1 %**, plancher 80 % tenu. Dépendances directes 10 → 8,
+graphe de modules 201 → 198.
+
 ## References
 
-- Audit : [`audit.md`](../../audit.md) § 7.2 (décisions) et § 7.3 (plan)
+- Audit : [`audit-2026-09-livre.md`](../audits/audit-2026-09-livre.md) § 7.2 (décisions), § 7.3 (plan) et § 7.8 (suivi)
 - ADR renversés : [ADR-0004](0004-backlog-decisions.md) §B3 (volet CI),
   [ADR-0010](0010-audit-2026-09-decisions.md) D4
 - ADR liés : [ADR-0009](0009-audit-2026-07-cleanup-and-rejected-fib05.md) R4

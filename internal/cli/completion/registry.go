@@ -45,6 +45,10 @@ var flagRegistry = []FlagCompletion{
 	{Long: "memory-limit", Help: "Maximum memory budget (e.g., 8G, 512M)", ValueName: "size"},
 	{Long: "gc-control", Help: "GC control during calculation", Values: []string{"auto", "aggressive", "disabled"}, ValueName: "mode"},
 	{Long: "log-level", Help: "Diagnostic log verbosity on stderr", Values: []string{"off", "error", "warn", "info", "debug"}, ValueName: "level"},
+	{Long: "tui-theme", Help: "TUI palette", Values: []string{"dark", "high-contrast"}, ValueName: "theme"},
+	{Long: "profile-max-age", Help: "Freshness window for a cached calibration profile", ValueName: "duration"},
+	{Long: "cpuprofile", Help: "Write a pprof CPU profile to this file", IsFile: true, ValueName: "file"},
+	{Long: "memprofile", Help: "Write a pprof heap profile to this file", IsFile: true, ValueName: "file"},
 	{Long: "dynamic-thresholds", Help: "Adjust FFT/parallelism thresholds during the calculation"},
 }
 

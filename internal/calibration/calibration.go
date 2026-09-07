@@ -5,7 +5,6 @@ import (
 	"errors"
 	"fmt"
 	"io"
-	"os"
 	"runtime"
 	"sync"
 	"time"
@@ -33,26 +32,19 @@ const CalibrationN = 10_000_000
 // thresholds keep tracking the current hardware/runtime characteristics.
 const DefaultProfileMaxAge = 7 * 24 * time.Hour
 
-// ProfileMaxAgeEnv is the environment variable name read by
-// profileMaxAgeFromEnv to override DefaultProfileMaxAge. The value must
-// be parseable by time.ParseDuration (e.g. "168h", "30m"). Invalid or
-// non-positive values fall back to DefaultProfileMaxAge.
-const ProfileMaxAgeEnv = "FIBCALC_PROFILE_MAX_AGE"
-
-// profileMaxAgeFromEnv returns the configured maximum age for a cached
-// calibration profile. It honors the FIBCALC_PROFILE_MAX_AGE environment
-// variable when set to a valid, positive time.Duration string; otherwise
-// it returns DefaultProfileMaxAge.
-func profileMaxAgeFromEnv() time.Duration {
-	raw := os.Getenv(ProfileMaxAgeEnv)
-	if raw == "" {
-		return DefaultProfileMaxAge
+// profileMaxAge resolves the freshness window for a cached profile: the
+// caller's setting when positive, DefaultProfileMaxAge otherwise.
+//
+// It takes the value from AppConfig rather than reading FIBCALC_PROFILE_MAX_AGE
+// itself (audit CFG-02). The variable is still honored — internal/config's
+// override table maps it, alongside --profile-max-age — but it is now parsed
+// where every other setting is parsed, reported by --help, and covered by the
+// integrity test that keeps the flag set and the table in sync.
+func profileMaxAge(cfg config.AppConfig) time.Duration {
+	if cfg.ProfileMaxAge > 0 {
+		return cfg.ProfileMaxAge
 	}
-	d, err := time.ParseDuration(raw)
-	if err != nil || d <= 0 {
-		return DefaultProfileMaxAge
-	}
-	return d
+	return DefaultProfileMaxAge
 }
 
 // ProgressDisplayFunc is a function that displays progress from a channel.
@@ -331,7 +323,7 @@ func AutoCalibrateWithProfile(parentCtx context.Context, cfg config.AppConfig, r
 	// Try to load existing profile first.
 	profile, loaded := LoadOrCreateProfile(profilePath)
 	profileFresh := loaded && profile.IsValid()
-	maxAge := profileMaxAgeFromEnv()
+	maxAge := profileMaxAge(cfg)
 	profileStale := profileFresh && profile.IsStale(maxAge)
 
 	if profileFresh && !profileStale {

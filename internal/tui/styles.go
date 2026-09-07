@@ -35,18 +35,23 @@ var (
 
 // init builds the TUI styles once at package load so that tests and callers
 // that exercise rendering helpers without going through Run() observe a
-// consistent, non-zero set of styles. Run() invokes initTUIStyles() again
-// after app.Run has resolved the final theme via ui.InitTheme — this second
-// call is required because the active theme may have changed (e.g. NO_COLOR,
-// FIBCALC_TUI_THEME=high-contrast) between package load and Run().
+// consistent, non-zero set of styles. Run() invokes initTUIStyles again after
+// app.Run has resolved the final theme via ui.InitTheme — this second call is
+// required because the active theme may have changed (NO_COLOR, --machine,
+// --tui-theme) between package load and Run().
 func init() {
-	initTUIStyles()
+	initTUIStyles("")
 }
 
-// initTUIStyles rebuilds all TUI styles from the current ui theme.
-// Idempotent: safe to call multiple times.
-func initTUIStyles() {
-	t := ui.GetCurrentTUITheme()
+// initTUIStyles rebuilds all TUI styles from the current ui theme and the named
+// palette ("" or "dark" for the default, "high-contrast" for the accessible
+// one). Idempotent: safe to call multiple times.
+//
+// The palette arrives as an argument because internal/ui no longer reads
+// FIBCALC_TUI_THEME for itself (audit CFG-02): the value is parsed by
+// internal/config, like every other setting, and travels down with the config.
+func initTUIStyles(themeName string) {
+	t := ui.TUIThemeFor(themeName)
 
 	panelStyle = lipgloss.NewStyle().
 		Border(lipgloss.RoundedBorder()).
