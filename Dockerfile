@@ -6,16 +6,32 @@
 #     cmd/fibcalc/default.pgo when present.
 #  2. runtime — distroless minimal base shipping only the linked binary.
 #
-# Audit-PRD E6 / Sprint S1-T6.
+# Build responsibility is delegated to the Makefile (audit STR-02): the compile
+# flags — -trimpath, the PGO profile, and the three -X version symbols — live in
+# exactly one place. This image used to repeat a bare `go build -ldflags="-s -w"`
+# that omitted the version symbols entirely, so `docker run ... --version`
+# reported "fibcalc dev / Commit: unknown / Built: unknown".
+#
+# .dockerignore excludes .git, so `git describe` cannot run inside the build.
+# Pass the identity in explicitly; the defaults below are honest placeholders,
+# not guesses at a version:
+#
+#   docker build \
+#     --build-arg VERSION="$(git describe --tags --always --dirty)" \
+#     --build-arg COMMIT="$(git rev-parse --short HEAD)" \
+#     --build-arg BUILD_DATE="$(date -u +%Y-%m-%dT%H:%M:%SZ)" \
+#     -t fibcalc:local .
 
 ARG GO_VERSION=1.26
 
-# TODO(SEC-04): pin by digest (golang:${GO_VERSION}-bookworm@sha256:...).
-# Not pinned here because this sandbox has no verified registry access
-# (docker CLI absent, registry auth calls blocked) to resolve a trustworthy
-# digest — do not guess one. Resolve with `docker buildx imagetools inspect
-# golang:1.26-bookworm` or `crane digest golang:1.26-bookworm` on a machine
-# with registry access, then paste the sha256 here.
+# TODO(SEC-04): pin by digest — golang:${GO_VERSION}-bookworm@sha256:<...>
+# Still open after the 2026-09-07 audit, for the same reason and no other: every
+# environment this repository has been edited from lacks both a docker CLI and
+# outbound registry access, so no digest can be resolved. A guessed digest is
+# worse than a tag, so none is written here. Resolve on any machine with
+# registry access and paste the result:
+#     docker buildx imagetools inspect golang:1.26-bookworm --format '{{.Manifest.Digest}}'
+#     crane digest golang:1.26-bookworm
 FROM golang:${GO_VERSION}-bookworm AS builder
 
 ENV CGO_ENABLED=0 \
@@ -23,22 +39,35 @@ ENV CGO_ENABLED=0 \
 
 WORKDIR /src
 
+# The Makefile is the build contract; golang:*-bookworm ships git but not make.
+RUN apt-get update \
+    && apt-get install -y --no-install-recommends make \
+    && rm -rf /var/lib/apt/lists/*
+
 # Cache module downloads independently of source edits.
 COPY go.mod go.sum ./
 RUN go mod download
 
 COPY . .
 
-# Build the static-friendly binary. PGO profile is consumed automatically
-# when cmd/fibcalc/default.pgo exists in the source tree.
-RUN go build -ldflags="-s -w" -o /out/fibcalc ./cmd/fibcalc \
-    && /out/fibcalc --version > /dev/null
+# Identity of the build, supplied by the caller (see header). The Makefile reads
+# these as overridable variables and injects them via -X.
+ARG VERSION=docker
+ARG COMMIT=unknown
+ARG BUILD_DATE=unknown
+
+# `make build` applies -trimpath, the -X version symbols and the PGO profile
+# from cmd/fibcalc/default.pgo when it is present. The --version call is a smoke
+# test: it fails the build if the binary cannot start.
+RUN make build VERSION="${VERSION}" COMMIT="${COMMIT}" BUILD_DATE="${BUILD_DATE}" \
+    && mkdir -p /out \
+    && cp build/fibcalc /out/fibcalc \
+    && /out/fibcalc --version
 
 
-# TODO(SEC-04): pin by digest (gcr.io/distroless/base-debian12@sha256:...).
-# Same reason as the builder stage above — resolve with
-# `crane digest gcr.io/distroless/base-debian12` on a machine with registry
-# access, then paste the sha256 here.
+# TODO(SEC-04): pin by digest — gcr.io/distroless/base-debian12@sha256:<...>
+# Same reason as the builder stage above. Resolve with:
+#     crane digest gcr.io/distroless/base-debian12
 FROM gcr.io/distroless/base-debian12 AS runtime
 
 COPY --from=builder /out/fibcalc /usr/local/bin/fibcalc

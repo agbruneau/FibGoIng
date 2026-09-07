@@ -1037,10 +1037,10 @@ The project uses standard Go tooling + Makefile workflows.
 ### Key Make targets
 
 - **Build:** `build`, `build-all`, `build-linux`, `build-linux-arm64`, `build-windows`, `build-windows-arm64`, `build-darwin`
-- **Test/quality:** `test`, `test-short`, `coverage`, `benchmark`, `lint`, `security`, `check`
+- **Test/quality:** `test`, `test-short`, `coverage`, `benchmark`, `lint`, `security`, `vulncheck`, `check`
 - **Dev hygiene:** `format`, `tidy`, `deps`, `upgrade`
 - **PGO:** `pgo-profile`, `pgo-check`, `build-pgo`, `build-pgo-all`, `pgo-rebuild`, `pgo-clean`
-- **Tools:** `install-tools` (golangci-lint, gosec)
+- **Tools:** none to install — versions are pinned in `scripts/tools.env` and run via `go run <pkg>@<version>`
 
 ### Version injection
 

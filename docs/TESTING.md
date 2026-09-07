@@ -497,7 +497,11 @@ go test -v ./test/e2e/
 
 ## Local Validation Guardrails (A5-02 + A5-10)
 
-There is **no remote CI** for this project (an assumed decision). Pre-commit validation rests entirely on **local guardrails** that the contributor is expected to run before each commit:
+Since 2026-09-07 (audit PRO-01 / ADR-0012 D1) `.github/workflows/ci.yml` runs the
+same sequence on every push and pull request, with `-race -shuffle=on -count=1`,
+plus three things no development host here can do: the `-tags gmp` suite, a
+32-bit compile, and a Docker image build. The local guardrails below remain the
+fast path and are still expected to be green before pushing:
 
 | Guardrail | Role |
 |---|---|

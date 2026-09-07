@@ -272,8 +272,10 @@ there is `scripts/check.ps1`.
 |--------|-------------|
 | `tidy` | `go mod tidy` + verify |
 | `deps` | `go mod download` |
-| `upgrade` | `go get -u` + tidy |
-| `install-tools` | Install golangci-lint and gosec |
+| `upgrade` | `go get -u=patch` + tidy (patch level only — name the module for a minor/major bump) |
+| `lint` | `golangci-lint` at the version pinned in `scripts/tools.env` |
+| `security` | `gosec` at the pinned version |
+| `vulncheck` | `govulncheck` at the pinned version (gate step 6) |
 
 ### Utility Targets
 
@@ -290,14 +292,14 @@ there is `scripts/check.ps1`.
 The project uses `golangci-lint` **v2** with 21 linters plus the `gofmt`
 formatter, configured in `.golangci.yml` (schema `version: "2"`).
 
-```bash
-# Install (v2 — a v1 binary cannot analyze this module under go1.27+)
-make install-tools
+No installation step: the version is pinned in `scripts/tools.env` and built
+from source on demand (audit PRO-02).
 
+```bash
 # Run linter
 make lint
-# or
-golangci-lint run ./...
+# or, directly — the version comes from scripts/tools.env
+go run github.com/golangci/golangci-lint/v2/cmd/golangci-lint@v2.13.2 run ./...
 ```
 
 The expected state is **zero findings** — the gate treats any non-zero exit as
@@ -318,14 +320,30 @@ These limits are relaxed in `_test.go` files to accommodate table-driven test
 patterns, along with `gosec`, `unparam` and `noctx` (the e2e suites spawn
 `go build` and the built binary on purpose).
 
+## Continuous Integration
+
+`.github/workflows/ci.yml` runs on every push and pull request to `main`
+(reinstated 2026-09-07, audit PRO-01 / ADR-0012 D1, reversing ADR-0004 §B3 and
+ADR-0010 D4). Jobs:
+
+| Job | What it covers |
+|---|---|
+| `gate` (ubuntu + windows) | gofmt, vet, build, `go test -race -shuffle=on -count=1`, lint, govulncheck, 80% coverage floor, `go mod tidy -diff` |
+| `gmp` | `-tags gmp` build/vet/test with libgmp installed — the step that is SKIP on the maintainer's host |
+| `cross-build` | `GOARCH=386` and `GOARCH=arm64` compile check |
+| `docker` | builds the image, asserts the version symbols are injected, runs a calculation |
+| `fuzz` | weekly (and on demand) mutation fuzzing, 120s per target |
+
+Tool versions come from `scripts/tools.env`, the same file the local gates read.
+
 ## Local Pre-Commit Checks
 
-There is no remote CI; validation is a deliberately local-only responsibility. Two
-gate scripts run the same core sequence (build, vet, test, lint, 80% coverage
-floor). One difference remains: `check.sh` has a step 3b that builds, vets
+The local gate is the fast path; CI is the guarantee. Two gate scripts run the
+same core sequence (build, vet, test, lint, 80% coverage floor, govulncheck).
+One difference remains: `check.sh` has a step 3b that builds, vets
 and tests under `-tags gmp` when the libgmp headers are present
 (`scripts/check.sh`, the block headed `step "gmp build tag (-tags gmp)"`);
-`check.ps1` has no such step (its header comment lists five steps, not six).
+`check.ps1` has no such step. CI closes that gap on every push.
 
 The race detector is **no longer** one of the differences (audit D4, 2026-09-03):
 `check.ps1` probes for `CGO_ENABLED` and a C compiler and adds `-race` when both

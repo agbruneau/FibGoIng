@@ -127,7 +127,9 @@ Chaque constat : **principe** du livre (chapitre, section, page), **preuve** dan
 - `.devcontainer/devcontainer.json` installe `staticcheck@latest` et `benchstat@latest` ; `staticcheck` n'est appelé par aucun gate.
 - Les trois outils cassés (PRO-01) le sont précisément parce qu'ils ont été installés à une date et jamais reconstruits.
 
-**Recommandation.** Épingler par la directive `tool` de `go.mod` (Go ≥ 1.24) : `go get -tool github.com/golangci/golangci-lint/v2/cmd/golangci-lint@v2.13.2`, idem pour `govulncheck`, `benchstat`, `gosec`. Les gates appellent `go tool golangci-lint run ./...` : le binaire est reconstruit avec la chaîne courante à chaque `go` mis à jour, ce qui supprime la classe de défaillance GATE-01. Retirer `install-tools` et l'installation `@latest` du devcontainer.
+**Recommandation.** Épingler la version et reconstruire l'outil avec la chaîne courante à chaque appel, ce qui supprime la classe de défaillance GATE-01. Deux formes existent ; **retenu : `go run <pkg>@<version>`**, avec les versions dans un fichier unique (`scripts/tools.env`) lu par les deux gates, le `Makefile` et la CI.
+
+La directive `tool` de `go.mod` (Go ≥ 1.24) a été essayée d'abord et **rejetée sur mesure** : `go get -tool …/golangci-lint@v2.13.2` tire l'arbre de dépendances du linter dans le module principal, fait passer le graphe de **201 à 450 modules** et, par MVS, **remonte une dépendance de production** (`github.com/shirou/gopsutil/v4` v4.26.3 → v4.26.7). Un épinglage d'outil ne doit pas déplacer une dépendance de production. Retirer `install-tools` et l'installation `@latest` du devcontainer.
 
 #### PRO-03 · Basse · Effort S — Messages de commit hors convention
 
@@ -695,7 +697,7 @@ Effort : S < 2 h, M ½–1 j, L 1–3 j. « Vérif. » = commande dont le résul
 | ID | Tâche | Constats | Fichiers | Critère d'acceptation | Vérif. | Effort | Dép. |
 |---|---|---|---|---|---|---|---|
 | T01 | Workflow CI : matrice `ubuntu-latest`/`windows-latest`, `go-version-file: go.mod`, étapes `gofmt -l`, `go vet`, `go build`, `go test -race -shuffle=on -count=1 -coverprofile`, plancher 80 % (`scripts/check.sh --coverage-only` sous Ubuntu), lint (T02), `govulncheck` (T04) ; job Ubuntu `libgmp-dev` + `-tags gmp` ; job planifié hebdomadaire fuzz (T11) | PRO-01, STR-01 | `.github/workflows/ci.yml` ; retirer la ligne `!.github/workflows/coverage.yml` de `.gitignore` | Vert sur `push` et `pull_request` ; l'étape `gmp` compile et teste `calculator_gmp.go` pour la première fois depuis un hôte sans libgmp | Exécution GitHub ; `gh run list` | M | — (D1 tranchée) |
-| T02 | Épinglage par `go.mod` `tool` : `golangci-lint@v2.13.2`, `govulncheck`, `benchstat`, `gosec` ; gates et Makefile appellent `go tool <outil>` ; retirer `install-tools` ; devcontainer sans `@latest` | PRO-02 | `go.mod`, `Makefile`, `scripts/check.*`, `.devcontainer/devcontainer.json`, `CONTRIBUTING.md`, `docs/BUILD.md` | `go tool golangci-lint version` → 2.13.2 sur tout hôte ; aucun binaire de `PATH` requis par le gate | `go mod tidy -diff` vide ; `bash scripts/check.sh` | S | — |
+| T02 | Versions d'outils dans `scripts/tools.env` (source unique : deux gates + Makefile + CI), invoquées par `go run <pkg>@<version>` ; retirer `install-tools` ; devcontainer sans `@latest` | PRO-02 | `scripts/tools.env`, `Makefile`, `scripts/check.*`, `.devcontainer/devcontainer.json`, `CONTRIBUTING.md`, `docs/BUILD.md` | lint et `govulncheck` s'exécutent à la version épinglée sur tout hôte ; aucun binaire de `PATH` requis ; graphe de modules inchangé (201) | `go mod tidy -diff` vide ; `bash scripts/check.sh` | S | — |
 | T03 | `-shuffle=on -count=1` dans `check.sh`, `check.ps1`, `make test`, `make test-win` | TST-03 | `scripts/check.*`, `Makefile` | Les deux scripts passent ; toute défaillance d'ordre est traitée par T10 | `grep -c shuffle scripts/*` = 2 | S | — |
 | T04 | `go tool govulncheck ./...` comme étape dure des deux gates | DEP-01, SEC-01 | `scripts/check.*`, `Makefile` | Étape présente, exit 0 | `bash scripts/check.sh` | S | T02 |
 | T05 | `.dockerignore` ; `Dockerfile` : `ARG VERSION COMMIT BUILD_DATE` injectés par la même `LDFLAGS` que le Makefile (ou `make build`) ; digests résolus sur un hôte Docker | STR-02, SEC-02 | `Dockerfile`, `.dockerignore`, `docs/BUILD.md` | `docker run fibcalc:local --version` affiche le `git describe` ; les deux `TODO(SEC-04)` fermés | Sur hôte Docker : `docker build` puis `--version` | S | Hôte Docker |
@@ -794,6 +796,51 @@ Critère : aucune régression > 5 % confirmée dans les deux ordres.
 | 3 — Optionnelle T20 | + ½ j |
 | 4 — Lisibilité et documentation | 1½ j |
 | **Total** | **8 à 9 jours-personne** |
+
+### 7.8 Tableau de suivi d'exécution
+
+Mis à jour à chaque tâche. Statuts : ☐ à faire · ⟳ en cours · ☑ terminée et
+vérifiée · ⊘ écartée (motif consigné).
+
+Exécution menée directement sur `main` (le mainteneur pousse sur `main` à la
+fin de chaque phase), et non sur la branche `audit/2026-09-livre` prévue en
+T00.
+
+| Phase | Tâche | Statut | Commit | Vérification |
+|---|---|---|---|---|
+| 0 | T00 Cadrage, base de référence, ADR-0012 | ☑ | — | base `benchstat` `-count=8` et couverture 96,7 % capturées ; ADR-0012 en *Proposed* |
+| 1 | T01 Workflow CI | ☑ |  | `.github/workflows/ci.yml` : 5 jobs (gate ubuntu+windows, gmp, cross-build 386/arm64, docker, fuzz hebdo). YAML validé ; exécution GitHub à confirmer au premier push |
+| 1 | T02 Épinglage des outils (`go run pkg@version`) | ☑ |  | `scripts/tools.env` lu par les 2 gates, le Makefile et la CI ; `go run pkg@version`. Directive `tool` mesurée puis rejetée (montait `gopsutil` v4.26.3→v4.26.7, graphe 201→450) |
+| 1 | T03 `-shuffle=on -count=1` dans les gates | ☑ |  | gate PowerShell vert avec ordre aléatoire ; ajouté aussi à `make test`/`test-win` et à la CI |
+| 1 | T04 `govulncheck` dans les gates | ☑ |  | étape 6 dure dans les deux gates ; `v1.7.0` tourne sous go1.27 et sort 0 (1 vuln non appelée dans `x/text` indirect) |
+| 1 | T05 `.dockerignore`, version et digests | ☑ |  | `.dockerignore` ajouté ; le `Dockerfile` délègue à `make build` avec `VERSION/COMMIT/BUILD_DATE`. Digests SEC-04 toujours ouverts : aucun accès registre ici. Job CI `docker` ajouté pour vérifier |
+| 2 | T06 Signaux et délai pour tous les modes | ☐ | | |
+| 2 | T07 Propagation de `MemoryLimitBytes` | ☐ | | |
+| 2 | T08 `maxReasonableWords` unique, build 386 | ☐ | | |
+| 2 | T09 Test *flaky* isolé | ☐ | | |
+| 2 | T10 `t.Setenv` au lieu d'`os.Setenv` | ☐ | | |
+| 2 | T11 Graines fuzz au-delà du seuil FFT | ☐ | | |
+| 2 | T12 Contrats du registre | ☐ | | |
+| 2 | T13 Renvois périmés | ☐ | | |
+| 3 | T14 Journalisation `slog` | ☐ | | |
+| 3 | T15 Scission erreurs / présentation | ☐ | | |
+| 3 | T16 Port `calibration.Reporter` | ☐ | | |
+| 3 | T17 Interface côté consommateur | ☐ | | |
+| 3 | T18 `threshold.Tuning` par valeur | ☐ | | |
+| 3 | T19 Constantes de micro-bench, cache FFT | ☐ | | |
+| 3 | T20 *(opt.)* Paquet `internal/fibmath` | ☐ | | |
+| 3 | T21 Retrait de `briandowns/spinner` | ☐ | | |
+| 3 | T22 Renommage `internal/apperrors` | ☐ | | |
+| 4 | T23 Politique de commentaires | ☐ | | |
+| 4 | T24 Règle de langue | ☐ | | |
+| 4 | T25 README et ARCH recentrés | ☐ | | |
+| 4 | T26 Renommage des fichiers de test | ☐ | | |
+| 4 | T27 `errors.Join` dans `Validate` | ☐ | | |
+| 4 | T28 Variables d'environnement centralisées | ☐ | | |
+| 4 | T29 Règles d'architecture complétées | ☐ | | |
+| 4 | T30 *(opt.)* Drapeaux de profilage | ☐ | | |
+| 4 | T31 Répertoire temporaire e2e | ☐ | | |
+| 4 | T32 Clôture, ADR-0012 *Accepted*, `v4.1.0` | ☐ | | |
 
 ---
 

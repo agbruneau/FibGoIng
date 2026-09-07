@@ -393,8 +393,15 @@ Liste complète : [`.env.example`](.env.example). Principales : `FIBCALC_N`, `FI
 
 ## Développement et tests
 
-- **Pas de CI distante — décision assumée** : la rigueur repose sur la discipline locale outillée
-  (gate `scripts/check.ps1` / `scripts/check.sh`, plancher de couverture, baselines de benchmark).
+- **CI GitHub Actions** (`.github/workflows/ci.yml`, réintroduite le 2026-09-07,
+  [ADR-0012](docs/adr/0012-audit-2026-09-livre-decisions.md) D1) : le gate tourne sur Ubuntu et
+  Windows à chaque poussée, plus les vérifications que l'hôte de développement ne peut pas faire
+  (`-tags gmp`, build 32 bits, image Docker) et un fuzzing hebdomadaire. Le gate local
+  (`scripts/check.ps1` / `scripts/check.sh`) reste le chemin rapide.
+- **Outils épinglés** dans [`scripts/tools.env`](scripts/tools.env) et exécutés par
+  `go run <pkg>@<version>` : rien à installer, et un binaire ne peut plus périmer en silence
+  contre la chaîne Go (c'est ce qui avait cassé le lint, puis `govulncheck`, `gosec` et
+  `staticcheck` d'un coup).
 - **Couverture** : plancher garanti **80 %** via `make coverage-check` ; dernière mesure
   **96,6 %** des instructions (2026-09-04, `go1.27.0 windows/amd64`, 21 paquets). Le chiffre est
   daté, pas figé : rien ne l'applique, la marge de 16,6 points est du mou non gardé, et seul le

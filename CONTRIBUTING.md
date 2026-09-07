@@ -44,18 +44,20 @@ This project adheres to a code of conduct. By participating, you are expected to
 
 - Go 1.26.0 or later (`go.mod` declares `go 1.26.0`, no `toolchain` directive)
 - Make (optional but recommended) — POSIX/WSL only, see the note under Useful Commands
-- `golangci-lint` **v2**, required by the pre-commit gate:
+- A C toolchain, if you want `-race` locally (both gates probe for it and skip the flag without it)
 
-  ```bash
-  go install github.com/golangci/golangci-lint/v2/cmd/golangci-lint@latest
-  # or, with gosec as well:
-  make install-tools
-  ```
+**No tool installation step.** Since 2026-09-07 (audit PRO-02) `golangci-lint`,
+`govulncheck`, `gosec` and `benchstat` are pinned in [`scripts/tools.env`](scripts/tools.env)
+and invoked as `go run <pkg>@<version>`, which rebuilds them with your current Go
+toolchain. Nothing has to be on your `PATH`, and there is no `make install-tools`
+target any more.
 
-  A v1 binary will not do. `.golangci.yml` uses the v2 schema, and a v1 binary cannot analyze this
-  module under a go1.27 toolchain at all — every package fails with `export data version 4 is greater
-  than maximum supported version 2`. Both gate scripts treat that (and a missing binary) as a hard
-  failure since 2026-09-03; the version pin was dropped for the same reason.
+That is not a convenience choice. An installed tool binary is compiled once and
+silently stops working when the Go toolchain moves: `golangci-lint` failed that
+way in 2026-09 (GATE-01 — the gate printed `Overall: PASS` while running no
+static analysis at all), and on 2026-09-07 `govulncheck`, `gosec` and
+`staticcheck` were all found dead on the maintainer's host for the same reason.
+`go run pkg@version` cannot fail that way.
 
 ### Setup
 
@@ -162,7 +164,9 @@ perf(bigfft): optimize FFT butterfly operations
 
 3. **Make your changes** and commit them
 
-4. **Run checks locally.** There is no remote CI, so this is the only gate.
+4. **Run checks locally.** GitHub Actions runs the same sequence on every push
+   and pull request (`.github/workflows/ci.yml`), but the local gate is faster
+   and should still be green before you push.
 
    ```bash
    # Linux / macOS / WSL (make check is just a wrapper around this)

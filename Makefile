@@ -27,7 +27,14 @@ LDFLAGS=-ldflags="-s -w \
 	-X github.com/agbruneau/FibGo/internal/app.BuildDate=$(BUILD_DATE)"
 GOFLAGS=$(LDFLAGS)
 
-.PHONY: all build build-pgo build-all build-linux build-linux-arm64 build-windows build-windows-arm64 build-darwin clean test test-win test-short coverage coverage-check benchmark bench-baseline bench-versioned stats run run-fast run-calibrate help version install install-tools lint security format check tidy deps upgrade pgo-profile pgo-check pgo-clean pgo-rebuild build-pgo-linux build-pgo-windows build-pgo-darwin build-pgo-all
+# Pinned developer tools (audit PRO-02). scripts/tools.env is KEY=value, which
+# is valid Make syntax, so the same file feeds this Makefile, scripts/check.sh,
+# scripts/check.ps1 and the CI workflow. Tools run via `go run <pkg>@<version>`
+# so they are always rebuilt with the current toolchain — see the file header
+# for why installed binaries and the go.mod `tool` directive were both rejected.
+include scripts/tools.env
+
+.PHONY: all build build-pgo build-all build-linux build-linux-arm64 build-windows build-windows-arm64 build-darwin clean test test-win test-short coverage coverage-check benchmark bench-baseline bench-versioned fuzz-smoke stats run run-fast run-calibrate help version install lint security vulncheck format check tidy deps upgrade pgo-profile pgo-check pgo-clean pgo-rebuild build-pgo-linux build-pgo-windows build-pgo-darwin build-pgo-all
 
 # Default target
 all: clean build test
@@ -158,15 +165,17 @@ clean:
 	@$(GO) clean
 	@echo "Clean complete"
 
+# -shuffle=on -count=1 mirror the gate (audit TST-03): random order inside each
+# package, and no cached results.
 ## test: Run all tests
 test:
 	@echo "Running tests..."
-	$(GO) test -v -race -cover ./...
+	$(GO) test -v -race -shuffle=on -count=1 -cover ./...
 
 ## test-win: Run all tests WITHOUT the race detector (Windows / no-CGO hosts)
 test-win:
 	@echo "Running tests (no -race; Windows/no-CGO)..."
-	$(GO) test -v -cover ./...
+	$(GO) test -v -shuffle=on -count=1 -cover ./...
 
 ## test-short: Run tests without slow ones
 test-short:
@@ -272,23 +281,18 @@ run-calibrate: build
 
 ## lint: Run linter (golangci-lint)
 lint:
-	@echo "Running linter..."
-	@golangci-lint run ./...
+	@echo "Running linter ($(GOLANGCI_LINT))..."
+	@$(GO) run $(GOLANGCI_LINT) run ./...
 
 ## security: Run security audit (gosec)
 security:
-	@echo "Running security audit..."
-	@gosec ./...
+	@echo "Running security audit ($(GOSEC))..."
+	@$(GO) run $(GOSEC) ./...
 
-## install-tools: Install development tools (golangci-lint, gosec)
-install-tools:
-	@echo "Installing tools..."
-	# v2, unpinned: .golangci.yml uses the v2 schema since audit GATE-01. The
-	# former v1.64.8 pin is what broke — a v1 binary cannot analyze this module
-	# under a go1.27 toolchain (export data v4), and v1 is no longer maintained.
-	# Tracking @latest keeps the linter compilable against the current toolchain.
-	@go install github.com/golangci/golangci-lint/v2/cmd/golangci-lint@latest
-	@go install github.com/securego/gosec/v2/cmd/gosec@latest
+## vulncheck: Scan dependencies for known vulnerabilities (gate step 6)
+vulncheck:
+	@echo "Running vulnerability scan ($(GOVULNCHECK))..."
+	@$(GO) run $(GOVULNCHECK) ./...
 
 ## format: Format Go code
 format:
@@ -311,10 +315,14 @@ deps:
 	@echo "Downloading dependencies..."
 	$(GO) mod download
 
-## upgrade: Upgrade dependencies
+# Patch-level only (audit DEP-03). The book asks for deliberate upgrades; a
+# blanket `go get -u ./...` moves minor versions of every direct and indirect
+# dependency in one unreviewable step. For a minor or major bump, name the
+# module: `go get example.com/mod@v1.4.0 && make tidy && make check`.
+## upgrade: Upgrade dependencies to their latest PATCH release
 upgrade:
-	@echo "Upgrading dependencies..."
-	$(GO) get -u ./...
+	@echo "Upgrading dependencies (patch level only)..."
+	$(GO) get -u=patch ./...
 	$(GO) mod tidy
 
 ## help: Display this help message

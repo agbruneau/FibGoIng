@@ -19,15 +19,16 @@ dist/
 # Code coverage profiles and other test artifacts
 *.out
 *.prof
-coverage.*
+# A-13, root-caused 2026-09-07: this glob used to be `coverage.*`, unanchored,
+# so it also matched .github/workflows/coverage.yml and left that workflow
+# untracked — it never ran. The fix then was a `!` negation for that one path;
+# the fix now is the leading slash, which confines the pattern to the repo root
+# where the generated profiles actually land. No workflow file can be swallowed
+# by it again, named coverage.yml or otherwise.
+/coverage.*
 *.coverprofile
 profile.cov
 test_results.txt
-
-# A-13: the `coverage.*` glob above is unanchored and also matched
-# .github/workflows/coverage.yml, leaving the coverage workflow untracked
-# (it never ran on GitHub). Keep the workflow under version control.
-!.github/workflows/coverage.yml
 
 # Go profile-guided optimization files
 *.pgo

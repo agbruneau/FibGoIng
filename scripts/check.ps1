@@ -14,10 +14,15 @@
 # Steps (stop at first hard failure):
 #   1. go build ./...
 #   2. go vet ./...
-#   3. go test -coverprofile ./...  (with -race when the host has CGO and a C
-#      compiler; coverage floor derived from this run)
+#   3. go test -shuffle=on -count=1 -coverprofile ./...  (with -race when the
+#      host has CGO and a C compiler; coverage floor derived from this run)
 #   4. golangci-lint run ./...  (HARD — see below)
 #   5. coverage floor (>= 80% on the module total)
+#   6. govulncheck ./...  (HARD — audit DEP-01 / SEC-01)
+#
+# -shuffle=on randomizes test order within each package (audit TST-03). A
+# failure that appears only under shuffling is a real finding: the test depends
+# on hidden shared state. -count=1 disables the result cache.
 #
 # Lint behaviour (changed by audit GATE-01, 2026-09-03): golangci-lint is now
 # part of the HARD gate. It previously ran "soft" — findings and even outright
@@ -28,8 +33,12 @@
 # this host. A missing binary is ALSO a hard failure now, for the same reason:
 # a gate that silently checks nothing is worse than no gate.
 #
-# Requires golangci-lint v2 (config schema v2). Install:
-#   go install github.com/golangci/golangci-lint/v2/cmd/golangci-lint@latest
+# Tool versions are NOT installed by hand any more (audit PRO-02): they live in
+# scripts/tools.env and are invoked with `go run <pkg>@<version>`, which rebuilds
+# them with the current Go toolchain. That closes the GATE-01 failure class — an
+# installed binary compiled against an older Go silently stops working, which is
+# what happened to golangci-lint in 2026-09 and to govulncheck, gosec and
+# staticcheck all at once on 2026-09-07.
 #
 # The expected state is zero findings. Tolerated cases live in TWO places:
 #   1. .golangci.yml, in two distinct sections:
@@ -58,7 +67,22 @@ $RepoRoot = Split-Path -Parent $PSScriptRoot
 Set-Location $RepoRoot
 
 $CoverageFloor = 80.0
-$GolangciInstall = 'go install github.com/golangci/golangci-lint/v2/cmd/golangci-lint@latest'
+
+# Pinned tool versions — same file check.sh, the Makefile and the CI read.
+# Format is KEY=value, one per line, '#' comments; parse it rather than
+# duplicating the versions here.
+$ToolsEnv = @{}
+foreach ($line in Get-Content (Join-Path $PSScriptRoot 'tools.env')) {
+    if ($line -match '^\s*([A-Z_][A-Z0-9_]*)=(.+?)\s*$') {
+        $ToolsEnv[$Matches[1]] = $Matches[2]
+    }
+}
+foreach ($required in @('GOLANGCI_LINT', 'GOVULNCHECK')) {
+    if (-not $ToolsEnv.ContainsKey($required)) {
+        Write-Host "FAIL: $required missing from scripts/tools.env" -ForegroundColor Red
+        exit 1
+    }
+}
 
 function Write-Step {
     param([string]$Message)
@@ -105,26 +129,20 @@ if ($cgoEnabled -and $null -ne $cc) {
 } else {
     Write-Host "race detector: SKIPPED (needs CGO_ENABLED=1 and a C compiler on PATH)" -ForegroundColor Yellow
 }
-Invoke-HardStep -Name "go test $raceArgs -coverprofile coverage.out ./..." -Action { go test @raceArgs -coverprofile coverage.out ./... }
+Invoke-HardStep -Name "go test $raceArgs -shuffle=on -count=1 -coverprofile coverage.out ./..." -Action { go test @raceArgs -shuffle=on -count=1 -coverprofile coverage.out ./... }
 
-# 4. Lint (HARD — GATE-01)
-Write-Step "golangci-lint run ./..."
-$golangci = Get-Command golangci-lint -ErrorAction SilentlyContinue
-if ($null -eq $golangci) {
-    Write-Host "FAIL: golangci-lint not found on PATH." -ForegroundColor Red
-    Write-Host "      Static analysis is part of the hard gate; install it with:" -ForegroundColor Red
-    Write-Host "        $GolangciInstall" -ForegroundColor Red
-    exit 1
-}
-golangci-lint run ./...
+# 4. Lint (HARD — GATE-01). Built from source at the pinned version, so there is
+# no PATH binary that can go stale against the toolchain.
+Write-Step "golangci-lint run ./... ($($ToolsEnv['GOLANGCI_LINT']))"
+go run $ToolsEnv['GOLANGCI_LINT'] run ./...
 # Any non-zero exit fails the gate: 1 means findings, higher codes mean the
 # linter could not analyze the module at all (the GATE-01 failure mode).
 if ($LASTEXITCODE -ne 0) {
     Write-Host "FAIL: golangci-lint exited $LASTEXITCODE." -ForegroundColor Red
     if ($LASTEXITCODE -ne 1) {
-        Write-Host "      Exit != 1 means the linter could not run (config or toolchain" -ForegroundColor Red
-        Write-Host "      mismatch), not that your code has findings. Reinstall with:" -ForegroundColor Red
-        Write-Host "        $GolangciInstall" -ForegroundColor Red
+        Write-Host "      Exit != 1 means the linter could not run (config mismatch, or" -ForegroundColor Red
+        Write-Host "      the pinned version cannot build), not that your code has" -ForegroundColor Red
+        Write-Host "      findings. Check GOLANGCI_LINT in scripts/tools.env." -ForegroundColor Red
     }
     exit 1
 }
@@ -160,11 +178,22 @@ if ($total -lt $CoverageFloor) {
 }
 Write-Host ("OK: coverage {0}% >= {1}%" -f $match.Groups[1].Value, $CoverageFloor) -ForegroundColor Green
 
+# 6. Vulnerability scan (HARD — audit DEP-01 / SEC-01). govulncheck reports only
+# vulnerabilities the code can actually reach, so a finding here is actionable.
+Write-Step "govulncheck ./... ($($ToolsEnv['GOVULNCHECK']))"
+go run $ToolsEnv['GOVULNCHECK'] ./...
+if ($LASTEXITCODE -ne 0) {
+    Write-Host "FAIL: govulncheck reported reachable vulnerabilities (or could not run)." -ForegroundColor Red
+    exit 1
+}
+Write-Host "OK: govulncheck" -ForegroundColor Green
+
 # Summary
 Write-Host ""
 Write-Host "================ summary ================"
 Write-Host "build/vet/test/coverage: PASS"
 Write-Host "lint:                    PASS"
+Write-Host "govulncheck:             PASS"
 Write-Host "========================================"
 
 # Every step above is hard (GATE-01): reaching here means all of them passed.

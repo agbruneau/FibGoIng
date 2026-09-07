@@ -1,0 +1,227 @@
+# Continuous integration for FibGo.
+#
+# Why this file exists (audit 2026-09-07, PRO-01 / ADR-0012 D1): the repository
+# deliberately had no CI, on the grounds that the local gate (scripts/check.sh,
+# scripts/check.ps1) was enough for a single maintainer whose tooling was known
+# (ADR-0004 §B3, ADR-0010 D4). That reasoning failed twice, silently:
+#
+#   - GATE-01 (2026-09-03): golangci-lint was pinned to a v1 binary that could
+#     not analyze the module under go1.27. The gate printed "Overall: PASS"
+#     without running any static analysis, for an unknown period.
+#   - 2026-09-07: govulncheck, gosec and staticcheck ALL refused to start on the
+#     reference host for the same reason — go1.26-era binaries under a go1.27
+#     toolchain. Nothing reported it, because no gate called them.
+#
+# So this workflow is not a replacement for the local gate; it is the guarantee
+# that the gate runs at all, on a clean machine, on every push. It also covers
+# two things the maintainer's host cannot check:
+#   - the `gmp` build tag, skipped locally for want of libgmp headers;
+#   - the 32-bit build, which has been broken (audit TYP-01).
+#
+# Tool versions come from scripts/tools.env, the same file the local gates and
+# the Makefile read. Nothing here installs a tool at @latest.
+
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  schedule:
+    # Mondays 04:17 UTC — the fuzz job only. Off-the-hour on purpose: scheduled
+    # runners are heavily contended on round hours.
+    - cron: '17 4 * * 1'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  # -trimpath matches the devcontainer and the Makefile build flags.
+  GOFLAGS: -trimpath
+
+jobs:
+  # The canonical gate, on both platforms the project claims to support. Windows
+  # is not decorative: it is the maintainer's daily host, and several past
+  # findings (CRLF gofmt false positives, the "Windows cannot run -race" claim)
+  # were platform-specific.
+  gate:
+    name: gate (${{ matrix.os }})
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-go@v5
+        with:
+          # Read the version from go.mod so the toolchain never drifts from
+          # what the module declares.
+          go-version-file: go.mod
+          cache: true
+
+      # $GITHUB_ENV accepts KEY=value lines only, so drop comments and blanks.
+      - name: Read pinned tool versions
+        shell: bash
+        run: grep -E '^[A-Z_][A-Z0-9_]*=' scripts/tools.env >> "$GITHUB_ENV"
+
+      - name: gofmt
+        shell: bash
+        run: |
+          unformatted="$(gofmt -l .)"
+          if [ -n "$unformatted" ]; then
+            echo "FAIL: not gofmt-clean:"
+            echo "$unformatted"
+            exit 1
+          fi
+          echo "OK: gofmt"
+
+      - name: go vet
+        run: go vet ./...
+
+      - name: go build
+        run: go build ./...
+
+      - name: go test (race, shuffled, uncached)
+        run: go test -race -shuffle=on -count=1 -coverprofile=coverage.out ./...
+
+      - name: golangci-lint
+        run: go run ${{ env.GOLANGCI_LINT }} run ./...
+
+      - name: govulncheck
+        run: go run ${{ env.GOVULNCHECK }} ./...
+
+      # One platform is enough for the floor: the profile is the same module.
+      - name: coverage floor
+        if: matrix.os == 'ubuntu-latest'
+        shell: bash
+        run: |
+          total="$(go tool cover -func=coverage.out | awk '/^total:/ {gsub(/%/,"",$3); print $3}')"
+          echo "Total coverage: ${total}%"
+          awk -v t="$total" 'BEGIN { exit (t+0 < 80.0) }' || {
+            echo "FAIL: coverage ${total}% < 80%"; exit 1;
+          }
+          echo "OK: coverage ${total}% >= 80%"
+
+      - name: go mod tidy -diff
+        run: go mod tidy -diff
+
+  # The gmp backend is CGO + libgmp. It is not compiled by the default steps and
+  # has broken silently before (globalFactory, 2026-07 audit). check.sh step 3b
+  # covers it, but only on a host that has the headers — which the maintainer's
+  # Windows host does not, so the step has been SKIP for its whole life.
+  gmp:
+    name: gmp build tag
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+          cache: true
+      - name: Install libgmp
+        run: sudo apt-get update && sudo apt-get install -y --no-install-recommends libgmp-dev
+      - run: go build -tags gmp ./...
+      - run: go vet -tags gmp ./internal/fibonacci/
+      - run: go test -tags gmp -race -shuffle=on -count=1 ./internal/fibonacci/
+
+  # 32-bit compile check only (no test run): the package must at least build
+  # where int is 32 bits. This job is what audit TYP-01 was invisible without —
+  # a `1 << 60` constant overflowed int and nobody noticed.
+  cross-build:
+    name: cross build (386, arm64)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+          cache: true
+      - name: build GOARCH=386
+        run: GOOS=linux GOARCH=386 go build ./...
+      - name: build GOARCH=arm64
+        run: GOOS=linux GOARCH=arm64 go build ./...
+
+  # The image had never been built anywhere: no environment the repository was
+  # edited from had a docker CLI. This job is what makes the Dockerfile's
+  # delegation to `make build` and its version injection verifiable at all
+  # (audit STR-02). It also gives a machine with registry access, which is what
+  # the two open TODO(SEC-04) digest pins are waiting on.
+  docker:
+    name: docker image
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0  # git describe needs tags
+      - name: build image
+        run: |
+          docker build \
+            --build-arg VERSION="$(git describe --tags --always --dirty)" \
+            --build-arg COMMIT="$(git rev-parse --short HEAD)" \
+            --build-arg BUILD_DATE="$(date -u +%Y-%m-%dT%H:%M:%SZ)" \
+            -t fibcalc:ci .
+      - name: version is injected (not "dev"/"unknown")
+        run: |
+          out="$(docker run --rm fibcalc:ci --version)"
+          echo "$out"
+          # `if` rather than `grep ... && exit 1`: under `set -e` a non-matching
+          # grep would make the whole compound command exit 1 and fail the step
+          # for the successful case.
+          if echo "$out" | grep -qi 'unknown'; then
+            echo "FAIL: version symbols not injected"
+            exit 1
+          fi
+          echo "OK: version injected"
+      - name: binary computes
+        run: docker run --rm fibcalc:ci -n 1000 -algo fast
+
+  # Seeds are replayed on every `go test`; actual mutation fuzzing is not, and
+  # nothing scheduled it (audit TST-04). Weekly is enough for a pure-computation
+  # code base with no untrusted input.
+  fuzz:
+    name: fuzz smoke
+    if: github.event_name == 'schedule' || github.event_name == 'workflow_dispatch'
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - pkg: ./internal/bigfft
+            target: FuzzMul
+          - pkg: ./internal/bigfft
+            target: FuzzSqr
+          - pkg: ./internal/fibonacci
+            target: FuzzFastDoublingConsistency
+          - pkg: ./internal/fibonacci
+            target: FuzzFastDoublingMod
+          - pkg: ./internal/fibonacci
+            target: FuzzFFTBasedConsistency
+          - pkg: ./internal/fibonacci
+            target: FuzzFibonacciIdentities
+          - pkg: ./internal/fibonacci
+            target: FuzzProgressMonotonicity
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+          cache: true
+      - name: fuzz ${{ matrix.target }}
+        run: go test -run='^$' -fuzz='^${{ matrix.target }}$' -fuzztime=120s ${{ matrix.pkg }}
+      - name: upload crashers
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: fuzz-corpus-${{ matrix.target }}
+          path: |
+            internal/bigfft/testdata/fuzz/
+            internal/fibonacci/testdata/fuzz/
+          if-no-files-found: ignore

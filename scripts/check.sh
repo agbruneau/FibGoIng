@@ -8,10 +8,17 @@
 # Steps:
 #   1. go build ./...
 #   2. go vet ./...
-#   3. go test -race -coverprofile=coverage.out ./...  (coverage floor derived from this run)
+#   3. go test -race -shuffle=on -count=1 -coverprofile=coverage.out ./...
+#      (coverage floor derived from this run)
 #   3b. gmp build tag: build+vet+test -tags gmp (hard when libgmp present, else skipped)
 #   4. golangci-lint run ./...  (HARD — see below)
 #   5. coverage floor (>= 80% on the module total)
+#   6. govulncheck ./...  (HARD — audit DEP-01 / SEC-01)
+#
+# -shuffle=on randomizes test order within each package (audit TST-03; the book
+# pairs it with -race as the CI default). A failure that appears only under
+# shuffling is a real finding: it means a test depends on hidden shared state.
+# -count=1 disables the test result cache so the gate always executes.
 #
 # --coverage-only: skip to a no-race test run + the coverage floor (used by
 # `make coverage-check` so the floor has a single source of truth).
@@ -25,8 +32,13 @@
 # A missing binary is ALSO a hard failure now, for the same reason: a gate that
 # silently checks nothing is worse than no gate.
 #
-# Requires golangci-lint v2 (config schema v2). Install:
-#   go install github.com/golangci/golangci-lint/v2/cmd/golangci-lint@latest
+# Tool versions are NOT installed by hand any more (audit PRO-02): they live in
+# scripts/tools.env and are invoked with `go run <pkg>@<version>`, which rebuilds
+# them with the current Go toolchain. That closes the GATE-01 failure class for
+# good — an installed binary compiled against an older Go silently stops working,
+# which is what happened to golangci-lint in 2026-09 and to govulncheck, gosec
+# and staticcheck all at once on 2026-09-07. See scripts/tools.env for why the
+# go.mod `tool` directive was measured and rejected.
 #
 # The expected state is zero findings. Tolerated cases live in TWO places:
 #   1. .golangci.yml, in two distinct sections:
@@ -48,12 +60,16 @@
 set -euo pipefail
 
 COVERAGE_FLOOR=80.0
-GOLANGCI_INSTALL='go install github.com/golangci/golangci-lint/v2/cmd/golangci-lint@latest'
 
 # Run from repo root regardless of the caller's cwd.
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO_ROOT="$(cd "${SCRIPT_DIR}/.." && pwd)"
 cd "${REPO_ROOT}"
+
+# Pinned tool versions (single source of truth, shared with check.ps1, the
+# Makefile and the CI workflow).
+# shellcheck source=tools.env
+. "${SCRIPT_DIR}/tools.env"
 
 step() {
     printf '\n==> %s\n' "$1"
@@ -79,8 +95,8 @@ check_coverage_floor() {
 # (BUILD-03) — regenerate the profile (no -race: works on no-CGO hosts too)
 # and apply the same floor as the full gate, nothing else.
 if [ "${1:-}" = "--coverage-only" ]; then
-    step "go test -coverprofile=coverage.out ./... (coverage-only mode)"
-    go test -coverprofile=coverage.out ./... >/dev/null
+    step "go test -shuffle=on -count=1 -coverprofile=coverage.out ./... (coverage-only mode)"
+    go test -shuffle=on -count=1 -coverprofile=coverage.out ./... >/dev/null
     check_coverage_floor
     exit 0
 fi
@@ -96,9 +112,9 @@ go vet ./...
 echo "OK: go vet"
 
 # 3. Tests + coverage (with race detector; requires CGO) — single run, one profile
-step "go test -race -coverprofile=coverage.out ./..."
-go test -race -coverprofile=coverage.out ./...
-echo "OK: go test -race"
+step "go test -race -shuffle=on -count=1 -coverprofile=coverage.out ./..."
+go test -race -shuffle=on -count=1 -coverprofile=coverage.out ./...
+echo "OK: go test -race -shuffle=on"
 
 # 3b. GMP build tag (hard when libgmp is available, skipped otherwise).
 # The gmp backend (CGO + libgmp) is not compiled by the default steps above;
@@ -108,31 +124,26 @@ step "gmp build tag (-tags gmp)"
 if [ -f /usr/include/gmp.h ] || [ -f /usr/include/x86_64-linux-gnu/gmp.h ]; then
     go build -tags gmp ./...
     go vet -tags gmp ./internal/fibonacci/
-    go test -tags gmp -race -count=1 ./internal/fibonacci/
+    go test -tags gmp -race -shuffle=on -count=1 ./internal/fibonacci/
     echo "OK: gmp build tag"
 else
     echo "SKIP: gmp (libgmp headers not found; apt-get install libgmp-dev)"
 fi
 
-# 4. Lint (HARD — GATE-01)
-step "golangci-lint run ./..."
-if ! command -v golangci-lint >/dev/null 2>&1; then
-    echo "FAIL: golangci-lint not found on PATH."
-    echo "      Static analysis is part of the hard gate; install it with:"
-    echo "        ${GOLANGCI_INSTALL}"
-    exit 1
-fi
+# 4. Lint (HARD — GATE-01). Built from source at the pinned version, so there is
+# no PATH binary that can go stale against the toolchain.
+step "golangci-lint run ./... (${GOLANGCI_LINT})"
 # Any non-zero exit fails the gate: 1 means findings, higher codes mean the
 # linter could not analyze the module at all (the GATE-01 failure mode).
-if golangci-lint run ./...; then
+if go run "${GOLANGCI_LINT}" run ./...; then
     echo "OK: golangci-lint"
 else
     lint_status=$?
     echo "FAIL: golangci-lint exited ${lint_status}."
     if [ "${lint_status}" -ne 1 ]; then
-        echo "      Exit != 1 means the linter could not run (config or toolchain"
-        echo "      mismatch), not that your code has findings. Reinstall with:"
-        echo "        ${GOLANGCI_INSTALL}"
+        echo "      Exit != 1 means the linter could not run (config mismatch, or"
+        echo "      the pinned version cannot build), not that your code has"
+        echo "      findings. Check GOLANGCI_LINT in scripts/tools.env."
     fi
     exit 1
 fi
@@ -140,11 +151,22 @@ fi
 # 5. Coverage floor (>= 80% on the module total) — derived from the profile above
 check_coverage_floor
 
+# 6. Vulnerability scan (HARD — audit DEP-01 / SEC-01). govulncheck reports only
+# vulnerabilities your code can actually reach, so a finding here is actionable.
+step "govulncheck ./... (${GOVULNCHECK})"
+if go run "${GOVULNCHECK}" ./...; then
+    echo "OK: govulncheck"
+else
+    echo "FAIL: govulncheck reported reachable vulnerabilities (or could not run)."
+    exit 1
+fi
+
 # Summary
 echo ""
 echo "================ summary ================"
 echo "build/vet/test/coverage: PASS"
 echo "lint:                    PASS"
+echo "govulncheck:             PASS"
 echo "========================================"
 
 # Every step above is hard (GATE-01): reaching here means all of them passed.
