@@ -6,68 +6,59 @@ import (
 	"flag"
 	"fmt"
 	"io"
+	"log/slog"
 	"os/signal"
-	"sync"
 	"syscall"
 
+	"github.com/agbruneau/FibGo/internal/apperrors"
 	"github.com/agbruneau/FibGo/internal/calibration"
 	"github.com/agbruneau/FibGo/internal/cli"
 	"github.com/agbruneau/FibGo/internal/cli/completion"
 	"github.com/agbruneau/FibGo/internal/config"
-	apperrors "github.com/agbruneau/FibGo/internal/errors"
 	"github.com/agbruneau/FibGo/internal/fibonacci"
-	"github.com/agbruneau/FibGo/internal/fibonacci/threshold"
 	"github.com/agbruneau/FibGo/internal/orchestration"
 	"github.com/agbruneau/FibGo/internal/tui"
 	"github.com/agbruneau/FibGo/internal/ui"
-	"github.com/rs/zerolog"
 )
+
+// CalculatorRegistry is what the application layer needs from a calculator
+// registry: the two lookups orchestration resolves --algo with, plus the full
+// map that calibration sweeps.
+//
+// Consumer-defined, like orchestration.CalculatorSource it embeds (audit
+// API-01). fibonacci.CalculatorFactory, which this replaces, also declared
+// Create and Register — neither of which any caller outside the fibonacci
+// package's own tests ever used.
+type CalculatorRegistry interface {
+	orchestration.CalculatorSource
+
+	// GetAll returns every registered calculator, keyed by name. Calibration
+	// needs the whole set, not one lookup at a time.
+	GetAll() map[string]fibonacci.Calculator
+}
 
 // Application represents the fibcalc application instance.
 type Application struct {
 	Config    config.AppConfig
-	Factory   fibonacci.CalculatorFactory
+	Factory   CalculatorRegistry
 	ErrWriter io.Writer
+
+	// logger is the diagnostic logger for this run, nil when --log-level is
+	// off. Run installs it; the calculation paths pass it down through
+	// fibonacci.Options.
+	logger *slog.Logger
 }
 
 // AppOption configures an Application during construction.
 type AppOption func(*Application)
 
-// WithFactory sets a custom CalculatorFactory for the application.
-func WithFactory(f fibonacci.CalculatorFactory) AppOption {
+// WithFactory sets a custom calculator registry for the application.
+func WithFactory(f CalculatorRegistry) AppOption {
 	return func(a *Application) { a.Factory = f }
-}
-
-// thresholdTuningOnce guards the process-wide installation of the
-// config-layer tuning profile into the threshold package.
-var thresholdTuningOnce sync.Once
-
-// wireThresholdTuning realizes the A2-04 wiring contract documented in
-// threshold/manager.go and config/doc.go: translate
-// config.DefaultThresholdTuning into a threshold.Tuning and install it
-// exactly once, at startup, before any DynamicThresholdManager is
-// constructed (single-writer-before-use). Before this call existed the
-// contract was documented but never executed, so changes to
-// config.DefaultThresholdTuning silently had no effect on the dynamic
-// threshold manager. sync.Once keeps concurrent New calls (parallel
-// tests) race-free on the unsynchronized package-level knobs.
-func wireThresholdTuning() {
-	thresholdTuningOnce.Do(func() {
-		p := config.DefaultThresholdTuning
-		threshold.SetTuning(threshold.Tuning{
-			FFTSpeedupThreshold:      p.FFTSpeedupThreshold,
-			ParallelSpeedupThreshold: p.ParallelSpeedupThreshold,
-			HysteresisMargin:         p.HysteresisMargin,
-			MinFFTThreshold:          p.MinFFTThreshold,
-			MinParallelThreshold:     p.MinParallelThreshold,
-		})
-	})
 }
 
 // New creates a new Application instance by parsing command-line arguments.
 func New(args []string, errWriter io.Writer, opts ...AppOption) (*Application, error) {
-	wireThresholdTuning()
-
 	app := &Application{ErrWriter: errWriter}
 	for _, opt := range opts {
 		opt(app)
@@ -102,7 +93,7 @@ func New(args []string, errWriter io.Writer, opts ...AppOption) (*Application, e
 }
 
 // Run executes the application based on the configured mode and returns the
-// POSIX exit code (internal/errors.Exit*), which main hands to os.Exit.
+// POSIX exit code (internal/apperrors.Exit*), which main hands to os.Exit.
 //
 // Signal handling is installed HERE, once, for every mode that computes (audit
 // CON-01). It used to be duplicated in runCalculate, runLastDigits and runTUI,
@@ -119,7 +110,12 @@ func (a *Application) Run(ctx context.Context, out io.Writer) int {
 		return a.runCompletion(out)
 	}
 
-	zerolog.SetGlobalLevel(zerolog.InfoLevel)
+	// The diagnostic logger is built once, here, and handed to the domain
+	// through fibonacci.Options (audit OBS-01). What stood here before was
+	// zerolog.SetGlobalLevel(zerolog.InfoLevel) — a process-wide mutation whose
+	// only effect was to silence the one emitter that was not already wired to
+	// a no-op.
+	a.logger = a.newDiagnosticLogger()
 	ui.InitTheme(a.Config.Quiet || a.Config.MachineOutput)
 
 	ctx, stopSignals := signal.NotifyContext(ctx, syscall.SIGINT, syscall.SIGTERM)
@@ -158,7 +154,7 @@ func (a *Application) runCalibration(ctx context.Context, out io.Writer) int {
 	ctx, cancelTimeout := context.WithTimeout(ctx, a.Config.Timeout)
 	defer cancelTimeout()
 
-	return calibration.RunCalibration(ctx, out, a.Factory.GetAll(), a.Config.CalibrationProfile, cli.DisplayProgress, cli.CLIColorProvider{})
+	return calibration.RunCalibration(ctx, out, cli.NewCalibrationReporter(out), a.Factory.GetAll(), a.Config.CalibrationProfile, cli.DisplayProgress)
 }
 
 // runAutoCalibrationIfEnabled runs auto-calibration if enabled.
@@ -176,7 +172,7 @@ func (a *Application) runAutoCalibrationIfEnabled(ctx context.Context, out io.Wr
 	ctx, cancelTimeout := context.WithTimeout(ctx, a.Config.Timeout)
 	defer cancelTimeout()
 
-	if updated, ok := calibration.AutoCalibrate(ctx, a.Config, out, a.Factory.GetAll()); ok {
+	if updated, ok := calibration.AutoCalibrate(ctx, a.Config, cli.NewCalibrationReporter(out), a.Factory.GetAll()); ok {
 		return updated
 	}
 	return a.Config
@@ -201,7 +197,7 @@ func (a *Application) runTUI(ctx context.Context, out io.Writer) int {
 	}
 
 	calculatorsToRun := orchestration.GetCalculatorsToRun(a.Config.Algo, a.Factory)
-	return tui.Run(ctx, calculatorsToRun, a.Config, Version, a.ErrWriter)
+	return tui.Run(ctx, calculatorsToRun, a.Config, Version, a.ErrWriter, a.logger, thresholdTuningFromConfig())
 }
 
 // IsHelpError checks if the error is a help flag error (--help was used).

@@ -1,6 +1,9 @@
 package threshold
 
-import "time"
+import (
+	"log/slog"
+	"time"
+)
 
 // IterationMetric records timing data for a single doubling iteration.
 type IterationMetric struct {
@@ -40,4 +43,10 @@ type DynamicThresholdConfig struct {
 	AdjustmentInterval int
 	// Enabled controls whether dynamic adjustment is active
 	Enabled bool
+	// Logger receives the "thresholds adjusted" record each time the manager
+	// moves a threshold. A nil logger discards it.
+	Logger *slog.Logger
+	// Tuning carries the adjustment knobs. The zero value means "use
+	// DefaultTuning"; individual unset fields fall back the same way.
+	Tuning Tuning
 }

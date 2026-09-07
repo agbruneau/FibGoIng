@@ -3,10 +3,9 @@
 package progress
 
 import (
-	"fmt"
+	"context"
+	"log/slog"
 	"sync"
-
-	"github.com/rs/zerolog"
 )
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -82,10 +81,10 @@ func (o *ChannelObserver) Update(calcIndex int, progress float64) {
 // Logging Observer
 // ─────────────────────────────────────────────────────────────────────────────
 
-// LoggingObserver logs progress updates using zerolog.
+// LoggingObserver logs progress updates through log/slog.
 // It throttles logging based on a threshold to avoid log spam.
 type LoggingObserver struct {
-	logger    zerolog.Logger
+	logger    *slog.Logger
 	threshold float64         // Minimum progress change to log
 	lastLog   map[int]float64 // Last logged progress per calculator
 	mu        sync.Mutex
@@ -95,14 +94,18 @@ type LoggingObserver struct {
 // It only logs when progress changes by at least the threshold amount.
 //
 // Parameters:
-//   - logger: The zerolog logger to use.
+//   - logger: The logger to use. A nil logger discards every record, so callers
+//     that do not want progress logs need no sentinel of their own.
 //   - threshold: Minimum progress change to trigger a log (e.g., 0.1 for 10%).
 //
 // Returns:
-//   - *LoggingObserver: A new observer that logs to zerolog.
-func NewLoggingObserver(logger zerolog.Logger, threshold float64) *LoggingObserver {
+//   - *LoggingObserver: A new observer that logs through log/slog.
+func NewLoggingObserver(logger *slog.Logger, threshold float64) *LoggingObserver {
 	if threshold <= 0 {
 		threshold = 0.1 // Default to 10%
+	}
+	if logger == nil {
+		logger = slog.New(slog.DiscardHandler)
 	}
 	return &LoggingObserver{
 		logger:    logger,
@@ -128,11 +131,15 @@ func (o *LoggingObserver) Update(calcIndex int, progress float64) {
 		progress-lastProgress >= o.threshold
 
 	if shouldLog {
-		o.logger.Debug().
-			Int("calculator", calcIndex).
-			Float64("progress", progress).
-			Str("percent", fmt.Sprintf("%.1f%%", progress*100)).
-			Msg("calculation progress")
+		// LogAttrs with an explicit level check: Update runs on the progress
+		// path, and this avoids building the attribute slice when the handler
+		// would drop the record anyway.
+		if o.logger.Enabled(context.Background(), slog.LevelDebug) {
+			o.logger.LogAttrs(context.Background(), slog.LevelDebug, "calculation progress",
+				slog.Int("calculator", calcIndex),
+				slog.Float64("progress", progress),
+			)
+		}
 		o.lastLog[calcIndex] = progress
 	}
 }

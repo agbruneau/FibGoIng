@@ -267,7 +267,7 @@ The project uses the Decorator pattern. To add a new algorithm, you only need to
    }
    ```
 
-3. **Error Handling**: Use the `internal/errors` package for custom errors
+3. **Error Handling**: Use the `internal/apperrors` package for custom errors
 
 4. **Configuration**: Use functional options pattern for configurable components
 

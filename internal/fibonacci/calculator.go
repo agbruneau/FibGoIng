@@ -3,20 +3,25 @@ package fibonacci
 import (
 	"context"
 	"errors"
+	"log/slog"
 	"math/big"
 	"time"
 
+	"github.com/agbruneau/FibGo/internal/apperrors"
 	"github.com/agbruneau/FibGo/internal/bigfft"
-	apperrors "github.com/agbruneau/FibGo/internal/errors"
+	"github.com/agbruneau/FibGo/internal/fibonacci/fibmath"
 	"github.com/agbruneau/FibGo/internal/fibonacci/memory"
 	"github.com/agbruneau/FibGo/internal/progress"
-	"github.com/rs/zerolog/log"
 )
 
-// MaxFibUint64 = 93 because F(93) is the largest Fibonacci number that fits in a uint64,
-// as F(94) exceeds 2^64. This value is derived from the very rapid growth of the sequence.
+// MaxFibUint64 = 93 because F(93) is the largest Fibonacci number that fits in
+// a uint64, as F(94) exceeds 2^64.
+//
+// Defined in internal/fibonacci/fibmath so internal/fibonacci/memory can share
+// it: that package had its own copy, named baselineMinN, with a comment saying
+// it "mirrors fibonacci.MaxFibUint64" and could not import it (audit TYP-04).
 const (
-	MaxFibUint64 = 93 // Justified above
+	MaxFibUint64 = fibmath.MaxUint64Index
 )
 
 // Calculator defines the public interface for a Fibonacci calculator.
@@ -215,7 +220,8 @@ func (c *FibCalculator) CalculateWithObservers(ctx context.Context, subject *pro
 	if gcMode == "" {
 		gcMode = "auto"
 	}
-	gcCtrl := memory.NewGCController(gcMode, n)
+	logger := optionsLogger(opts)
+	gcCtrl := memory.NewGCController(gcMode, n, logger)
 
 	start := time.Now()
 	defer func() {
@@ -224,12 +230,12 @@ func (c *FibCalculator) CalculateWithObservers(ctx context.Context, subject *pro
 		if err != nil {
 			status = "error"
 		}
-		log.Trace().
-			Str("algo", c.core.Name()).
-			Uint64("n", n).
-			Float64("duration", duration).
-			Str("status", status).
-			Msg("calculation completed")
+		logger.LogAttrs(ctx, slog.LevelDebug, "calculation completed",
+			slog.String("algo", c.core.Name()),
+			slog.Uint64("n", n),
+			slog.Float64("duration_seconds", duration),
+			slog.String("status", status),
+		)
 	}()
 
 	// Create a reporter that notifies all observers.

@@ -69,7 +69,7 @@ func TestRunCalibrationWithOptions_LoadProfile_ShowsEffectivePath(t *testing.T) 
 	var outBuf strings.Builder
 	registry := map[string]fibonacci.Calculator{}
 	ctx := context.Background()
-	exitCode := RunCalibrationWithOptions(ctx, &outBuf, registry, opts, noopProgressDisplay, noopColorProvider{})
+	exitCode := RunCalibrationWithOptions(ctx, &outBuf, newTestReporter(&outBuf), registry, opts, noopProgressDisplay)
 
 	if exitCode != 0 {
 		t.Fatalf("Expected exit code 0, got %d", exitCode)
@@ -99,7 +99,7 @@ func TestRunCalibrationWithOptions_LoadProfile(t *testing.T) {
 	// Registry not needed if loading profile succeeds early
 	registry := map[string]fibonacci.Calculator{}
 	ctx := context.Background()
-	exitCode := RunCalibrationWithOptions(ctx, io.Discard, registry, opts, noopProgressDisplay, noopColorProvider{})
+	exitCode := RunCalibrationWithOptions(ctx, io.Discard, newTestReporter(io.Discard), registry, opts, noopProgressDisplay)
 
 	if exitCode != 0 {
 		t.Errorf("Expected exit code 0, got %d", exitCode)
@@ -129,7 +129,7 @@ func TestRunCalibrationWithOptions_SaveProfile_ShowsEffectivePath(t *testing.T) 
 
 	var outBuf strings.Builder
 	ctx := context.Background()
-	exitCode := RunCalibrationWithOptions(ctx, &outBuf, registry, opts, noopProgressDisplay, noopColorProvider{})
+	exitCode := RunCalibrationWithOptions(ctx, &outBuf, newTestReporter(&outBuf), registry, opts, noopProgressDisplay)
 
 	if exitCode != 0 {
 		t.Fatalf("Expected exit code 0, got %d", exitCode)
@@ -151,7 +151,7 @@ func TestRunCalibrationWithOptions_CalculationError(t *testing.T) {
 	}
 
 	ctx := context.Background()
-	exitCode := RunCalibrationWithOptions(ctx, io.Discard, registry, opts, noopProgressDisplay, noopColorProvider{})
+	exitCode := RunCalibrationWithOptions(ctx, io.Discard, newTestReporter(io.Discard), registry, opts, noopProgressDisplay)
 
 	// Should fail because calculation failed
 	if exitCode == 0 {
@@ -181,7 +181,7 @@ func TestRunCalibrationWithOptions_ContextCanceled(t *testing.T) {
 		close(blockChan) // Unblock to allow clean exit if needed
 	}()
 
-	exitCode := RunCalibrationWithOptions(ctx, io.Discard, registry, opts, noopProgressDisplay, noopColorProvider{})
+	exitCode := RunCalibrationWithOptions(ctx, io.Discard, newTestReporter(io.Discard), registry, opts, noopProgressDisplay)
 
 	// Should fail due to cancellation
 	if exitCode == 0 {
@@ -205,7 +205,7 @@ func TestAutoCalibrateWithProfile_FallbackAndMissingMatrix(t *testing.T) {
 
 	ctx := context.Background()
 	// Should fallback to full calibration (mocked via fast calc)
-	updatedCfg, ok := AutoCalibrateWithProfile(ctx, cfg, io.Discard, registry, profilePath)
+	updatedCfg, ok := AutoCalibrateWithProfile(ctx, cfg, newTestReporter(io.Discard), registry, profilePath)
 
 	if !ok {
 		t.Error("AutoCalibrateWithProfile should succeed even with missing matrix calc")

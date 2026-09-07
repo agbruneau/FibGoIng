@@ -150,7 +150,7 @@ edge and neither belongs in this diagram.
   layer does (`internal/config` and `internal/calibration` import `ui` for
   colored output and nothing else from the Interfaces layer).
 - **Use-Case layer** → `internal/orchestration` imports exactly
-  `internal/errors`, `internal/fibonacci`, `internal/fibonacci/memory` and
+  `internal/apperrors`, `internal/fibonacci`, `internal/fibonacci/memory` and
   `internal/progress` — Domain plus the `errors` leaf, never a presentation
   package.
 - **Domain layer** → no imports from outer layers (self-contained).
@@ -158,7 +158,7 @@ edge and neither belongs in this diagram.
   application layer wires `threshold.Tuning` via `threshold.SetTuning`.
   `internal/bigfft` imports no internal package at all.
 - **Infrastructure** → utility packages with no upward dependencies.
-  `internal/errors` ships its own byte-formatter (`formatBytesLocal`) instead
+  `internal/apperrors` ships its own byte-formatter (`formatBytesLocal`) instead
   of depending on `internal/format`.
 
 `internal/arch_test.go` fails `go test` if any of **six** upward arrows is
@@ -339,7 +339,7 @@ internal/
 - **Integration:** `TUIProgressReporter` and `TUIResultPresenter` implement orchestration interfaces.
 - **Theme:** Orange-dominant dark palette with lipgloss rounded borders.
 
-## `internal/errors`
+## `internal/apperrors`
 - **Responsibility:** typed errors, wrappers, exit code mapping, standardized calculation-error handling.
 - **Key types:** `ConfigError`, `CalculationError`, `MemoryError` (timeout/cancellation are classified via `errors.Is` on context sentinels, not dedicated types — OVR-07).
 - **Key helpers:** `NewConfigError`, `WrapCalculationError`, `HandleCalculationError`, `ColorProvider` interface.
@@ -1096,7 +1096,6 @@ From `go.mod`, direct dependencies are:
 | `github.com/charmbracelet/lipgloss` | Terminal styling/theme for TUI |
 | `github.com/leanovate/gopter` | Property-based testing |
 | `github.com/ncw/gmp` | Optional GMP big integer backend (`gmp` build tag) |
-| `github.com/rs/zerolog` | Structured logging (package-level Nop loggers by default) |
 | `github.com/shirou/gopsutil/v4` | Host CPU/memory sampling, called directly from `internal/tui` |
 | `golang.org/x/sys` | Low-level OS/CPU support (including CPU feature usage) |
 

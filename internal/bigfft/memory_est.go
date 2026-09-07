@@ -15,7 +15,9 @@ type MemoryEstimate struct {
 // This is a heuristic estimation used for pool pre-warming.
 func EstimateMemoryNeeds(n uint64) MemoryEstimate {
 	// F(n) has approximately n * log10(phi) / log10(2) bits
-	// log2(phi) ≈ 0.69424
+	// log2(phi) ≈ 0.69424. Canonical definition: fibmath.GrowthFactor. This
+	// package deliberately imports nothing from this repository (ARCH.md), so
+	// it keeps a literal rather than the import (audit TYP-04).
 	bitLen := uint64(float64(n) * 0.69424)
 	// bitLen is bounded by n (practical limit ~10^9 ⇒ bitLen fits in int).
 	// This is a heuristic estimate for pool sizing.

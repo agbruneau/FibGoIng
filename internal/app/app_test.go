@@ -13,10 +13,10 @@ import (
 	"testing"
 	"time"
 
+	"github.com/agbruneau/FibGo/internal/apperrors"
 	"github.com/agbruneau/FibGo/internal/calibration"
 	"github.com/agbruneau/FibGo/internal/cli"
 	"github.com/agbruneau/FibGo/internal/config"
-	apperrors "github.com/agbruneau/FibGo/internal/errors"
 	"github.com/agbruneau/FibGo/internal/fibonacci"
 	"github.com/agbruneau/FibGo/internal/orchestration"
 	"github.com/agbruneau/FibGo/internal/testutil"

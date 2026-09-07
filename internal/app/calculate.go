@@ -7,9 +7,9 @@ import (
 	"io"
 	"time"
 
+	"github.com/agbruneau/FibGo/internal/apperrors"
 	"github.com/agbruneau/FibGo/internal/cli"
 	"github.com/agbruneau/FibGo/internal/config"
-	apperrors "github.com/agbruneau/FibGo/internal/errors"
 	"github.com/agbruneau/FibGo/internal/fibonacci"
 	"github.com/agbruneau/FibGo/internal/fibonacci/memory"
 	"github.com/agbruneau/FibGo/internal/orchestration"
@@ -77,6 +77,8 @@ func (a *Application) executeCalculations(ctx context.Context, out io.Writer) []
 		GCMode:                  a.Config.GCControl,
 		EnableDynamicThresholds: a.Config.DynamicThresholds,
 		MemoryLimitBytes:        a.Config.MemoryLimitBytes,
+		Logger:                  a.logger,
+		ThresholdTuning:         thresholdTuningFromConfig(),
 	}
 	return orchestration.ExecuteCalculations(ctx, orchestration.ExecutionConfig{
 		Calculators:      calculatorsToRun,
@@ -161,11 +163,7 @@ func (a *Application) runLastDigits(ctx context.Context, out io.Writer) int {
 		// Centralized error handling: maps timeout/cancel/generic to the
 		// correct exit code and writes a uniform "Status: …" message to
 		// the user-facing stream (matches the comparison-mode behavior).
-		colors := apperrors.ColorProvider(cli.CLIColorProvider{})
-		if a.Config.MachineOutput {
-			colors = apperrors.DefaultColorProvider{}
-		}
-		return apperrors.HandleCalculationError(err, time.Since(start), a.ErrWriter, colors)
+		return cli.WriteCalculationStatus(a.ErrWriter, err, time.Since(start))
 	}
 
 	if a.Config.Quiet {

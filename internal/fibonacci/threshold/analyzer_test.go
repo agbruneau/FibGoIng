@@ -161,7 +161,7 @@ func TestThresholdAnalyzer_Analyze(t *testing.T) {
 	predicateFFT := func(m IterationMetric) bool { return m.UsedFFT }
 	baseParams := AnalysisParams{
 		Predicate:         predicateFFT,
-		SpeedupThreshold:  FFTSpeedupThreshold,
+		SpeedupThreshold:  DefaultTuning.FFTSpeedupThreshold,
 		LowerNumerator:    9,
 		RaiseNumerator:    11,
 		MinThreshold:      100000,

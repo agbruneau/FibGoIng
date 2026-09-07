@@ -156,6 +156,8 @@ func (fd *FastDoublingCalculator) CalculateCore(ctx context.Context, reporter pr
 			InitialParallelThreshold: normalizedOpts.ParallelThreshold,
 			AdjustmentInterval:       interval,
 			Enabled:                  true,
+			Logger:                   optionsLogger(normalizedOpts),
+			Tuning:                   normalizedOpts.ThresholdTuning,
 		})
 		framework = NewDoublingFrameworkWithDynamicThresholds(strategy, dtm)
 	} else {

@@ -13,7 +13,6 @@ package calibration
 
 import (
 	"context"
-	"io"
 
 	"github.com/agbruneau/FibGo/internal/config"
 	"github.com/agbruneau/FibGo/internal/fibonacci"
@@ -53,10 +52,13 @@ type StrategyOptions struct {
 	// present, lets it also tune the Strassen threshold.
 	CalculatorRegistry map[string]fibonacci.Calculator
 
-	// Out is the writer used for human-facing progress messages.
-	// Strategies should keep their output minimal; the orchestrator is
-	// responsible for the final summary line.
-	Out io.Writer
+	// Reporter receives human-facing progress messages. Strategies should
+	// keep their narration minimal; the orchestrator is responsible for the
+	// final summary line.
+	//
+	// A Reporter, not an io.Writer, since audit ARC-01: a strategy decides
+	// WHAT is worth saying, the adapter decides how it looks.
+	Reporter Reporter
 }
 
 // CalibrationStrategy is the abstraction shared by every calibration

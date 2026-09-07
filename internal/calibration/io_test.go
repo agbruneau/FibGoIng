@@ -21,7 +21,7 @@ func TestPrintCalibrationOutput(t *testing.T) {
 			StrassenThreshold: 256,
 		}
 
-		printCalibrationOutput(cfg, &outBuf)
+		printCalibrationOutput(cfg, newTestReporter(&outBuf))
 
 		output := outBuf.String()
 		if !strings.Contains(output, "Auto-calibration") {
@@ -48,7 +48,7 @@ func TestPrintCalibrationOutput(t *testing.T) {
 			StrassenThreshold: 0,
 		}
 
-		printCalibrationOutput(cfg, &outBuf)
+		printCalibrationOutput(cfg, newTestReporter(&outBuf))
 
 		output := outBuf.String()
 		if !strings.Contains(output, "Auto-calibration") {

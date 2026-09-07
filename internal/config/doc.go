@@ -30,5 +30,5 @@
 //
 // Dependencies (downward only):
 //
-//	internal/config → internal/fibonacci/memory, internal/errors, internal/ui
+//	internal/config → internal/fibonacci/memory, internal/apperrors, internal/ui
 package config

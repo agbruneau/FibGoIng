@@ -44,6 +44,7 @@ var flagRegistry = []FlagCompletion{
 	{Long: "last-digits", Help: "Compute only the last K decimal digits", ValueName: "count"},
 	{Long: "memory-limit", Help: "Maximum memory budget (e.g., 8G, 512M)", ValueName: "size"},
 	{Long: "gc-control", Help: "GC control during calculation", Values: []string{"auto", "aggressive", "disabled"}, ValueName: "mode"},
+	{Long: "log-level", Help: "Diagnostic log verbosity on stderr", Values: []string{"off", "error", "warn", "info", "debug"}, ValueName: "level"},
 	{Long: "dynamic-thresholds", Help: "Adjust FFT/parallelism thresholds during the calculation"},
 }
 

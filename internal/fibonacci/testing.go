@@ -32,8 +32,14 @@ func (m *MockCalculator) Calculate(ctx context.Context, progressChan chan<- prog
 	return m.Result, m.Err
 }
 
-// TestFactory is a CalculatorFactory implementation designed for testing.
-// It allows tests in other packages to create factories with mock calculators.
+// TestFactory is a calculator registry for tests: it satisfies
+// orchestration.CalculatorSource and app.CalculatorRegistry with a fixed set of
+// calculators supplied at construction.
+//
+// It no longer carries Register or Create. Both existed only to satisfy the
+// five-method fibonacci.CalculatorFactory interface (audit API-01), and Register
+// was a no-op that returned nil — a double claiming to accept a registration it
+// discarded. With the interface gone, so are they.
 type TestFactory struct {
 	calculators map[string]Calculator
 }
@@ -51,11 +57,6 @@ func NewTestFactory(calculators map[string]Calculator) *TestFactory {
 		calculators = make(map[string]Calculator)
 	}
 	return &TestFactory{calculators: calculators}
-}
-
-// Create returns the calculator by name.
-func (f *TestFactory) Create(name string) (Calculator, error) {
-	return f.Get(name)
 }
 
 // Get returns the calculator by name.
@@ -81,12 +82,6 @@ func (f *TestFactory) List() []string {
 	}
 	sort.Strings(names)
 	return names
-}
-
-// Register is a no-op for TestFactory as calculators are provided at construction.
-func (f *TestFactory) Register(name string, creator func() CoreCalculator) error {
-	// No-op: calculators are set at construction time
-	return nil
 }
 
 // GetAll returns all calculators.

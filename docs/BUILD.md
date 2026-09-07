@@ -20,7 +20,7 @@ argument that the program ignores. Verified 2026-08-07 — `fibcalc -- -n 100
 -algo bogus` **exits 0** having computed the default `-n 100000000` with
 `-algo all`, while `fibcalc -n 100 -algo bogus` prints the usage and
 **exits 4** (`internal/config/config.go:AppConfig.Validate`;
-`ExitErrorConfig = 4`, `internal/errors/errors.go:ExitErrorConfig`).
+`ExitErrorConfig = 4`, `internal/apperrors/errors.go:ExitErrorConfig`).
 
 The default build produces a statically linked binary for the current platform. No external dependencies are required unless building with GMP support.
 

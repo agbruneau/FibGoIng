@@ -3,12 +3,9 @@ package memory
 import (
 	"math/big"
 	"math/bits"
-)
 
-// fibonacciGrowthFactor is log2(phi), where phi ~ 1.618 (golden ratio).
-// Used to estimate bit length of F(n). This is a local copy to avoid
-// importing the parent fibonacci package.
-const fibonacciGrowthFactor = 0.69424
+	"github.com/agbruneau/FibGo/internal/fibonacci/fibmath"
+)
 
 // MaxReasonableWords caps arena sizing well above any computable F(n). It
 // exists only to keep the float->int conversion and the ×10 multiplication in
@@ -27,12 +24,12 @@ const fibonacciGrowthFactor = 0.69424
 const MaxReasonableWords = 1 << (bits.UintSize - 4)
 
 // arenaTotalWords computes the arena size (in big.Word) for F(n): one int of
-// ~n*fibonacciGrowthFactor bits, times 10 temporaries (over-sizing factor swept
+// ~n*fibmath.GrowthFactor bits, times 10 temporaries (over-sizing factor swept
 // from 15 to 10 in ADR-0009 R4, 2026-07-07). The clamp only changes the result
 // for n far beyond the computable range; for realistic n it is bit-identical to
 // the naive estimatedBits/64+1 then ×10 computation.
 func arenaTotalWords(n uint64) int {
-	estimatedBits := float64(n) * fibonacciGrowthFactor
+	estimatedBits := fibmath.BitsFor(n)
 	// A float64 outside the int range yields an impl-defined value on
 	// conversion; clamp before converting.
 	if estimatedBits/64 >= float64(MaxReasonableWords) {
@@ -59,7 +56,7 @@ type CalculationArena struct {
 
 // NewCalculationArena creates an arena sized for F(n).
 // It estimates the total memory needed for 10 big.Int temporaries
-// of size ~ n * fibonacciGrowthFactor bits.
+// of size ~ n * fibmath.GrowthFactor bits.
 func NewCalculationArena(n uint64) *CalculationArena {
 	if n < 1000 {
 		return &CalculationArena{}

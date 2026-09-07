@@ -10,8 +10,9 @@ import (
 
 	tea "github.com/charmbracelet/bubbletea"
 
+	"github.com/agbruneau/FibGo/internal/apperrors"
 	"github.com/agbruneau/FibGo/internal/config"
-	apperrors "github.com/agbruneau/FibGo/internal/errors"
+	"github.com/agbruneau/FibGo/internal/orchestration"
 )
 
 // TestRun_ReportsProgramError pins ERR-04: a p.Run failure must be reported
@@ -26,7 +27,7 @@ func TestRun_ReportsProgramError(t *testing.T) {
 	}
 
 	var errBuf bytes.Buffer
-	code := Run(context.Background(), nil, config.AppConfig{Timeout: time.Second}, "test", &errBuf)
+	code := Run(context.Background(), nil, config.AppConfig{Timeout: time.Second}, "test", &errBuf, nil, orchestration.ThresholdTuning{})
 
 	if code != apperrors.ExitErrorGeneric {
 		t.Fatalf("expected exit %d, got %d", apperrors.ExitErrorGeneric, code)
@@ -51,7 +52,7 @@ func TestRun_InterruptedExitsCanceled(t *testing.T) {
 	}
 
 	var errBuf bytes.Buffer
-	code := Run(context.Background(), nil, config.AppConfig{Timeout: time.Second}, "test", &errBuf)
+	code := Run(context.Background(), nil, config.AppConfig{Timeout: time.Second}, "test", &errBuf, nil, orchestration.ThresholdTuning{})
 
 	if code != apperrors.ExitErrorCanceled {
 		t.Fatalf("expected exit %d for an interrupted program, got %d", apperrors.ExitErrorCanceled, code)

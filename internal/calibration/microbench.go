@@ -32,18 +32,39 @@ const MicroBenchIterations = 7
 //
 // Sourced from config.DefaultThresholdTuning.MicroBenchTimeout since audit
 // R4.2 — the canonical value lives there alongside the other dynamic-tuning
-// knobs. Declared as a var (not const) so callers can re-point this package
-// at an alternative profile in tests if needed without changing the
-// public symbol name.
-var MicroBenchTimeout = config.DefaultThresholdTuning.MicroBenchTimeout
+// knobs.
+//
+// A function, not a var (audit TYP-02). The var existed so a caller could
+// "re-point this package at an alternative profile in tests", but MicroBenchmark
+// already carries a per-instance Timeout field: a caller wanting a different
+// budget sets that, and does not have to mutate process-wide state that every
+// concurrently running test shares.
+func MicroBenchTimeout() time.Duration {
+	return config.DefaultThresholdTuning.MicroBenchTimeout
+}
 
-// MicroBenchTestSizes defines the word sizes to test for threshold estimation.
-// These sizes are chosen to span the critical ranges where algorithm switches occur.
-var MicroBenchTestSizes = []int{
+// microBenchTestSizes defines the word sizes to test for threshold estimation.
+// These sizes are chosen to span the critical ranges where algorithm switches
+// occur.
+//
+// Unexported and copied on read (see MicroBenchTestSizes). The exported slice it
+// replaces was mutable by anyone who imported the package — appending to it or
+// writing an element changed the benchmark for every subsequent caller, with no
+// synchronization (audit TYP-02).
+var microBenchTestSizes = [...]int{
 	500,   // ~32K bits - small, standard math/big territory
 	2000,  // ~128K bits - medium, near parallel threshold
 	8000,  // ~512K bits - large, near FFT threshold
 	16000, // ~1M bits - very large, FFT territory
+}
+
+// MicroBenchTestSizes returns the default word sizes tested by the quick
+// calibration pass. The result is a fresh copy: the caller may modify it freely
+// and the next caller still gets the defaults.
+func MicroBenchTestSizes() []int {
+	sizes := make([]int, len(microBenchTestSizes))
+	copy(sizes, microBenchTestSizes[:])
+	return sizes
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -52,7 +73,7 @@ var MicroBenchTestSizes = []int{
 
 // MicroBenchmark performs fast tests to estimate optimal thresholds.
 type MicroBenchmark struct {
-	// TestSizes are the word sizes to test (default: MicroBenchTestSizes)
+	// TestSizes are the word sizes to test (default: MicroBenchTestSizes())
 	TestSizes []int
 	// Iterations is the number of iterations per test (default: MicroBenchIterations)
 	Iterations int
@@ -101,9 +122,9 @@ type testResult struct {
 // NewMicroBenchmark creates a new MicroBenchmark with default settings.
 func NewMicroBenchmark() *MicroBenchmark {
 	return &MicroBenchmark{
-		TestSizes:  MicroBenchTestSizes,
+		TestSizes:  MicroBenchTestSizes(),
 		Iterations: MicroBenchIterations,
-		Timeout:    MicroBenchTimeout,
+		Timeout:    MicroBenchTimeout(),
 	}
 }
 

@@ -2,12 +2,11 @@ package progress
 
 import (
 	"bytes"
+	"log/slog"
 	"sync"
 	"sync/atomic"
 	"testing"
 	"time"
-
-	"github.com/rs/zerolog"
 )
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -376,7 +375,7 @@ func TestLoggingObserver_Update(t *testing.T) {
 	t.Parallel()
 
 	var buf bytes.Buffer
-	logger := zerolog.New(&buf).Level(zerolog.DebugLevel)
+	logger := slog.New(slog.NewTextHandler(&buf, &slog.HandlerOptions{Level: slog.LevelDebug}))
 	observer := NewLoggingObserver(logger, 0.1)
 
 	// First update should log (initial progress)
@@ -412,7 +411,7 @@ func TestLoggingObserver_DefaultThreshold(t *testing.T) {
 	t.Parallel()
 
 	var buf bytes.Buffer
-	logger := zerolog.New(&buf).Level(zerolog.DebugLevel)
+	logger := slog.New(slog.NewTextHandler(&buf, &slog.HandlerOptions{Level: slog.LevelDebug}))
 
 	// Zero threshold should use default
 	observer := NewLoggingObserver(logger, 0)
@@ -454,7 +453,7 @@ func TestMultipleObserversIntegration(t *testing.T) {
 
 	// Set up logging observer
 	var logBuf bytes.Buffer
-	logger := zerolog.New(&logBuf).Level(zerolog.DebugLevel)
+	logger := slog.New(slog.NewTextHandler(&logBuf, &slog.HandlerOptions{Level: slog.LevelDebug}))
 	loggingObs := NewLoggingObserver(logger, 0.1)
 
 	// Set up mock observer to count

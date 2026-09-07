@@ -3,17 +3,16 @@ package memory
 import (
 	"bytes"
 	"errors"
+	"log/slog"
 	"runtime/debug"
 	"strings"
 	"testing"
-
-	"github.com/rs/zerolog"
 )
 
 func TestGCController_Disabled(t *testing.T) {
 	t.Parallel()
 
-	gc := NewGCController("disabled", 1_000_000)
+	gc := NewGCController("disabled", 1_000_000, nil)
 	gc.Begin()
 	defer gc.End()
 
@@ -25,7 +24,7 @@ func TestGCController_Disabled(t *testing.T) {
 func TestGCController_Auto_SmallN(t *testing.T) {
 	t.Parallel()
 
-	gc := NewGCController("auto", 100)
+	gc := NewGCController("auto", 100, nil)
 	gc.Begin()
 	defer gc.End()
 
@@ -37,7 +36,7 @@ func TestGCController_Auto_SmallN(t *testing.T) {
 func TestGCController_Auto_LargeN(t *testing.T) {
 	t.Parallel()
 
-	gc := NewGCController("auto", 2_000_000)
+	gc := NewGCController("auto", 2_000_000, nil)
 	if !gc.active {
 		t.Error("GC controller should be active for N >= 1M in auto mode")
 	}
@@ -56,7 +55,7 @@ func TestGCController_Auto_LargeN(t *testing.T) {
 func TestGCController_Aggressive(t *testing.T) {
 	t.Parallel()
 
-	gc := NewGCController("aggressive", 100)
+	gc := NewGCController("aggressive", 100, nil)
 	if !gc.active {
 		t.Error("GC controller should be active in aggressive mode regardless of N")
 	}
@@ -79,7 +78,7 @@ func TestGCController_WithGC_PanicRestoresGC(t *testing.T) {
 	original := debug.SetGCPercent(100)
 	debug.SetGCPercent(original)
 
-	gc := NewGCController("aggressive", 2_000_000)
+	gc := NewGCController("aggressive", 2_000_000, nil)
 	if !gc.active {
 		t.Fatal("test prerequisite: GC controller must be active")
 	}
@@ -111,7 +110,7 @@ func TestGCController_WithGC_ReturnsError(t *testing.T) {
 	original := debug.SetGCPercent(100)
 	debug.SetGCPercent(original)
 
-	gc := NewGCController("aggressive", 2_000_000)
+	gc := NewGCController("aggressive", 2_000_000, nil)
 	sentinel := errors.New("sentinel")
 
 	err := gc.WithGC(func() error { return sentinel })
@@ -138,8 +137,8 @@ func TestGCController_ConcurrentBeginEnd_RestoresOriginal(t *testing.T) {
 	original := debug.SetGCPercent(sentinel) // install a known GOGC, capture prior
 	defer debug.SetGCPercent(original)       // best-effort restore for other tests
 
-	c1 := NewGCController("aggressive", 2_000_000)
-	c2 := NewGCController("aggressive", 2_000_000)
+	c1 := NewGCController("aggressive", 2_000_000, nil)
+	c2 := NewGCController("aggressive", 2_000_000, nil)
 	if !c1.active || !c2.active {
 		t.Fatal("test prerequisite: both controllers must be active")
 	}
@@ -177,7 +176,7 @@ func TestGCController_RestoresMemoryLimit(t *testing.T) {
 	original := debug.SetMemoryLimit(sentinel)
 	defer debug.SetMemoryLimit(original) // restore whatever was there for other tests
 
-	gc := NewGCController("aggressive", 2_000_000)
+	gc := NewGCController("aggressive", 2_000_000, nil)
 	if !gc.active {
 		t.Fatal("test prerequisite: aggressive controller must be active")
 	}
@@ -193,7 +192,12 @@ func TestGCController_RestoresMemoryLimit(t *testing.T) {
 
 // TestGCController_SetLogger_EmitsGCEvents verifies that SetLogger wires the
 // logger actually used by Begin/End: the "gc disabled" and "gc re-enabled"
-// debug events must land in the configured sink, with the mode field set.
+// debug records must land in the injected sink, with the mode field set.
+//
+// The logger is a constructor parameter since audit OBS-01. It used to be
+// reachable only through a test-only setter, which meant these two records —
+// the ones that answer "did GOGC=off actually hold, and how many cycles ran
+// anyway?" — could not be seen from the binary at any verbosity.
 //
 // Not parallel: Begin/End (via WithGC) mutate the process-global GOGC through
 // the package refcount. WithGC itself restores the original value on return,
@@ -201,11 +205,11 @@ func TestGCController_RestoresMemoryLimit(t *testing.T) {
 // GC-off window or asserts global GC state concurrently.
 func TestGCController_SetLogger_EmitsGCEvents(t *testing.T) {
 	var buf bytes.Buffer
-	gc := NewGCController("aggressive", 100)
+	logger := slog.New(slog.NewTextHandler(&buf, &slog.HandlerOptions{Level: slog.LevelDebug}))
+	gc := NewGCController("aggressive", 100, logger)
 	if !gc.active {
 		t.Fatal("test prerequisite: aggressive controller must be active")
 	}
-	gc.setLogger(zerolog.New(&buf))
 
 	if err := gc.WithGC(func() error { return nil }); err != nil {
 		t.Fatalf("WithGC: %v", err)
@@ -224,7 +228,7 @@ func TestGCController_SetLogger_EmitsGCEvents(t *testing.T) {
 func TestGCController_WithGC_InactiveNoOp(t *testing.T) {
 	t.Parallel()
 
-	gc := NewGCController("disabled", 2_000_000)
+	gc := NewGCController("disabled", 2_000_000, nil)
 	called := false
 	err := gc.WithGC(func() error {
 		called = true

@@ -18,7 +18,7 @@
 // Dependencies (downward):
 //
 //	internal/cli → internal/orchestration, internal/format, internal/config,
-//	               internal/progress, internal/errors
+//	               internal/progress, internal/apperrors
 //
 // This package MUST NOT import internal/fibonacci directly ; calculator
 // types arrive through the orchestration.Calculator alias. The

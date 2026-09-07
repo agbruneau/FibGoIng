@@ -64,7 +64,7 @@ Verified properties (against Go `import` declarations in source):
 | `cli` depends on `orchestration` (not the reverse) | Holds | `internal/cli` imports `internal/orchestration` |
 | `tui` depends on `orchestration` (not the reverse) | Holds | `internal/tui` calls orchestration entry points |
 | `app` is the composition root | Holds | `internal/app` imports `cli`, `tui`, `orchestration`, `fibonacci`, `config`, `errors` |
-| `internal/**` does not leak into `cmd/**` | Holds | `cmd/fibcalc` imports `internal/app` and `internal/errors` (the `Exit*` codes it hands to `os.Exit`) and nothing else |
+| `internal/**` does not leak into `cmd/**` | Holds | `cmd/fibcalc` imports `internal/app` and `internal/apperrors` (the `Exit*` codes it hands to `os.Exit`) and nothing else |
 
 Only two of the diagrams carry package-import edges, and both were
 re-verified arrow-by-arrow against the `go list` command above:

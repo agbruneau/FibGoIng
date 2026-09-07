@@ -11,10 +11,9 @@ import (
 
 	"github.com/agbruneau/FibGo/internal/progress"
 	"github.com/agbruneau/FibGo/internal/ui"
-	"github.com/briandowns/spinner"
 )
 
-// MockSpinner for testing
+// MockSpinner is retained only for tests that still reference it.
 type MockSpinner struct {
 	started bool
 	stopped bool
@@ -103,14 +102,50 @@ func TestDisplayResult(t *testing.T) {
 	}
 }
 
-func TestRealSpinner(t *testing.T) {
+// progressLine draws in place with a carriage return and erases what it drew.
+// The animation must advance, and a shorter line must not leave a tail of the
+// previous one behind — the ETA field shrinks from "ETA: 1m20s" to "ETA: < 1s".
+func TestProgressLine(t *testing.T) {
 	t.Parallel()
-	rs := newSpinner(spinner.WithColor("fgCyan"))
 
-	// Just verify these methods don't panic
-	rs.Start()
-	rs.UpdateSuffix(" test")
-	rs.Stop()
+	var out bytes.Buffer
+	p := newProgressLine(&out)
+
+	p.Draw(" first frame, quite long")
+	first := out.String()
+	if !strings.HasPrefix(first, "\r") {
+		t.Errorf("Draw did not return to column 0: %q", first)
+	}
+	if !strings.Contains(first, "first frame") {
+		t.Errorf("Draw did not write its text: %q", first)
+	}
+
+	out.Reset()
+	p.Draw(" first frame, quite long")
+	if second := out.String(); second == first {
+		t.Error("the animation frame did not advance between draws")
+	}
+
+	out.Reset()
+	p.Draw(" short")
+	padded := out.String()
+	if len([]rune(padded)) < len([]rune(" first frame, quite long")) {
+		t.Errorf("a shorter line was not padded over the previous one: %q", padded)
+	}
+
+	out.Reset()
+	p.Clear()
+	cleared := out.String()
+	if !strings.HasPrefix(cleared, "\r") || !strings.HasSuffix(cleared, "\r") {
+		t.Errorf("Clear must erase and return to column 0: %q", cleared)
+	}
+
+	// Clearing twice must not emit a second erase.
+	out.Reset()
+	p.Clear()
+	if out.Len() != 0 {
+		t.Errorf("Clear on an already-cleared line wrote %q", out.String())
+	}
 }
 
 func TestDisplayProgress_ZeroCalculators(t *testing.T) {

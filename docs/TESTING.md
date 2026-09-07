@@ -139,22 +139,31 @@ Seven fuzz targets use Go's built-in fuzzing framework (`testing.F`). Read the
 next paragraph before reading the table: what these targets buy the project
 today is **not** what "fuzz testing" usually means.
 
-> **What actually runs (and what does not).** No guardrail ever mutates an
-> input. `grep -rn "fuzz" scripts/ Makefile` returns nothing (exit 1, verified
-> 2026-09-04): neither `check.ps1`, `check.sh`, `make test`, `make test-win`
-> nor `make coverage-check` passes `-fuzz`. What *does* run on every `go test`
-> is the **seed corpus**, replayed deterministically as ordinary subtests —
-> **63 seed inputs**, in **≈0.26 s** for `internal/fibonacci` and **≈0.24 s**
-> for `internal/bigfft` (`go test -run 'Fuzz' -count=1 ./internal/fibonacci/
-> ./internal/bigfft/`; three runs on 2026-09-04, go1.27.0 windows/amd64, gave
-> 0.267/0.259/0.254 s and 0.259/0.241/0.229 s). Mutation-driven fuzzing is a manual,
-> opt-in activity: the cumulative time this repository has ever been fuzzed is
-> recorded nowhere, and **no crasher has ever been committed**. All 15 files
-> under `internal/fibonacci/testdata/fuzz/` are hand-written seeds added by one
-> commit (`8810795`, 2026-04-18, "add persistent fuzz corpus for 5 targets");
-> none is a minimized failure
-> (`git log --diff-filter=A -- internal/fibonacci/testdata/fuzz`). So: seven
-> targets described, zero mutation budget spent on any schedule.
+> **What actually runs (and what does not).** Two things, since 2026-09-07
+> (audit TST-04):
+>
+> 1. **Every `go test` replays the seed corpus** deterministically, as ordinary
+>    subtests. That has always been true, and it is the bulk of what these
+>    targets buy day to day.
+> 2. **Mutation fuzzing now runs on a schedule.** `make fuzz-smoke` fuzzes all
+>    seven targets for 30 s each locally, and `.github/workflows/ci.yml` runs
+>    them for 120 s each every Monday and on demand, uploading any crasher as an
+>    artifact. Before that date nothing ever mutated an input: `grep -rn "fuzz"
+>    scripts/ Makefile` returned nothing, and the cumulative fuzzing time this
+>    repository had ever received was recorded nowhere.
+>
+> The seed corpus itself was also wrong where it mattered most. Every `bigfft`
+> seed sat **below** the FFT threshold, so each replay of `FuzzMul` and
+> `FuzzSqr` compared `math/big` against `math/big` — the FFT path those targets
+> exist to check was never entered. Seeds are now sized in words relative to
+> `defaultFFTThresholdWords`, and a replay covers `fftmul` and `fftsqr` at
+> 100 % of statements (`go test -run 'Fuzz(Mul|Sqr)' -coverprofile`).
+>
+> **No crasher has ever been committed.** All 15 files under
+> `internal/fibonacci/testdata/fuzz/` are hand-written seeds from one commit
+> (`8810795`, 2026-04-18); none is a minimized failure
+> (`git log --diff-filter=A -- internal/fibonacci/testdata/fuzz`). The first
+> scheduled run at 120 s per target found nothing either.
 
 The "Seeds" column below counts inputs replayed by `go test` and, after the
 slash, the inputs the fuzzing engine keeps after deduplication (see
@@ -167,8 +176,8 @@ slash, the inputs the fuzzing engine keeps after deduplication (see
 | `FuzzFibonacciIdentities` | `internal/fibonacci` | Verifies mathematical identities | n up to 10,000 | 13 / 11 |
 | `FuzzProgressMonotonicity` | `internal/fibonacci` | Ensures progress is monotonically increasing | n 10 to 20,000 | 7 / 4 |
 | `FuzzFastDoublingMod` | `internal/fibonacci` | Validates modular Fast Doubling output range | n up to 100,000, mod up to 1B | 7 / 6 |
-| `FuzzMul` | `internal/bigfft` | Cross-validates `bigfft.Mul` against `math/big.Int.Mul`. The seed corpus does **not** reach the FFT path: its largest operand is 4 096 bytes = 512 words, and `Mul` only dispatches to `mulFFT` when **both** operands exceed `defaultFFTThresholdWords = 1800` (≈14 400 bytes). Only fuzzer-generated inputs above that size exercise FFT — which no gate ever generates. | operand size up to 32 000 bytes (= 4 000 words) | 5 / 5 |
-| `FuzzSqr` | `internal/bigfft` | Cross-validates `bigfft.Sqr` against `math/big` squaring | operand size up to 32 000 bytes | 5 / 5 |
+| `FuzzMul` | `internal/bigfft` | Cross-validates `bigfft.Mul` against `math/big.Int.Mul`. Seeds straddle the crossover: one pair just below it, one pair one word above (`Mul` dispatches to `mulFFT` only when **both** operands exceed `defaultFFTThresholdWords`), one well inside the FFT regime, and one asymmetric pair that must still agree through the non-FFT branch. | operand size up to 32 000 bytes (= 4 000 words) | 8 |
+| `FuzzSqr` | `internal/bigfft` | Cross-validates `bigfft.Sqr` against `math/big` squaring, with seeds on both sides of the FFT threshold | operand size up to 32 000 bytes | 7 |
 
 Fibonacci targets live in `internal/fibonacci/fibonacci_fuzz_test.go`;
 `bigfft` targets in `internal/bigfft/fft_fuzz_test.go`.
@@ -249,7 +258,7 @@ files are excluded). Currently five rules :
 | Importer | Forbidden direct import | Rationale |
 |---|---|---|
 | `internal/fibonacci/threshold` | `internal/config` | Would close a cycle through `config → fibonacci/memory`. The threshold package consumes `Tuning` via `SetTuning`. |
-| `internal/errors` | `internal/format` | Leaf utility ; uses local `formatBytesLocal` instead. |
+| `internal/apperrors` | `internal/format` | Leaf utility ; uses local `formatBytesLocal` instead. |
 | `internal/tui` (production) | `internal/fibonacci` | UI must reach domain types through `orchestration.Calculator`/`Options` aliases. |
 | `internal/orchestration` | `internal/format` | APP-10 : progress aggregation (`ProgressAggregator`, formerly `ProgressState`) moved from `format` to `orchestration` ; the arrow must not come back. |
 | `internal/config` | `internal/fibonacci`, `internal/bigfft` | ARCH-02 : freezes the two documented lateral imports (`fibonacci/memory`, `ui`) where they stand ; reaching the computation core would close a cycle. |
@@ -532,7 +541,7 @@ The table lists key test files per package; it is **not exhaustive** (`internal/
 
 | Package | Key Test Files | Testing Approach |
 |---------|---------------|-----------------|
-| `internal/fibonacci` | `fibonacci_test.go`, `fibonacci_golden_test.go`, `fibonacci_fuzz_test.go`, `fibonacci_property_test.go`, `fibonacci_strassen_test.go`, `fibonacci_edge_test.go`, `modular_test.go`, `fastdoubling_test.go`, `state_cache_test.go`, `registry_test.go`, `strategy_test.go`, `testmain_test.go` | Unit, golden, fuzz, property-based, Strassen correctness, modular arithmetic, Fast Doubling state pooling, state/arena/bump cache guardians (8 tests, commits fa13bfd + 7999c39), calculator registry, strategy selection, `TestMain` pinning zerolog to InfoLevel so `-bench` output stays benchstat-parseable (commit 4e34b82) |
+| `internal/fibonacci` | `fibonacci_test.go`, `fibonacci_golden_test.go`, `fibonacci_fuzz_test.go`, `fibonacci_property_test.go`, `fibonacci_strassen_test.go`, `fibonacci_edge_test.go`, `modular_test.go`, `fastdoubling_test.go`, `state_cache_test.go`, `registry_test.go`, `strategy_test.go` | Unit, golden, fuzz, property-based, Strassen correctness, modular arithmetic, Fast Doubling state pooling, state/arena/bump cache guardians (8 tests, commits fa13bfd + 7999c39), calculator registry, strategy selection. The `TestMain` that pinned the zerolog level was removed with zerolog itself (audit OBS-01): logging is injected through `fibonacci.Options.Logger` and defaults to a discarding handler, so `-bench` output stays benchstat-parseable without a package-wide hook |
 | `internal/fibonacci/memory` | `arena_test.go`, `arena_fallback_test.go`, `budget_test.go`, `gc_control_test.go` | Bump arena allocation, heap-fallback pre-sizing, memory-budget pre-flight estimation, GC controller |
 | `internal/fibonacci/threshold` | `manager_test.go`, `tuning_test.go` | Threshold manager (parallelism / FFT / Strassen decisions), `SetTuning` propagation |
 | `internal/bigfft` | `fft_precision_test.go`, `fft_parallel_test.go`, `pool_test.go`, `fermat_test.go`, `bump_test.go`, `fft_cache_test.go` | Unit, precision, parallel correctness, pool recycling, Fermat arithmetic, bump allocator, FFT cache |
@@ -541,7 +550,7 @@ The table lists key test files per package; it is **not exhaustive** (`internal/
 | `internal/orchestration` | `orchestrator_test.go`, `orchestration_spy_test.go`, `calculator_selection_test.go` | Integration, spy-based config propagation, calculator selection |
 | `internal/calibration` | `calibration_test.go`, `calibration_advanced_test.go`, `adaptive_test.go`, `microbench_test.go`, `profile_test.go`, `io_test.go` | Unit, advanced calibration, micro-benchmark validation, profile I/O |
 | `internal/config` | `config_test.go`, `config_exhaustive_test.go`, `env_test.go` | Unit, exhaustive flag combinations, env vars |
-| `internal/errors` | `errors_test.go`, `handler_test.go` | Unit, exit code mapping |
+| `internal/apperrors` | `errors_test.go`, `handler_test.go` | Unit, exit code mapping |
 | `internal/metrics` | `indicators_test.go` | Performance indicators (throughput, O(1) properties) |
 | `internal/app` | `app_test.go`, `version_test.go`, `app_tuning_test.go` | Unit, lifecycle, threshold-tuning wiring (A2-04, `TestWireThresholdTuning`) |
 | `test/e2e` | `cli_e2e_test.go`, `extended_e2e_test.go` | End-to-end binary testing |

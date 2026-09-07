@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/agbruneau/FibGo/internal/fibonacci"
+	"github.com/agbruneau/FibGo/internal/fibonacci/threshold"
 	"github.com/agbruneau/FibGo/internal/progress"
 )
 
@@ -23,7 +24,39 @@ type (
 
 	// Options aliases fibonacci.Options for downstream packages.
 	Options = fibonacci.Options
+
+	// ThresholdTuning aliases threshold.Tuning, which Options carries.
+	//
+	// Without it internal/tui would have to import
+	// internal/fibonacci/threshold to name the type it puts in Options —
+	// reaching past the façade into a subpackage of the domain, which is the
+	// arrow TestArchitectureLayering forbids for internal/fibonacci itself.
+	ThresholdTuning = threshold.Tuning
 )
+
+// CalculatorSource is what this package needs to resolve --algo into a list of
+// calculators: the available names, and one lookup by name.
+//
+// Defined here, by the consumer, which is the point (audit API-01). What it
+// replaces was fibonacci.CalculatorFactory: five methods — Create, Get, List,
+// Register, GetAll — declared in the package that provides them, of which this
+// package used two. The book is direct about the inversion (ch. 6, p. 154:
+// "interfaces belong to consumers, not providers") and about the size (one to
+// three methods).
+//
+// The five-method version was not free. fibonacci.TestFactory had to implement
+// all of it to stand in as a double, which is how it ended up with a Register
+// that silently did nothing and returned nil, and a List that returned map
+// order while the interface documented a sorted result. A double that has to
+// lie to satisfy an interface is telling you the interface is too wide.
+type CalculatorSource interface {
+	// List returns the registered calculator names, sorted.
+	List() []string
+
+	// Get returns the calculator registered under name, or an error if there
+	// is none.
+	Get(name string) (Calculator, error)
+}
 
 // ExecutionConfig groups the parameters required to execute Fibonacci calculations.
 type ExecutionConfig struct {

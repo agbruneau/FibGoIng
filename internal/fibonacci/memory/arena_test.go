@@ -1,6 +1,7 @@
 package memory
 
 import (
+	"github.com/agbruneau/FibGo/internal/fibonacci/fibmath"
 	"math"
 	"math/big"
 	"testing"
@@ -120,7 +121,7 @@ func TestArenaTotalWords_ClampNoUB(t *testing.T) {
 	t.Parallel()
 
 	naive := func(n uint64) int {
-		return (int(float64(n)*fibonacciGrowthFactor/64) + 1) * 10
+		return (int(float64(n)*fibmath.GrowthFactor/64) + 1) * 10
 	}
 
 	for _, n := range []uint64{1001, 100_000, 1_000_000, 1_000_000_000, 1_000_000_000_000} {

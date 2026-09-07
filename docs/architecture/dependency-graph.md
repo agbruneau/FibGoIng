@@ -39,7 +39,7 @@ flowchart LR
     end
 
     subgraph Support["Support Packages (Leaf Nodes)"]
-        errors["internal/errors"]
+        errors["internal/apperrors"]
         format["internal/format"]
         metrics["internal/metrics"]
         progress["internal/progress"]

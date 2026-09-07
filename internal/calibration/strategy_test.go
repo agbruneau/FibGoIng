@@ -37,7 +37,7 @@ func TestFastStrategy_Calibrate_ReturnsProfile(t *testing.T) {
 			FFTThreshold:      500000,
 			StrassenThreshold: 256,
 		},
-		Out: out,
+		Reporter: newTestReporter(out),
 	}
 
 	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
@@ -89,7 +89,7 @@ func TestCompleteStrategy_Calibrate_ReturnsProfile(t *testing.T) {
 			StrassenThreshold: 256,
 		},
 		CalculatorRegistry: registry,
-		Out:                io.Discard,
+		Reporter:           newTestReporter(io.Discard),
 	}
 
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
@@ -123,7 +123,7 @@ func TestCompleteStrategy_Calibrate_MissingFastCalculator(t *testing.T) {
 	opts := StrategyOptions{
 		BaseConfig:         config.AppConfig{Timeout: 1 * time.Second},
 		CalculatorRegistry: map[string]fibonacci.Calculator{}, // no "fast"
-		Out:                io.Discard,
+		Reporter:           newTestReporter(io.Discard),
 	}
 
 	profile, conf, err := NewCompleteStrategy().Calibrate(context.Background(), opts)

@@ -10,7 +10,7 @@
 // forbidden upward import is introduced. It carries five rules, the last of
 // which forbids two targets:
 //   - internal/fibonacci/threshold → internal/config
-//   - internal/errors → internal/format
+//   - internal/apperrors → internal/format
 //   - internal/tui → internal/fibonacci (production code only)
 //   - internal/orchestration → internal/format
 //   - internal/config → internal/fibonacci, internal/bigfft
@@ -47,10 +47,10 @@ var architectureRules = []forbiddenImport{
 		},
 	},
 	{
-		// internal/errors is a leaf utility package and must not depend
+		// internal/apperrors is a leaf utility package and must not depend
 		// on internal/format (presentation concern). A local
 		// formatBytesLocal helper covers the byte-count need.
-		importer: "github.com/agbruneau/FibGo/internal/errors",
+		importer: "github.com/agbruneau/FibGo/internal/apperrors",
 		forbid: []string{
 			"github.com/agbruneau/FibGo/internal/format",
 		},
@@ -72,6 +72,30 @@ var architectureRules = []forbiddenImport{
 		// a pure string-in/string-out layer with no aggregation state.
 		importer: "github.com/agbruneau/FibGo/internal/orchestration",
 		forbid: []string{
+			"github.com/agbruneau/FibGo/internal/format",
+		},
+	},
+	{
+		// Production code in internal/cli must reach fibonacci only via
+		// internal/orchestration, exactly as internal/tui must. The rule was
+		// stated in cli/doc.go and enforced "by convention" — which is to say,
+		// not enforced (audit STR-04). Tests inside internal/cli are tolerated;
+		// the production .Imports query excludes _test.go files.
+		importer: "github.com/agbruneau/FibGo/internal/cli",
+		forbid: []string{
+			"github.com/agbruneau/FibGo/internal/fibonacci",
+		},
+	},
+	{
+		// internal/calibration is an application-layer package: it decides what
+		// to say, and internal/cli decides how it looks. It imported
+		// internal/ui and wrote colored text directly until audit ARC-01
+		// replaced that with the calibration.Reporter port. internal/format is
+		// forbidden for the same reason — rendering a duration for display is
+		// the adapter's job.
+		importer: "github.com/agbruneau/FibGo/internal/calibration",
+		forbid: []string{
+			"github.com/agbruneau/FibGo/internal/ui",
 			"github.com/agbruneau/FibGo/internal/format",
 		},
 	},

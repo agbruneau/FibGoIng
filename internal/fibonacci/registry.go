@@ -7,32 +7,15 @@ import (
 	"sync"
 )
 
-// CalculatorFactory is an interface for creating Calculator instances.
-// It allows for flexible calculator instantiation and registration,
-// enabling dependency injection and easier testing.
-type CalculatorFactory interface {
-	// Create creates a new Calculator instance by name.
-	// Returns an error if the calculator type is not registered.
-	Create(name string) (Calculator, error)
-
-	// Get returns an existing Calculator instance by name.
-	// Returns an error if the calculator type is not registered.
-	Get(name string) (Calculator, error)
-
-	// List returns a sorted list of registered calculator names.
-	List() []string
-
-	// Register adds a new calculator type to the factory. It rejects an empty
-	// name, a nil creator, and a name that is already registered.
-	Register(name string, creator func() CoreCalculator) error
-
-	// GetAll returns a map of all registered calculators.
-	GetAll() map[string]Calculator
-}
-
-// DefaultFactory is the default implementation of CalculatorFactory.
-// It maintains a thread-safe registry of calculator creators and
-// caches Calculator instances for reuse.
+// DefaultFactory is the calculator registry the binary uses. It maintains a
+// thread-safe registry of calculator creators and caches Calculator instances
+// for reuse.
+//
+// It implements no interface declared here: the consumers define what they need
+// (orchestration.CalculatorSource, app.CalculatorRegistry) and this type
+// satisfies them structurally. The five-method CalculatorFactory that used to
+// live in this file was provider-defined and wider than any caller
+// (audit API-01).
 type DefaultFactory struct {
 	mu          sync.RWMutex
 	creators    map[string]func() CoreCalculator

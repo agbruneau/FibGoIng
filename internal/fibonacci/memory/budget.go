@@ -2,6 +2,7 @@ package memory
 
 import (
 	"fmt"
+	"github.com/agbruneau/FibGo/internal/fibonacci/fibmath"
 	"math"
 	"strconv"
 	"strings"
@@ -54,11 +55,14 @@ const (
 	// F(1M) --algo all point (23 MB measured) came out at 22 MB, i.e. under.
 	baselineBytes = 10 << 20
 
-	// baselineMinN mirrors fibonacci.MaxFibUint64. Below it Calculate returns
-	// through calculateSmall without warming a pool or building an arena, so
-	// none of the fixed cost above is paid. The constant is duplicated rather
-	// than imported because internal/fibonacci imports this package.
-	baselineMinN = 93
+	// baselineMinN is the largest n handled by the uint64 fast path. Below it
+	// Calculate returns through calculateSmall without warming a pool or
+	// building an arena, so none of the fixed cost above is paid.
+	//
+	// It used to be a hand-copied 93 with a comment noting it mirrored
+	// fibonacci.MaxFibUint64 and could not import it. Both now name the same
+	// constant (audit TYP-04).
+	baselineMinN = fibmath.MaxUint64Index
 )
 
 // EstimateMemoryUsage estimates the memory needed to compute F(n).
@@ -93,7 +97,7 @@ const (
 //
 // See docs/audits/mem-baseline-2026-09.txt for the raw measurements.
 func EstimateMemoryUsage(n uint64) MemoryEstimate {
-	bitsPerFib := float64(n) * 0.69424
+	bitsPerFib := fibmath.BitsFor(n)
 	// bitsPerFib is non-negative (n is uint64) and at most ~1.3e19/64, so the
 	// uint64 conversion is exact and cannot overflow — no intermediate int.
 	wordsPerFib := uint64(bitsPerFib/64) + 1

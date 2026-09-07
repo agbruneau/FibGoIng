@@ -8,7 +8,7 @@ import (
 	"github.com/charmbracelet/bubbles/key"
 	tea "github.com/charmbracelet/bubbletea"
 
-	apperrors "github.com/agbruneau/FibGo/internal/errors"
+	"github.com/agbruneau/FibGo/internal/apperrors"
 	"github.com/agbruneau/FibGo/internal/metrics"
 )
 
@@ -177,7 +177,7 @@ func (m Model) handleReset() (tea.Model, tea.Cmd) {
 	// Restart calculation and watchers.
 	return m, tea.Batch(
 		tickCmd(),
-		startCalculationCmd(m.ctx, m.ref, m.calculators, m.config, m.generation),
+		startCalculationCmd(m.ctx, m.ref, m.calculators, m.config, m.generation, m.logger, m.tuning),
 		watchContextCmd(m.ctx, m.generation),
 	)
 }

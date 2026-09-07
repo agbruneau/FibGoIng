@@ -2,42 +2,31 @@ package cli
 
 import (
 	"bytes"
-	"io"
 	"math/big"
+	"strings"
 	"sync"
 	"testing"
 	"time"
 
 	"github.com/agbruneau/FibGo/internal/progress"
-	"github.com/briandowns/spinner"
 )
 
-// MockSpinner duplicated for advanced tests if needed, but since it is in ui_test.go which is in the same package (cli),
-// it should be available when running `go test ./internal/cli`.
-// However, if we run `go test ./internal/cli/ui_advanced_test.go ...`, we need to include ui_test.go or redefine it.
-// Since we want `go test ./internal/cli` to work, we don't redefine it.
-
 // TestDisplayProgress_LoopCoverage ensures every update sent on the
-// progress channel is consumed and that the spinner lifecycle
-// (Start / Stop) is honored by DisplayProgress.
+// progress channel is consumed and that the final line is written when the
+// channel closes.
+//
+// The spinner seam it used to install is gone with the dependency (audit
+// DEP-02): DisplayProgress draws on its own ticker loop, so the assertion is
+// now on the output rather than on a mock's Start/Stop bookkeeping.
 //
 // Synchronization is deterministic: the channel is unbuffered, so each
 // send blocks until DisplayProgress receives it — no time.Sleep needed.
 // Closing the channel drives DisplayProgress out of its select loop.
 func TestDisplayProgress_LoopCoverage(t *testing.T) {
-	// Setup mock spinner
-	originalNewSpinner := newSpinner
-	defer func() { newSpinner = originalNewSpinner }()
-
-	mockS := &MockSpinner{}
-	newSpinner = func(options ...spinner.Option) Spinner {
-		return mockS
-	}
-
 	var wg sync.WaitGroup
 	wg.Add(1)
 	progressChan := make(chan progress.ProgressUpdate)
-	out := io.Discard
+	var out bytes.Buffer
 
 	// A second WaitGroup makes the producer goroutine joinable so the
 	// test never returns while the sender is still running (no leaks).
@@ -57,15 +46,16 @@ func TestDisplayProgress_LoopCoverage(t *testing.T) {
 		close(progressChan)
 	}()
 
-	DisplayProgress(&wg, progressChan, 1, out)
+	DisplayProgress(&wg, progressChan, 1, &out)
 	wg.Wait()     // ensure DisplayProgress returned
 	sendWG.Wait() // ensure producer returned
 
-	if !mockS.started {
-		t.Error("Spinner should have started")
+	got := out.String()
+	if !strings.Contains(got, "Progress:") {
+		t.Errorf("no final progress line written; got %q", got)
 	}
-	if !mockS.stopped {
-		t.Error("Spinner should have stopped after channel close")
+	if !strings.HasSuffix(got, "\n") {
+		t.Errorf("final line is not terminated; got %q", got)
 	}
 }
 

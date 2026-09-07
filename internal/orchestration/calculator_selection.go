@@ -10,22 +10,22 @@ import (
 //
 // Parameters:
 //   - algo: The algorithm name ("fast", "matrix", "fft", "all").
-//   - factory: The calculator factory to retrieve implementations from.
+//   - source: The registry to resolve names against.
 //
 // Returns:
 //   - []fibonacci.Calculator: A slice of calculators to execute.
-func GetCalculatorsToRun(algo string, factory fibonacci.CalculatorFactory) []fibonacci.Calculator {
+func GetCalculatorsToRun(algo string, source CalculatorSource) []fibonacci.Calculator {
 	if algo == "all" {
-		keys := factory.List() // List() returns sorted keys
+		keys := source.List() // List() returns sorted keys
 		calculators := make([]fibonacci.Calculator, 0, len(keys))
 		for _, k := range keys {
-			if calc, err := factory.Get(k); err == nil {
+			if calc, err := source.Get(k); err == nil {
 				calculators = append(calculators, calc)
 			}
 		}
 		return calculators
 	}
-	if calc, err := factory.Get(algo); err == nil {
+	if calc, err := source.Get(algo); err == nil {
 		return []fibonacci.Calculator{calc}
 	}
 	return nil

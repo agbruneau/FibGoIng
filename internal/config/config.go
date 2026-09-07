@@ -7,7 +7,7 @@ import (
 	"strings"
 	"time"
 
-	apperrors "github.com/agbruneau/FibGo/internal/errors"
+	"github.com/agbruneau/FibGo/internal/apperrors"
 	"github.com/agbruneau/FibGo/internal/fibonacci/memory"
 )
 
@@ -128,6 +128,16 @@ type AppConfig struct {
 	MemoryLimitBytes uint64
 	// GCControl sets the GC control mode ("auto", "aggressive", "disabled").
 	GCControl string
+	// LogLevel selects the verbosity of the diagnostic log written to stderr:
+	// "off" (default), "error", "warn", "info" or "debug".
+	//
+	// The records it gates already existed and were unreachable (audit OBS-01):
+	// GC disable/re-enable with heap sizes and cycle counts, dynamic threshold
+	// adjustments, FFT transform-cache hit rates, and a per-calculation
+	// summary. They live at debug level, so "off" and "info" both stay silent
+	// in normal use; this is a diagnostic channel, not program output, and it
+	// never touches stdout.
+	LogLevel string
 	// DynamicThresholds enables the dynamic threshold manager
 	// (internal/fibonacci/threshold): it times each doubling iteration and
 	// raises or lowers the FFT and parallel thresholds mid-calculation.
@@ -211,6 +221,12 @@ func (c AppConfig) Validate(availableAlgos []string) error {
 	default:
 		return apperrors.NewConfigError("unrecognized gc-control mode: '%s'. Valid modes are: auto, aggressive, disabled", c.GCControl)
 	}
+	switch c.LogLevel {
+	case "", "off", "error", "warn", "info", "debug":
+		// valid
+	default:
+		return apperrors.NewConfigError("unrecognized log-level: '%s'. Valid levels are: off, error, warn, info, debug", c.LogLevel)
+	}
 	switch c.Completion {
 	case "", "bash", "zsh", "fish", "powershell":
 		// valid
@@ -263,6 +279,7 @@ func registerFlags(fs *flag.FlagSet, config *AppConfig, availableAlgos []string)
 	fs.IntVar(&config.LastDigits, "last-digits", 0, "Compute only the last K decimal digits (uses O(K) memory).")
 	fs.StringVar(&config.MemoryLimit, "memory-limit", "", "Maximum memory budget (e.g., 8G, 512M). Aborts with a config error if the estimate exceeds it.")
 	fs.StringVar(&config.GCControl, "gc-control", "auto", "GC control during calculation (auto, aggressive, disabled).")
+	fs.StringVar(&config.LogLevel, "log-level", "off", "Diagnostic log verbosity on stderr (off, error, warn, info, debug).")
 	fs.BoolVar(&config.DynamicThresholds, "dynamic-thresholds", false, "Adjust the FFT and parallelism thresholds during the calculation from per-iteration timings.")
 }
 

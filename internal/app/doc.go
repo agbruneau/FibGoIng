@@ -22,7 +22,7 @@
 // # Example
 //
 // This mirrors cmd/fibcalc/main.go. Run returns the POSIX exit code directly
-// (internal/errors.Exit*); the ExitAction type this example used to show was
+// (internal/apperrors.Exit*); the ExitAction type this example used to show was
 // removed by ADR-0011 D1, and the example outlived it by four days
 // (audit API-08).
 //

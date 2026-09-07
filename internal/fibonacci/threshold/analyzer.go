@@ -6,11 +6,17 @@ import "time"
 // threshold subsystem: filtering, speedup ratio computation, hysteresis,
 // and multiplicative adjustment of a threshold.
 //
-// The analyzer is stateless — every method takes its inputs explicitly —
-// so it can be unit-tested in isolation and reused for FFT, parallel, or
-// any future threshold without coupling to the Manager's lifecycle or
-// concurrency model.
-type ThresholdAnalyzer struct{}
+// Every method takes its inputs explicitly, so the analyzer can be unit-tested
+// in isolation and reused for FFT, parallel, or any future threshold without
+// coupling to the Manager's lifecycle or concurrency model.
+//
+// The one exception is the hysteresis margin, which SignificantChange needs on
+// every call and which is fixed for the life of a manager. It is a field rather
+// than the package variable it used to read (audit TYP-02); the zero value
+// falls back to DefaultTuning so a bare ThresholdAnalyzer{} still behaves.
+type ThresholdAnalyzer struct {
+	hysteresisMargin float64
+}
 
 // AnalysisParams captures the per-threshold configuration consumed by
 // ThresholdAnalyzer.Analyze. It is exported only because it crosses file
@@ -68,18 +74,22 @@ func (ThresholdAnalyzer) AvgTimePerBit(metrics []IterationMetric) float64 {
 	return float64(totalTime.Nanoseconds()) / float64(totalBits)
 }
 
-// SignificantChange reports whether |new − old| / |old| exceeds
-// HysteresisMargin. A change from zero to a non-zero value is always
+// SignificantChange reports whether |new − old| / |old| exceeds the analyzer's
+// hysteresis margin. A change from zero to a non-zero value is always
 // considered significant.
-func (ThresholdAnalyzer) SignificantChange(oldVal, newVal int) bool {
+func (a ThresholdAnalyzer) SignificantChange(oldVal, newVal int) bool {
 	if oldVal == 0 {
 		return newVal != 0
+	}
+	margin := a.hysteresisMargin
+	if margin <= 0 {
+		margin = DefaultTuning.HysteresisMargin
 	}
 	change := float64(newVal-oldVal) / float64(oldVal)
 	if change < 0 {
 		change = -change
 	}
-	return change > HysteresisMargin
+	return change > margin
 }
 
 // Analyze evaluates a candidate adjustment for the threshold described by

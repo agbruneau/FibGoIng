@@ -6,7 +6,6 @@ import (
 	"strings"
 	"time"
 
-	apperrors "github.com/agbruneau/FibGo/internal/errors"
 	"github.com/agbruneau/FibGo/internal/format"
 	"github.com/agbruneau/FibGo/internal/orchestration"
 	"github.com/agbruneau/FibGo/internal/ui"
@@ -78,10 +77,12 @@ func (CLIResultPresenter) PresentResult(result orchestration.CalculationResult, 
 }
 
 // HandleError handles calculation errors and returns an appropriate exit code.
-func (p CLIResultPresenter) HandleError(err error, duration time.Duration, out io.Writer) int {
-	colors := apperrors.ColorProvider(CLIColorProvider{})
-	if p.MachineOutput {
-		colors = apperrors.DefaultColorProvider{}
-	}
-	return apperrors.HandleCalculationError(err, duration, out, colors)
+//
+// MachineOutput is not consulted here: app.Run passes --machine to
+// ui.InitTheme, which installs the no-color theme, so ui.Color* already
+// returns empty strings in that mode. The former "pick the no-color provider
+// under --machine" branch selected an empty result that was already empty
+// (audit API-04).
+func (CLIResultPresenter) HandleError(err error, duration time.Duration, out io.Writer) int {
+	return WriteCalculationStatus(out, err, duration)
 }

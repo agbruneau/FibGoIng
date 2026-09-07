@@ -134,7 +134,7 @@ func TestCLI_E2E(t *testing.T) {
 				if err == nil {
 					t.Errorf("Expected non-zero exit code, but command succeeded.\nOutput: %s", outStr)
 				} else if exitErr, ok := err.(*exec.ExitError); ok {
-					// A-15: exit codes are a stable contract (internal/errors:
+					// A-15: exit codes are a stable contract (internal/apperrors:
 					// ExitErrorTimeout=2). Assert exactly instead of accepting
 					// any non-zero, so a mapping regression is caught.
 					if exitErr.ExitCode() != tt.wantCode {
@@ -259,7 +259,7 @@ func TestCLI_TimeoutLargeN(t *testing.T) {
 	}
 
 	if exitErr, ok := err.(*exec.ExitError); ok {
-		// A-15: timeout maps to ExitErrorTimeout=2 (internal/errors). Assert it.
+		// A-15: timeout maps to ExitErrorTimeout=2 (internal/apperrors). Assert it.
 		if exitErr.ExitCode() != 2 {
 			t.Errorf("Timeout exit code: got %d, want 2 (ExitErrorTimeout)", exitErr.ExitCode())
 		}

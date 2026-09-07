@@ -7,10 +7,7 @@ package calibration
 
 import (
 	"context"
-	"fmt"
 	"time"
-
-	"github.com/agbruneau/FibGo/internal/ui"
 )
 
 // FastStrategy estimates thresholds via the in-process micro-benchmarks
@@ -40,9 +37,9 @@ func (FastStrategy) Name() string { return "fast" }
 //
 // It runs QuickCalibrate, converts the produced ThresholdResults into
 // a *CalibrationProfile (preserving the original confidence score),
-// and prints a single informational line on opts.Out matching the
-// historical "Quick calibration (..): ..." message so existing tests
-// and end-user output stay identical.
+// and reports a single informational line through opts.Reporter. The wording of
+// the historical "Quick calibration (..): ..." message is preserved; the color
+// is now the adapter's decision (audit ARC-01).
 //
 // On context cancellation or QuickCalibrate failure, Calibrate returns
 // (nil, 0, err) so the orchestrator can escalate to CompleteStrategy.
@@ -61,14 +58,10 @@ func (s FastStrategy) Calibrate(ctx context.Context, opts StrategyOptions) (*Cal
 	profile.CalibrationTime = results.Duration.String()
 	profile.Confidence = float64(results.Confidence)
 
-	// Match the historical "Quick calibration (..): ..." message so
-	// existing user-visible output and integration tests are preserved.
-	fmt.Fprintf(opts.Out,
-		"%sQuick calibration%s (%v): parallelism=%s%d%s bits, FFT=%s%d%s bits (confidence: %.0f%%)\n",
-		ui.ColorGreen(), ui.ColorReset(),
+	opts.Reporter.Notice("Quick calibration (%v): parallelism=%d bits, FFT=%d bits (confidence: %.0f%%)",
 		results.Duration.Round(time.Millisecond),
-		ui.ColorYellow(), profile.OptimalParallelThreshold, ui.ColorReset(),
-		ui.ColorYellow(), profile.OptimalFFTThreshold, ui.ColorReset(),
+		profile.OptimalParallelThreshold,
+		profile.OptimalFFTThreshold,
 		results.Confidence*100)
 
 	return profile, Confidence(results.Confidence), nil

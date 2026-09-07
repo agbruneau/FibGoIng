@@ -9,7 +9,7 @@ import (
 
 	tea "github.com/charmbracelet/bubbletea"
 
-	apperrors "github.com/agbruneau/FibGo/internal/errors"
+	"github.com/agbruneau/FibGo/internal/apperrors"
 	"github.com/agbruneau/FibGo/internal/orchestration"
 	"github.com/agbruneau/FibGo/internal/progress"
 )
@@ -128,7 +128,12 @@ func (t *TUIResultPresenter) PresentResult(result orchestration.CalculationResul
 }
 
 // HandleError sends an error message to the TUI and returns the exit code.
+//
+// The TUI renders its own error panel from ErrorMsg, so all it needs from the
+// error itself is the exit code. It used to obtain that by calling
+// HandleCalculationError with io.Discard and a nil color provider — formatting
+// a message in order to throw it away (audit API-04).
 func (t *TUIResultPresenter) HandleError(err error, duration time.Duration, _ io.Writer) int {
 	t.ref.sendOrLog(ErrorMsg{Err: err, Duration: duration, Generation: t.gen}, "HandleError")
-	return apperrors.HandleCalculationError(err, duration, io.Discard, nil)
+	return apperrors.ExitCodeFor(err)
 }

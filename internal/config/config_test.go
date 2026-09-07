@@ -6,7 +6,7 @@ import (
 	"testing"
 	"time"
 
-	apperrors "github.com/agbruneau/FibGo/internal/errors"
+	"github.com/agbruneau/FibGo/internal/apperrors"
 )
 
 func TestParseConfig(t *testing.T) {

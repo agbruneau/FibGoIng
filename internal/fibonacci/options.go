@@ -3,10 +3,12 @@
 package fibonacci
 
 import (
+	"log/slog"
 	"math"
 	"math/bits"
 
 	"github.com/agbruneau/FibGo/internal/bigfft"
+	"github.com/agbruneau/FibGo/internal/fibonacci/threshold"
 )
 
 // Options configures the Fibonacci calculation.
@@ -66,6 +68,28 @@ type Options struct {
 	// runs at the calculator boundary so the protection survives any path
 	// that bypasses the validator (programmatic embedding, tests, …).
 	MemoryLimitBytes uint64
+	// Logger receives the calculator's diagnostic records: the completion
+	// summary here, "gc disabled" / "gc re-enabled" from the GC controller, and
+	// "thresholds adjusted" from the dynamic threshold manager. A nil Logger
+	// discards all of them, which is what a caller that only wants the result
+	// should leave it as.
+	//
+	// Injected rather than package-global (audit OBS-01 / API-03). This package
+	// used to import github.com/rs/zerolog and reach for its process-wide
+	// logger, which the book calls out twice over: a domain package depending
+	// on a third-party logger (ch. 14) and library code deciding where its
+	// records go (ch. 6). The practical result was worse than the principle —
+	// every emitter was wired to a no-op or filtered out by a global level set
+	// in app.Run, so none of them could be seen from the binary.
+	Logger *slog.Logger
+	// ThresholdTuning carries the dynamic-threshold adjustment knobs. Only read
+	// when EnableDynamicThresholds is set; the zero value means the package
+	// defaults (threshold.DefaultTuning).
+	//
+	// Passed by value into each manager, rather than installed into package
+	// globals by a startup call (audit TYP-02). internal/app translates
+	// config.DefaultThresholdTuning into this field.
+	ThresholdTuning threshold.Tuning
 }
 
 // normalizeOptions returns a copy of opts with default values filled in for zero values.
@@ -141,7 +165,7 @@ func configureFFTCache(opts Options, n uint64) {
 	// (2 entries at F(10M)) cost MatrixExp/10M +22% sec/op, +76% B/op and
 	// +137% allocs/op on benchstat, well past the 5% gate of the ADR-0009 R4
 	// protocol. The zero hit rate measured for a single run is real, but it
-	// does not generalise: a repeated calculation of the same n -- the TUI's
+	// does not generalize: a repeated calculation of the same n -- the TUI's
 	// restart key, a calibration sweep, the benchmarks themselves -- replays
 	// identical operands and does hit. Bounding is the goal here; starving is
 	// not.
@@ -154,4 +178,23 @@ func configureFFTCache(opts Options, n uint64) {
 
 	// Apply configuration to global cache
 	bigfft.SetTransformCacheConfig(config)
+
+	// The transform cache is a process-global singleton, so it cannot take the
+	// logger through Options the way the calculators do; it is installed here,
+	// alongside the configuration it belongs to. Doing it from this package
+	// rather than from internal/app also keeps the dependency arrows pointing
+	// inward — app reaches bigfft through fibonacci, never directly.
+	bigfft.SetTransformCacheLogger(opts.Logger)
+}
+
+// discardLogger is the shared sink for Options with no Logger set. slog.Logger
+// is safe for concurrent use, so one instance serves every calculation.
+var discardLogger = slog.New(slog.DiscardHandler)
+
+// optionsLogger returns the logger to use for opts, never nil.
+func optionsLogger(opts Options) *slog.Logger {
+	if opts.Logger != nil {
+		return opts.Logger
+	}
+	return discardLogger
 }

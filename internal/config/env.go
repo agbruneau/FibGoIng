@@ -10,7 +10,7 @@ import (
 	"strings"
 	"time"
 
-	apperrors "github.com/agbruneau/FibGo/internal/errors"
+	"github.com/agbruneau/FibGo/internal/apperrors"
 )
 
 // isFlagSet reports whether any of the named flags was explicitly set on the
@@ -79,6 +79,7 @@ var envOverrides = []envOverride{
 	override("CALIBRATION_PROFILE", flagsOf("calibration-profile"), func(c *AppConfig) *string { return &c.CalibrationProfile }, parseString),
 	override("MEMORY_LIMIT", flagsOf("memory-limit"), func(c *AppConfig) *string { return &c.MemoryLimit }, parseString),
 	override("GC_CONTROL", flagsOf("gc-control"), func(c *AppConfig) *string { return &c.GCControl }, parseString),
+	override("LOG_LEVEL", flagsOf("log-level"), func(c *AppConfig) *string { return &c.LogLevel }, parseString),
 
 	// Boolean overrides
 	override("VERBOSE", flagsOf("v", "verbose"), func(c *AppConfig) *bool { return &c.Verbose }, parseBoolEnv),

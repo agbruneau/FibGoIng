@@ -13,7 +13,6 @@ import (
 	"time"
 
 	"github.com/agbruneau/FibGo/internal/config"
-	apperrors "github.com/agbruneau/FibGo/internal/errors"
 	"github.com/agbruneau/FibGo/internal/fibonacci"
 	"github.com/agbruneau/FibGo/internal/progress"
 )
@@ -24,15 +23,6 @@ func noopProgressDisplay(wg *sync.WaitGroup, progressChan <-chan progress.Progre
 	for range progressChan {
 	}
 }
-
-// noopColorProvider returns empty strings for all colors (for tests).
-type noopColorProvider struct{}
-
-var _ apperrors.ColorProvider = noopColorProvider{}
-
-func (noopColorProvider) Red() string    { return "" }
-func (noopColorProvider) Yellow() string { return "" }
-func (noopColorProvider) Reset() string  { return "" }
 
 // MockCalculator implements fibonacci.Calculator for testing calibration
 type MockCalculator struct {
@@ -100,7 +90,7 @@ func TestAutoCalibrate(t *testing.T) {
 
 	// Run AutoCalibrate
 	// It will run trials. Our mock sleeps.
-	updatedCfg, success := AutoCalibrate(ctx, cfg, io.Discard, registry)
+	updatedCfg, success := AutoCalibrate(ctx, cfg, newTestReporter(io.Discard), registry)
 
 	if !success {
 		t.Error("AutoCalibrate should succeed with mock calculator")
@@ -123,7 +113,7 @@ func TestRunCalibration(t *testing.T) {
 	}
 
 	ctx := context.Background()
-	exitCode := RunCalibration(ctx, io.Discard, registry, filepath.Join(t.TempDir(), "profile.json"), noopProgressDisplay, noopColorProvider{})
+	exitCode := RunCalibration(ctx, io.Discard, newTestReporter(io.Discard), registry, filepath.Join(t.TempDir(), "profile.json"), noopProgressDisplay)
 
 	if exitCode != 0 { // ExitSuccess
 		t.Errorf("RunCalibration failed with code %d", exitCode)
@@ -140,7 +130,7 @@ func TestRunCalibration_HonorsCustomProfilePath(t *testing.T) {
 	}
 	profilePath := filepath.Join(t.TempDir(), "cal.json")
 
-	exitCode := RunCalibration(context.Background(), io.Discard, registry, profilePath, noopProgressDisplay, noopColorProvider{})
+	exitCode := RunCalibration(context.Background(), io.Discard, newTestReporter(io.Discard), registry, profilePath, noopProgressDisplay)
 
 	if exitCode != 0 {
 		t.Fatalf("RunCalibration failed with code %d", exitCode)
@@ -155,7 +145,7 @@ func TestRunCalibrationMissingFast(t *testing.T) {
 	registry := map[string]fibonacci.Calculator{} // Empty
 
 	ctx := context.Background()
-	exitCode := RunCalibration(ctx, io.Discard, registry, filepath.Join(t.TempDir(), "profile.json"), noopProgressDisplay, noopColorProvider{})
+	exitCode := RunCalibration(ctx, io.Discard, newTestReporter(io.Discard), registry, filepath.Join(t.TempDir(), "profile.json"), noopProgressDisplay)
 
 	if exitCode == 0 {
 		t.Error("RunCalibration should fail if 'fast' calculator is missing")
@@ -254,7 +244,7 @@ func TestAutoCalibrateWithProfile(t *testing.T) {
 
 		var outBuf bytes.Buffer
 		ctx := context.Background()
-		updated, ok := AutoCalibrateWithProfile(ctx, cfg, &outBuf, registry, profilePath)
+		updated, ok := AutoCalibrateWithProfile(ctx, cfg, newTestReporter(&outBuf), registry, profilePath)
 
 		if !ok {
 			t.Error("AutoCalibrateWithProfile should succeed with existing profile")
@@ -299,7 +289,7 @@ func TestAutoCalibrateWithProfile(t *testing.T) {
 		var outBuf bytes.Buffer
 		ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
 		defer cancel()
-		updated, _ := AutoCalibrateWithProfile(ctx, cfg, &outBuf, registry, profilePath)
+		updated, _ := AutoCalibrateWithProfile(ctx, cfg, newTestReporter(&outBuf), registry, profilePath)
 
 		if updated.Threshold < config.ThresholdDisabled {
 			t.Fatalf("forged out-of-range threshold leaked via auto-calibrate: Threshold=%d", updated.Threshold)
@@ -335,7 +325,7 @@ func TestAutoCalibrateWithProfile(t *testing.T) {
 		var outBuf bytes.Buffer
 		ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
 		defer cancel()
-		updated, ok := AutoCalibrateWithProfile(ctx, cfg, &outBuf, registry, profilePath)
+		updated, ok := AutoCalibrateWithProfile(ctx, cfg, newTestReporter(&outBuf), registry, profilePath)
 
 		if !ok {
 			t.Fatal("a hardware-valid, fresh profile must be applied")
@@ -394,7 +384,7 @@ func TestAutoCalibrateWithProfile(t *testing.T) {
 		ctx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
 		defer cancel()
 
-		updated, ok := AutoCalibrateWithProfile(ctx, cfg, &outBuf, registry, profilePath)
+		updated, ok := AutoCalibrateWithProfile(ctx, cfg, newTestReporter(&outBuf), registry, profilePath)
 
 		// Quick calibration may succeed or timeout; both paths must assert
 		// something (TEST-02: no silent-green branch).
@@ -433,7 +423,7 @@ func TestAutoCalibrateWithProfile(t *testing.T) {
 		ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
 		defer cancel()
 
-		updated, ok := AutoCalibrateWithProfile(ctx, cfg, &outBuf, registry, profilePath)
+		updated, ok := AutoCalibrateWithProfile(ctx, cfg, newTestReporter(&outBuf), registry, profilePath)
 
 		// Full calibration may succeed or timeout; both paths must assert
 		// something (TEST-02: no silent-green branch).
@@ -460,7 +450,7 @@ func TestAutoCalibrateWithProfile(t *testing.T) {
 		cancel() // every strategy fails on the dead context
 
 		var outBuf bytes.Buffer
-		updated, ok := AutoCalibrateWithProfile(ctx, config.AppConfig{Threshold: 1234}, &outBuf, registry, filepath.Join(t.TempDir(), "p.json"))
+		updated, ok := AutoCalibrateWithProfile(ctx, config.AppConfig{Threshold: 1234}, newTestReporter(&outBuf), registry, filepath.Join(t.TempDir(), "p.json"))
 
 		if ok {
 			t.Fatal("expected auto-calibration to fail on a canceled context")
@@ -491,7 +481,7 @@ func TestAutoCalibrateWithProfile(t *testing.T) {
 		ctx, cancel := context.WithTimeout(context.Background(), 100*time.Millisecond)
 		defer cancel()
 
-		updated, ok := AutoCalibrateWithProfile(ctx, cfg, &outBuf, registry, profilePath)
+		updated, ok := AutoCalibrateWithProfile(ctx, cfg, newTestReporter(&outBuf), registry, profilePath)
 
 		// QuickCalibrate might succeed even without fast calculator (it uses bigfft directly)
 		// So we check that if it fails, the config remains unchanged
@@ -620,7 +610,7 @@ func TestAutoCalibrateWithProfile_StaleProfileTriggersRecalibration(t *testing.T
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
 
-	updated, ok := AutoCalibrateWithProfile(ctx, cfg, &outBuf, registry, profilePath)
+	updated, ok := AutoCalibrateWithProfile(ctx, cfg, newTestReporter(&outBuf), registry, profilePath)
 	if !ok {
 		t.Fatalf("AutoCalibrateWithProfile should succeed; output=%q", outBuf.String())
 	}
@@ -669,7 +659,7 @@ func TestTryFastThenEscalate_InvalidMeasurementsEscalates(t *testing.T) {
 
 	stratOpts := StrategyOptions{
 		BaseConfig: config.AppConfig{StrassenThreshold: 256},
-		Out:        io.Discard,
+		Reporter:   newTestReporter(io.Discard),
 	}
 
 	_, ok := tryFastThenEscalate(ctx, stratOpts, "")

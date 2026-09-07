@@ -8,11 +8,10 @@ package bigfft
 
 import (
 	"bytes"
+	"log/slog"
 	"math/big"
 	"strings"
 	"testing"
-
-	"github.com/rs/zerolog"
 )
 
 // makeBigInt builds a big.Int with the given word count and a deterministic
@@ -75,11 +74,16 @@ func TestSetFFTParallelismConfigRoundTrip(t *testing.T) {
 // TestSetCacheLoggerWiresPeriodicStats installs a buffer-backed logger on the
 // global cache and drives logPeriodicStats until the periodic emission fires
 // (exactly one of cacheLogInterval consecutive accesses hits the modulo).
+//
+// SetTransformCacheLogger is exported since audit OBS-01: the setter used to be
+// unexported and callable only from here, so these statistics could not be seen
+// from the binary. internal/fibonacci installs the process logger alongside the
+// cache configuration.
 func TestSetCacheLoggerWiresPeriodicStats(t *testing.T) {
-	t.Cleanup(func() { setCacheLogger(zerolog.Nop()) })
+	t.Cleanup(func() { SetTransformCacheLogger(nil) })
 
 	var buf bytes.Buffer
-	setCacheLogger(zerolog.New(&buf))
+	SetTransformCacheLogger(slog.New(slog.NewTextHandler(&buf, &slog.HandlerOptions{Level: slog.LevelDebug})))
 
 	tc := GetTransformCache()
 	for i := 0; i < cacheLogInterval && buf.Len() == 0; i++ {

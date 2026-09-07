@@ -3,11 +3,11 @@
 package threshold
 
 import (
+	"context"
+	"log/slog"
 	"sync"
 	"sync/atomic"
 	"time"
-
-	"github.com/rs/zerolog"
 )
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -27,71 +27,74 @@ const (
 
 // Tuning knobs owned by the threshold package. Mirrors
 // internal/config.DefaultThresholdTuning, but kept here so this leaf
-// package does not import config (which would close a cycle via
-// config → fibonacci/memory). The config layer reads these defaults
-// and may override them via SetTuning before any manager is constructed.
-// INVARIANT (A2-04): these package-level tuning knobs are NOT synchronized.
-// They are written ONLY by SetTuning, itself called once at wiring time (by
-// internal/app) BEFORE any DynamicThresholdManager is constructed and before
-// any calculation reads them — single-writer-before-use. Calling SetTuning
-// concurrently with an active calculation would be a data race. The manager's
-// per-instance fields use atomic.Int64/atomic.Pointer; these package defaults
-// stay in clear by this deliberate protocol (no atomic migration this pass).
-var (
-	// FFTSpeedupThreshold is the minimum speedup ratio (baseline / FFT)
-	// at which the dynamic-threshold manager will lower the FFT
-	// activation threshold.
-	FFTSpeedupThreshold = 1.2
+// Tuning carries the adjustment knobs the config layer chooses, passed by
+// value into each manager rather than installed into package globals
+// (audit TYP-02 / CON-02).
+//
+// What this replaces was five unsynchronized package-level variables
+// (FFTSpeedupThreshold, ParallelSpeedupThreshold, HysteresisMargin and two
+// floors) written by a SetTuning function, guarded by a documented
+// "single-writer-before-use" protocol: internal/app wrapped the call in a
+// sync.Once and the invariant comment conceded that "calling SetTuning
+// concurrently with an active calculation would be a data race". The book does
+// not accept that trade (ch. 9, p. 279-283): shared state gets protected or
+// eliminated. A value copied into the manager at construction is neither
+// shared nor mutable, so the protocol, the sync.Once and the invariant comment
+// all disappear rather than being upheld.
+//
+// The zero value is not usable on its own; withDefaults fills it, so a caller
+// that sets nothing gets the documented defaults and a caller that sets one
+// field keeps the defaults for the rest.
+type Tuning struct {
+	// FFTSpeedupThreshold is the minimum speedup ratio (baseline / FFT) at
+	// which the manager lowers the FFT activation threshold.
+	FFTSpeedupThreshold float64
 
 	// ParallelSpeedupThreshold is the analogous ratio for the parallel
 	// multiplication path.
-	ParallelSpeedupThreshold = 1.1
-
-	// HysteresisMargin is the minimum relative change required before a
-	// new threshold is committed; damps oscillation.
-	HysteresisMargin = 0.15
-)
-
-// Floor values used by the analyzer to bound downward adjustments.
-// Mirrored from internal/config.DefaultThresholdTuning; see the SetTuning
-// note for override semantics.
-var (
-	minFFTThresholdFloor      = 100_000
-	minParallelThresholdFloor = 1024
-)
-
-// Tuning is a value object carrying tuning knobs that the config layer
-// can inject without creating an upward import from this package to
-// internal/config.
-type Tuning struct {
-	FFTSpeedupThreshold      float64
 	ParallelSpeedupThreshold float64
-	HysteresisMargin         float64
-	MinFFTThreshold          int
-	MinParallelThreshold     int
+
+	// HysteresisMargin is the minimum relative change required before a new
+	// threshold is committed; it damps oscillation.
+	HysteresisMargin float64
+
+	// MinFFTThreshold and MinParallelThreshold bound downward adjustments.
+	MinFFTThreshold      int
+	MinParallelThreshold int
 }
 
-// SetTuning installs new defaults for the package-level tuning knobs.
-// Intended to be called once at startup from the wiring layer (e.g. by
-// internal/app) so production code can stay on
-// internal/config.DefaultThresholdTuning as its single source of truth
-// while the threshold package itself stays free of upward imports.
-func SetTuning(t Tuning) {
-	if t.FFTSpeedupThreshold > 0 {
-		FFTSpeedupThreshold = t.FFTSpeedupThreshold
+// DefaultTuning mirrors internal/config.DefaultThresholdTuning. It is
+// duplicated rather than imported because this package must not import
+// internal/config, which would close a cycle through fibonacci/memory — the
+// same reason the old package variables existed. The values are pinned equal by
+// TestDefaultTuningMatchesConfig in internal/app.
+var DefaultTuning = Tuning{
+	FFTSpeedupThreshold:      1.2,
+	ParallelSpeedupThreshold: 1.1,
+	HysteresisMargin:         0.15,
+	MinFFTThreshold:          100_000,
+	MinParallelThreshold:     1024,
+}
+
+// withDefaults returns t with every unset (non-positive) field filled from
+// DefaultTuning.
+func (t Tuning) withDefaults() Tuning {
+	if t.FFTSpeedupThreshold <= 0 {
+		t.FFTSpeedupThreshold = DefaultTuning.FFTSpeedupThreshold
 	}
-	if t.ParallelSpeedupThreshold > 0 {
-		ParallelSpeedupThreshold = t.ParallelSpeedupThreshold
+	if t.ParallelSpeedupThreshold <= 0 {
+		t.ParallelSpeedupThreshold = DefaultTuning.ParallelSpeedupThreshold
 	}
-	if t.HysteresisMargin > 0 {
-		HysteresisMargin = t.HysteresisMargin
+	if t.HysteresisMargin <= 0 {
+		t.HysteresisMargin = DefaultTuning.HysteresisMargin
 	}
-	if t.MinFFTThreshold > 0 {
-		minFFTThresholdFloor = t.MinFFTThreshold
+	if t.MinFFTThreshold <= 0 {
+		t.MinFFTThreshold = DefaultTuning.MinFFTThreshold
 	}
-	if t.MinParallelThreshold > 0 {
-		minParallelThresholdFloor = t.MinParallelThreshold
+	if t.MinParallelThreshold <= 0 {
+		t.MinParallelThreshold = DefaultTuning.MinParallelThreshold
 	}
+	return t
 }
 
 // DynamicThresholdManager adjusts FFT and parallel thresholds during calculation
@@ -110,7 +113,11 @@ func SetTuning(t Tuning) {
 // found by go test -race on TestConcurrentAccess, 2026-06-10).
 type DynamicThresholdManager struct {
 	mu     sync.Mutex // serializes Reset AND all MetricsBuffer access; other fields use atomics
-	logger zerolog.Logger
+	logger *slog.Logger
+
+	// tuning is this manager's copy of the adjustment knobs. Immutable after
+	// construction.
+	tuning Tuning
 
 	// Current thresholds (can be adjusted during calculation).
 	currentFFTThreshold      atomic.Int64
@@ -145,8 +152,17 @@ func NewDynamicThresholdManagerFromConfig(cfg DynamicThresholdConfig) *DynamicTh
 		interval = DynamicAdjustmentInterval
 	}
 
+	logger := cfg.Logger
+	if logger == nil {
+		logger = slog.New(slog.DiscardHandler)
+	}
+
+	tuning := cfg.Tuning.withDefaults()
+
 	m := &DynamicThresholdManager{
-		logger:                    zerolog.Nop(),
+		logger:                    logger,
+		tuning:                    tuning,
+		analyzer:                  ThresholdAnalyzer{hysteresisMargin: tuning.HysteresisMargin},
 		originalFFTThreshold:      cfg.InitialFFTThreshold,
 		originalParallelThreshold: cfg.InitialParallelThreshold,
 		adjustmentInterval:        interval,
@@ -247,15 +263,15 @@ func (m *DynamicThresholdManager) ShouldAdjust() (newFFT, newParallel int, adjus
 	}
 	now := time.Now()
 	m.lastAdjustment.Store(&now)
-	m.logger.Debug().
-		Int64("iteration", iterationCount).
-		Bool("fft_changed", fftChanged).
-		Int("fft_old", oldFFT).
-		Int("fft_new", currentFFT).
-		Bool("parallel_changed", parallelChanged).
-		Int("parallel_old", oldParallel).
-		Int("parallel_new", currentParallel).
-		Msg("thresholds adjusted")
+	m.logger.LogAttrs(context.Background(), slog.LevelDebug, "thresholds adjusted",
+		slog.Int64("iteration", iterationCount),
+		slog.Bool("fft_changed", fftChanged),
+		slog.Int("fft_old", oldFFT),
+		slog.Int("fft_new", currentFFT),
+		slog.Bool("parallel_changed", parallelChanged),
+		slog.Int("parallel_old", oldParallel),
+		slog.Int("parallel_new", currentParallel),
+	)
 	return currentFFT, currentParallel, true
 }
 
@@ -272,10 +288,10 @@ func (m *DynamicThresholdManager) snapshotMetrics() []IterationMetric {
 func (m *DynamicThresholdManager) analyzeFFTThresholdFrom(metrics []IterationMetric) int {
 	return m.analyzer.Analyze(metrics, AnalysisParams{
 		Predicate:         func(metric IterationMetric) bool { return metric.UsedFFT },
-		SpeedupThreshold:  FFTSpeedupThreshold,
+		SpeedupThreshold:  m.tuning.FFTSpeedupThreshold,
 		LowerNumerator:    9,
 		RaiseNumerator:    11,
-		MinThreshold:      minFFTThresholdFloor,
+		MinThreshold:      m.tuning.MinFFTThreshold,
 		MaxCapMultiplier:  2,
 		CurrentThreshold:  int(m.currentFFTThreshold.Load()),
 		OriginalThreshold: m.originalFFTThreshold,
@@ -287,10 +303,10 @@ func (m *DynamicThresholdManager) analyzeFFTThresholdFrom(metrics []IterationMet
 func (m *DynamicThresholdManager) analyzeParallelThresholdFrom(metrics []IterationMetric) int {
 	return m.analyzer.Analyze(metrics, AnalysisParams{
 		Predicate:         func(metric IterationMetric) bool { return metric.UsedParallel },
-		SpeedupThreshold:  ParallelSpeedupThreshold,
+		SpeedupThreshold:  m.tuning.ParallelSpeedupThreshold,
 		LowerNumerator:    8,
 		RaiseNumerator:    12,
-		MinThreshold:      minParallelThresholdFloor,
+		MinThreshold:      m.tuning.MinParallelThreshold,
 		MaxCapMultiplier:  4,
 		CurrentThreshold:  int(m.currentParallelThreshold.Load()),
 		OriginalThreshold: m.originalParallelThreshold,

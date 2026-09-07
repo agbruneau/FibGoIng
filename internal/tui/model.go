@@ -2,12 +2,13 @@ package tui
 
 import (
 	"context"
+	"log/slog"
 
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
 
+	"github.com/agbruneau/FibGo/internal/apperrors"
 	"github.com/agbruneau/FibGo/internal/config"
-	apperrors "github.com/agbruneau/FibGo/internal/errors"
 	"github.com/agbruneau/FibGo/internal/orchestration"
 )
 
@@ -42,10 +43,19 @@ type Model struct {
 	config    config.AppConfig
 	ref       *programRef
 	paused    bool
+
+	// logger is the diagnostic logger built by app (nil when --log-level is
+	// off). It travels with the model because each generation rebuilds its
+	// fibonacci.Options and must pass the same logger down (audit OBS-01).
+	logger *slog.Logger
+
+	// tuning is the dynamic-threshold configuration, carried for the same
+	// reason as logger: each generation rebuilds its fibonacci.Options.
+	tuning orchestration.ThresholdTuning
 }
 
 // NewModel creates a new TUI model.
-func NewModel(parentCtx context.Context, calculators []orchestration.Calculator, cfg config.AppConfig, version string) Model {
+func NewModel(parentCtx context.Context, calculators []orchestration.Calculator, cfg config.AppConfig, version string, logger *slog.Logger, tuning orchestration.ThresholdTuning) Model {
 	algoNames := make([]string, len(calculators))
 	for i, c := range calculators {
 		algoNames[i] = c.Name()
@@ -84,7 +94,7 @@ func NewModel(parentCtx context.Context, calculators []orchestration.Calculator,
 func (m Model) Init() tea.Cmd {
 	return tea.Batch(
 		tickCmd(),
-		startCalculationCmd(m.ctx, m.ref, m.calculators, m.config, m.generation),
+		startCalculationCmd(m.ctx, m.ref, m.calculators, m.config, m.generation, m.logger, m.tuning),
 		watchContextCmd(m.ctx, m.generation),
 	)
 }

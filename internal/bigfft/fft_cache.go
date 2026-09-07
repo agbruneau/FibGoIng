@@ -4,11 +4,11 @@ package bigfft
 
 import (
 	"container/list"
+	"context"
+	"log/slog"
 	"math/big"
 	"sync"
 	"sync/atomic"
-
-	"github.com/rs/zerolog"
 )
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -78,11 +78,10 @@ type TransformCache struct {
 	misses    atomic.Uint64
 	evictions atomic.Uint64
 	accesses  atomic.Uint64
-	// logger is an atomic.Pointer so setCacheLogger (test-only, OVR-12; no
-	// production wiring calls it) does not race with the hot-path read in
-	// logPeriodicStats if a test swaps the logger while FFT work is in
-	// flight. A2-02.
-	logger atomic.Pointer[zerolog.Logger]
+	// logger is an atomic.Pointer so SetTransformCacheLogger does not race
+	// with the hot-path read in logPeriodicStats when the logger is installed
+	// while FFT work is in flight. A2-02.
+	logger atomic.Pointer[slog.Logger]
 }
 
 // Config returns the current configuration of the transform cache.
@@ -109,19 +108,32 @@ func NewTransformCache(config TransformCacheConfig) *TransformCache {
 		entries: make(map[uint64]*list.Element),
 		lru:     list.New(),
 	}
-	nop := zerolog.Nop()
-	tc.logger.Store(&nop)
+	discard := slog.New(slog.DiscardHandler)
+	tc.logger.Store(discard)
 	return tc
 }
 
-// setCacheLogger configures the logger for the global FFT transform cache.
-// Test-only (OVR-12): no production code path calls it, so cache stats
-// (logPeriodicStats) are never emitted in production; the default logger is
-// zerolog.Nop(). Safe to call concurrently with FFT operations regardless,
-// since the logger is stored in an atomic.Pointer (A2-02).
-func setCacheLogger(l zerolog.Logger) {
+// SetTransformCacheLogger installs the logger for the global FFT transform
+// cache, which emits periodic hit/miss/eviction statistics.
+//
+// Exported since audit OBS-01. It was setCacheLogger, unexported and reachable
+// only from this package's tests, so logPeriodicStats could not emit anything
+// in a real run: the only way to see the cache's effectiveness was to edit the
+// code. app installs the process logger here at startup.
+//
+// A nil logger restores the discarding default. Safe to call concurrently with
+// FFT operations: the logger lives in an atomic.Pointer (A2-02).
+func SetTransformCacheLogger(l *slog.Logger) {
+	if l == nil {
+		l = slog.New(slog.DiscardHandler)
+	}
 	cache := GetTransformCache()
-	cache.logger.Store(&l)
+	// Same reasoning as SetTransformCacheConfig: the caller runs once per
+	// Calculate with a logger that does not change between calculations.
+	if cache.logger.Load() == l {
+		return
+	}
+	cache.logger.Store(l)
 }
 
 // globalTransformCache is the package-level transform cache.
@@ -144,8 +156,24 @@ const (
 
 // SetTransformCacheConfig updates the global cache configuration.
 // This should be called before any FFT operations for consistent behavior.
+//
+// An unchanged configuration is a no-op (audit TYP-02). The caller,
+// fibonacci.configureFFTCache, runs once per Calculate, and under `--algo all`
+// three calculators run concurrently and derive the same configuration from the
+// same n — so the common case was three goroutines taking the write lock to
+// store identical values, on a path that also disables the cache when Enabled
+// is false. Comparing first keeps the write, and the cache clear it can trigger,
+// for a configuration that actually differs.
 func SetTransformCacheConfig(config TransformCacheConfig) {
 	cache := GetTransformCache()
+
+	cache.mu.RLock()
+	unchanged := cache.config == config
+	cache.mu.RUnlock()
+	if unchanged {
+		return
+	}
+
 	cache.mu.Lock()
 	defer cache.mu.Unlock()
 	cache.config = config
@@ -327,13 +355,13 @@ func (tc *TransformCache) logPeriodicStats() {
 	tc.mu.RLock()
 	size := tc.lru.Len()
 	tc.mu.RUnlock()
-	tc.logger.Load().Debug().
-		Uint64("hits", hits).
-		Uint64("misses", misses).
-		Float64("hit_rate", hitRate).
-		Int("size", size).
-		Uint64("evictions", tc.evictions.Load()).
-		Msg("fft cache stats")
+	tc.logger.Load().LogAttrs(context.Background(), slog.LevelDebug, "fft cache stats",
+		slog.Uint64("hits", hits),
+		slog.Uint64("misses", misses),
+		slog.Float64("hit_rate", hitRate),
+		slog.Int("size", size),
+		slog.Uint64("evictions", tc.evictions.Load()),
+	)
 }
 
 // Put stores a transform result in the cache.

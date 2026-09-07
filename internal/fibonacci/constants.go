@@ -1,5 +1,7 @@
 package fibonacci
 
+import "github.com/agbruneau/FibGo/internal/fibonacci/fibmath"
+
 // ─────────────────────────────────────────────────────────────────────────────
 // Performance Tuning Constants
 // ─────────────────────────────────────────────────────────────────────────────
@@ -66,7 +68,12 @@ const (
 const (
 	// FibonacciGrowthFactor is log2(phi), where phi ≈ 1.618 (golden ratio).
 	// Used to estimate bit length of F(n).
-	FibonacciGrowthFactor = 0.69424
+	//
+	// Defined in internal/fibonacci/fibmath, which internal/fibonacci/memory
+	// can also import — the two used to carry separate copies of the literal
+	// because neither could import the other (audit TYP-04). Kept as an alias
+	// here so existing references and the exported name are unchanged.
+	FibonacciGrowthFactor = fibmath.GrowthFactor
 )
 
 // FFTCacheMaxBytesFactor is the byte budget configureFFTCache gives the global

@@ -5,7 +5,7 @@ import (
 	"strings"
 	"testing"
 
-	apperrors "github.com/agbruneau/FibGo/internal/errors"
+	"github.com/agbruneau/FibGo/internal/apperrors"
 )
 
 func TestValidateMemoryBudget_NoLimit(t *testing.T) {

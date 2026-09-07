@@ -36,7 +36,6 @@ import (
 	"github.com/agbruneau/FibGo/internal/orchestration"
 	"github.com/agbruneau/FibGo/internal/progress"
 	"github.com/agbruneau/FibGo/internal/ui"
-	"github.com/briandowns/spinner"
 )
 
 // === UI rendering ===
@@ -66,14 +65,10 @@ func DisplayProgress(wg *sync.WaitGroup, progressChan <-chan progress.ProgressUp
 		return
 	}
 
-	s := newSpinner(spinner.WithWriter(out))
-	s.Start()
-	spinnerStopped := false
-	defer func() {
-		if !spinnerStopped {
-			s.Stop()
-		}
-	}()
+	// One goroutine (this one) owns the line, so there is nothing to
+	// synchronize — see progressLine for what this replaced (audit DEP-02).
+	line := newProgressLine(out)
+	defer line.Clear()
 
 	label := "Progress"
 	if agg.IsMultiCalculator() {
@@ -87,11 +82,8 @@ func DisplayProgress(wg *sync.WaitGroup, progressChan <-chan progress.ProgressUp
 		select {
 		case update, ok := <-progressChan:
 			if !ok {
-				// Stop the spinner first to free the line
-				if !spinnerStopped {
-					s.Stop()
-					spinnerStopped = true
-				}
+				// Free the line before writing the final result on it.
+				line.Clear()
 
 				// Display actual final progress (not hardcoded 100%).
 				// Progress may be less than 100% if calculation was canceled or timed out.
@@ -110,7 +102,7 @@ func DisplayProgress(wg *sync.WaitGroup, progressChan <-chan progress.ProgressUp
 			eta := agg.GetETA()
 			bar := format.ProgressBar(avgProgress, ProgressBarWidth)
 			etaStr := format.FormatETA(eta)
-			s.UpdateSuffix(fmt.Sprintf(" %s: %6.2f%% [%s] ETA: %s", label, avgProgress*100, bar, etaStr))
+			line.Draw(fmt.Sprintf(" %s: %6.2f%% [%s] ETA: %s", label, avgProgress*100, bar, etaStr))
 		}
 	}
 }

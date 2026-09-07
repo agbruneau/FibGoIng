@@ -1,9 +1,10 @@
 package cli
 
 import (
+	"fmt"
+	"io"
+	"strings"
 	"time"
-
-	"github.com/briandowns/spinner"
 )
 
 const (
@@ -20,72 +21,61 @@ const (
 	ProgressBarWidth = 40
 )
 
-// Spinner is an interface that abstracts the behavior of a terminal spinner.
-// This allows for the decoupling of the `DisplayProgress` function from a
-// specific spinner implementation, facilitating easier testing and maintenance.
-// It defines the essential controls for a spinner: starting, stopping, and
-// updating its status message.
-type Spinner interface {
-	// Start begins the spinner animation.
-	Start()
-	// Stop halts the spinner animation.
-	Stop()
-	// UpdateSuffix sets the text that is displayed after the spinner.
-	//
-	// Parameters:
-	//   - suffix: The text string to display.
-	UpdateSuffix(suffix string)
-}
+// spinnerFrames is the animation cycle, the Braille set the previous
+// implementation used (spinner.CharSets[11]).
+var spinnerFrames = [...]string{"⠋", "⠙", "⠹", "⠸", "⠼", "⠴", "⠦", "⠧", "⠇", "⠏"}
 
-// realSpinner is a wrapper for the `spinner.Spinner` that implements the
-// `Spinner` interface. This adapter allows the `spinner` library to be used
-// within the application's CLI framework.
+// progressLine draws a single-line, carriage-return-updated status line.
 //
-// stop/start/setSuffix default to the wrapped spinner's own methods/field
-// and only exist as indirection so tests can assert the ordering below
-// without a real terminal (see ui_suffix_race_test.go).
-type realSpinner struct {
-	s *spinner.Spinner
-
-	stop      func()
-	start     func()
-	setSuffix func(string)
-}
-
-// Start begins the spinner animation.
-func (rs *realSpinner) Start() {
-	rs.start()
-}
-
-// Stop halts the spinner animation.
-func (rs *realSpinner) Stop() {
-	rs.stop()
-}
-
-// UpdateSuffix sets the text that is displayed after the spinner.
+// It replaces github.com/briandowns/spinner (audit DEP-02 / CON-04, ADR-0012
+// D5). That dependency rendered one line and cost, in exchange:
 //
-// The spinner library's render goroutine reads Suffix under its internal
-// mutex while running; writing rs.s.Suffix directly from here would race
-// with it in a real terminal (CONC-01). Stopping the spinner first blocks
-// until that goroutine has exited (Stop() happens-before the write), and
-// starting it again afterwards spawns a fresh goroutine that only reads
-// Suffix after the write (write happens-before Start()) -- no concurrent
-// access is possible.
+//   - a data race. Its render goroutine read Suffix under its own mutex while
+//     running, so writing the field from the caller raced with it (CONC-01).
+//     The workaround was to Stop() and Start() the spinner around every suffix
+//     write — tearing down and respawning a goroutine five times a second so
+//     that a string assignment would be safely ordered.
+//   - a Spinner interface, a realSpinner adapter with three function fields,
+//     a package-level newSpinner seam, and a test asserting the stop/write/start
+//     ordering of the workaround.
+//   - four modules in the graph (spinner, fatih/color, mattn/go-colorable,
+//     mattn/go-isatty).
 //
-// Parameters:
-//   - suffix: The string to display.
-func (rs *realSpinner) UpdateSuffix(suffix string) {
-	rs.stop()
-	rs.setSuffix(suffix)
-	rs.start()
+// There is no goroutine here at all. DisplayProgress already owns a ticker and
+// a loop; drawing on that loop is the whole implementation, and the race cannot
+// exist because only one goroutine ever touches the writer.
+type progressLine struct {
+	out   io.Writer
+	frame int
+	width int // width of the last line drawn, for erasing
 }
 
-var newSpinner = func(options ...spinner.Option) Spinner {
-	// Using the same interval as ProgressRefreshRate to synchronize
-	s := spinner.New(spinner.CharSets[11], ProgressRefreshRate, options...)
-	rs := &realSpinner{s: s}
-	rs.stop = s.Stop
-	rs.start = s.Start
-	rs.setSuffix = func(suffix string) { s.Suffix = suffix }
-	return rs
+func newProgressLine(out io.Writer) *progressLine {
+	return &progressLine{out: out}
+}
+
+// Draw renders the next animation frame followed by text, in place.
+func (p *progressLine) Draw(text string) {
+	frame := spinnerFrames[p.frame%len(spinnerFrames)]
+	p.frame++
+
+	line := frame + text
+	// Pad to the previous width so a shrinking line does not leave a tail
+	// behind — the ETA field in particular goes from "ETA: 1m20s" to "ETA: < 1s".
+	if pad := p.width - len([]rune(line)); pad > 0 {
+		line += strings.Repeat(" ", pad)
+	}
+	p.width = len([]rune(line))
+
+	fmt.Fprintf(p.out, "\r%s", line)
+}
+
+// Clear erases the line and returns the cursor to its start, so the caller can
+// print a final result where the animation was.
+func (p *progressLine) Clear() {
+	if p.width == 0 {
+		return
+	}
+	fmt.Fprintf(p.out, "\r%s\r", strings.Repeat(" ", p.width))
+	p.width = 0
 }

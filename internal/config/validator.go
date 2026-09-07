@@ -3,7 +3,7 @@ package config
 import (
 	"fmt"
 
-	apperrors "github.com/agbruneau/FibGo/internal/errors"
+	"github.com/agbruneau/FibGo/internal/apperrors"
 	"github.com/agbruneau/FibGo/internal/fibonacci/memory"
 )
 

@@ -10,8 +10,8 @@ import (
 	"testing"
 	"time"
 
+	"github.com/agbruneau/FibGo/internal/apperrors"
 	"github.com/agbruneau/FibGo/internal/config"
-	apperrors "github.com/agbruneau/FibGo/internal/errors"
 )
 
 // Lifecycle regression tests for audit CON-01.

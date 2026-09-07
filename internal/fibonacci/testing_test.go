@@ -113,23 +113,17 @@ func TestMockCalculator_Calculate(t *testing.T) {
 	})
 }
 
-// TestTestFactory_CreateAndGet covers Create (P2-06). NewTestFactory is
-// exercised indirectly by every subtest here.
-func TestTestFactory_CreateAndGet(t *testing.T) {
+// TestTestFactory_Get covers the lookup the consumer interfaces actually
+// require. The companion Create test went with the method: Create was a
+// pass-through to Get that existed only to satisfy the five-method
+// fibonacci.CalculatorFactory, which audit API-01 removed.
+func TestTestFactory_Get(t *testing.T) {
 	t.Parallel()
 
 	mock := &MockCalculator{Result: big.NewInt(55)}
 	f := NewTestFactory(map[string]Calculator{"mock": mock})
 
-	got, err := f.Create("mock")
-	if err != nil {
-		t.Fatalf("Create(mock): unexpected error %v", err)
-	}
-	if got != mock {
-		t.Errorf("Create returned unexpected calculator: %#v", got)
-	}
-
-	got, err = f.Get("mock")
+	got, err := f.Get("mock")
 	if err != nil {
 		t.Fatalf("Get(mock): unexpected error %v", err)
 	}
@@ -138,15 +132,15 @@ func TestTestFactory_CreateAndGet(t *testing.T) {
 	}
 }
 
-// TestTestFactory_Create_Unknown covers the error path of Create/Get and
-// the UnknownCalculatorError.Error method.
-func TestTestFactory_Create_Unknown(t *testing.T) {
+// TestTestFactory_Get_Unknown covers the error path of Get and the
+// UnknownCalculatorError.Error method.
+func TestTestFactory_Get_Unknown(t *testing.T) {
 	t.Parallel()
 
 	f := NewTestFactory(nil)
-	_, err := f.Create("nope")
+	_, err := f.Get("nope")
 	if err == nil {
-		t.Fatal("expected UnknownCalculatorError from Create on unknown name")
+		t.Fatal("expected UnknownCalculatorError from Get on unknown name")
 	}
 
 	var uce *UnknownCalculatorError
@@ -197,25 +191,6 @@ func TestTestFactory_List(t *testing.T) {
 		if names[i] != w {
 			t.Errorf("List[%d]: want %q, got %q", i, w, names[i])
 		}
-	}
-}
-
-// TestTestFactory_Register_IsNoOp verifies the documented no-op behavior.
-func TestTestFactory_Register_IsNoOp(t *testing.T) {
-	t.Parallel()
-
-	f := NewTestFactory(map[string]Calculator{"mock": &MockCalculator{}})
-
-	err := f.Register("other", func() CoreCalculator { return nil })
-	if err != nil {
-		t.Fatalf("Register returned unexpected error: %v", err)
-	}
-
-	if _, err := f.Get("other"); err == nil {
-		t.Error("expected 'other' to remain unknown after Register no-op")
-	}
-	if _, err := f.Get("mock"); err != nil {
-		t.Errorf("expected 'mock' to remain known, got error: %v", err)
 	}
 }
 

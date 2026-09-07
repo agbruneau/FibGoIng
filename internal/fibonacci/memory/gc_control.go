@@ -1,11 +1,11 @@
 package memory
 
 import (
+	"context"
+	"log/slog"
 	"runtime"
 	"runtime/debug"
 	"sync"
-
-	"github.com/rs/zerolog"
 )
 
 // GCMode controls the garbage collector behavior during calculation.
@@ -59,14 +59,26 @@ var (
 type GCController struct {
 	mode       GCMode
 	active     bool
-	logger     zerolog.Logger
+	logger     *slog.Logger
 	startStats runtime.MemStats
 	endStats   runtime.MemStats
 }
 
 // NewGCController creates a GC controller for the given mode and N.
-func NewGCController(mode string, n uint64) *GCController {
-	gc := &GCController{mode: GCMode(mode), logger: zerolog.Nop()}
+//
+// logger receives the "gc disabled" / "gc re-enabled" records, which report the
+// heap size at each boundary and the number of cycles that ran anyway. A nil
+// logger discards them.
+//
+// Before audit OBS-01 the logger was not a parameter at all: it defaulted to a
+// no-op and the only way to change it was a test-only setter, so these two
+// records — the ones that answer "did GOGC=off actually hold?" — could not be
+// seen from the binary at any verbosity.
+func NewGCController(mode string, n uint64, logger *slog.Logger) *GCController {
+	if logger == nil {
+		logger = slog.New(slog.DiscardHandler)
+	}
+	gc := &GCController{mode: GCMode(mode), logger: logger}
 	switch gc.mode {
 	case GCModeAggressive:
 		gc.active = true
@@ -76,16 +88,6 @@ func NewGCController(mode string, n uint64) *GCController {
 		gc.active = false
 	}
 	return gc
-}
-
-// setLogger configures the logger for GC control events.
-//
-// Test oracle (audit L-02): production leaves the logger at zerolog.Nop(), so
-// nothing calls this. It is the only injection point for observing that
-// Begin/End actually emit their events, which is what
-// TestGCController_SetLogger_EmitsGCEvents checks.
-func (gc *GCController) setLogger(l zerolog.Logger) {
-	gc.logger = l
 }
 
 // WithGC executes fn under GC control: it disables GC via Begin before running
@@ -128,10 +130,10 @@ func (gc *GCController) Begin() {
 	gcActiveDepth++
 	gcGlobalMu.Unlock()
 
-	gc.logger.Debug().
-		Str("mode", string(gc.mode)).
-		Uint64("heap_alloc_bytes", gc.startStats.HeapAlloc).
-		Msg("gc disabled")
+	gc.logger.LogAttrs(context.Background(), slog.LevelDebug, "gc disabled",
+		slog.String("mode", string(gc.mode)),
+		slog.Uint64("heap_alloc_bytes", gc.startStats.HeapAlloc),
+	)
 }
 
 // End restores original GC settings and triggers a collection.
@@ -159,10 +161,10 @@ func (gc *GCController) End() {
 		runtime.GC()
 	}
 
-	gc.logger.Debug().
-		Str("mode", string(gc.mode)).
-		Uint64("heap_alloc_bytes", gc.endStats.HeapAlloc).
-		Uint64("total_alloc_bytes", gc.endStats.TotalAlloc-gc.startStats.TotalAlloc).
-		Uint32("gc_cycles", gc.endStats.NumGC-gc.startStats.NumGC).
-		Msg("gc re-enabled")
+	gc.logger.LogAttrs(context.Background(), slog.LevelDebug, "gc re-enabled",
+		slog.String("mode", string(gc.mode)),
+		slog.Uint64("heap_alloc_bytes", gc.endStats.HeapAlloc),
+		slog.Uint64("total_alloc_bytes", gc.endStats.TotalAlloc-gc.startStats.TotalAlloc),
+		slog.Uint64("gc_cycles", uint64(gc.endStats.NumGC-gc.startStats.NumGC)),
+	)
 }

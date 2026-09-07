@@ -822,22 +822,22 @@ T00.
 | 2 | T11 Graines fuzz au-delà du seuil FFT | ☑ |  | graines dimensionnées en mots relatifs au seuil ; le rejeu couvre `fftmul` et `fftsqr` à 100 % ; `make fuzz-smoke` + job CI ; 5,8 M exécutions sans échec |
 | 2 | T12 Contrats du registre | ☑ |  | `Register` refuse nom vide, créateur nil et doublon ; `NewDefaultFactory` panique sur son propre bogue ; `TestFactory.List` trié ; 6 tests |
 | 2 | T13 Renvois périmés | ☑ |  | exemple `app/doc.go` aligné sur `main.go` ; URL de clonage vers `Fibonacci.git` ; écart de chemin de module documenté et vérifié |
-| 3 | T14 Journalisation `slog` | ☐ | | |
-| 3 | T15 Scission erreurs / présentation | ☐ | | |
-| 3 | T16 Port `calibration.Reporter` | ☐ | | |
-| 3 | T17 Interface côté consommateur | ☐ | | |
-| 3 | T18 `threshold.Tuning` par valeur | ☐ | | |
-| 3 | T19 Constantes de micro-bench, cache FFT | ☐ | | |
-| 3 | T20 *(opt.)* Paquet `internal/fibmath` | ☐ | | |
-| 3 | T21 Retrait de `briandowns/spinner` | ☐ | | |
-| 3 | T22 Renommage `internal/apperrors` | ☐ | | |
+| 3 | T14 Journalisation `slog` | ☑ |  | `Options.Logger *slog.Logger` injecté ; 6 émetteurs convertis ; `--log-level` + `FIBCALC_LOG_LEVEL` ; `zerolog` et `testmain_test.go` supprimés ; vérifié au binaire (silencieux par défaut, `gc disabled`/`gc re-enabled` en debug) |
+| 3 | T15 Scission erreurs / présentation | ☑ |  | `apperrors.ExitCodeFor` pur + `cli.WriteCalculationStatus` ; `ColorProvider`, `DefaultColorProvider`, `CLIColorProvider` et `provider.go` supprimés (indirection doublement redondante avec `ui.InitTheme`) |
+| 3 | T16 Port `calibration.Reporter` | ☑ |  | port à 4 méthodes + `NopReporter` ; `CalibrationReporter` dans `cli` ; `calibration` n'importe plus `ui` ni `format` ; règle d'architecture ajoutée |
+| 3 | T17 Interface côté consommateur | ☑ |  | `orchestration.CalculatorSource` (2 méthodes) + `app.CalculatorRegistry` ; `fibonacci.CalculatorFactory` supprimée ; `TestFactory` perd son `Register` menteur |
+| 3 | T18 `threshold.Tuning` par valeur | ☑ |  | 5 `var` de paquet, `SetTuning`, `wireThresholdTuning` et son `sync.Once` supprimés ; `Tuning` copiée dans chaque manager ; le protocole A2-04 n'a plus rien à protéger |
+| 3 | T19 Constantes de micro-bench, cache FFT | ☑ |  | `MicroBenchTimeout()`/`MicroBenchTestSizes()` (copie) ; `SetTransformCacheConfig` et `SetTransformCacheLogger` ignorent une écriture identique |
+| 3 | T20 *(opt.)* Paquet `internal/fibmath` | ☑ |  | `GrowthFactor`, `MaxUint64Index`, `BitsFor` ; 2 des 3 duplications de log₂ φ et celle de 93 supprimées ; `bigfft` garde son littéral (kernel sans import interne) avec renvoi ; 4 tests contre la définition |
+| 3 | T21 Retrait de `briandowns/spinner` | ☑ |  | `progressLine` (dessin sur le ticker existant) ; `Spinner`, `realSpinner`, `newSpinner` et le test de course supprimés ; 2 dépendances directes en moins (198 modules) |
+| 3 | T22 Renommage `internal/apperrors` | ☑ |  | `git mv` + réécriture des imports et des renvois de documentation ; 21 paquets verts |
 | 4 | T23 Politique de commentaires | ☐ | | |
 | 4 | T24 Règle de langue | ☐ | | |
 | 4 | T25 README et ARCH recentrés | ☐ | | |
 | 4 | T26 Renommage des fichiers de test | ☐ | | |
 | 4 | T27 `errors.Join` dans `Validate` | ☐ | | |
 | 4 | T28 Variables d'environnement centralisées | ☐ | | |
-| 4 | T29 Règles d'architecture complétées | ☐ | | |
+| 4 | T29 Règles d'architecture complétées | ☑ |  | règles `cli → fibonacci` et `calibration → ui|format` ajoutées ; alias `orchestration.ThresholdTuning` pour que la TUI ne perce pas la façade ; 7 règles vertes |
 | 4 | T30 *(opt.)* Drapeaux de profilage | ☐ | | |
 | 4 | T31 Répertoire temporaire e2e | ☐ | | |
 | 4 | T32 Clôture, ADR-0012 *Accepted*, `v4.1.0` | ☐ | | |

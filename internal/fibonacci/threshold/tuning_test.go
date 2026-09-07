@@ -2,55 +2,76 @@ package threshold
 
 import "testing"
 
-// TestSetTuning covers the threshold -> config seam (manager.go SetTuning),
-// which had 0% coverage (audit F-007). SetTuning writes package-level tuning
-// globals, so this test is deliberately NOT parallel and restores the originals
-// via defer, honoring the A2-04 single-writer-before-use invariant documented
-// at manager.go:33-39 (no concurrent reader runs during the sequential phase).
-func TestSetTuning(t *testing.T) {
-	origFFT := FFTSpeedupThreshold
-	origParallel := ParallelSpeedupThreshold
-	origHyst := HysteresisMargin
-	origFFTFloor := minFFTThresholdFloor
-	origParallelFloor := minParallelThresholdFloor
-	defer func() {
-		FFTSpeedupThreshold = origFFT
-		ParallelSpeedupThreshold = origParallel
-		HysteresisMargin = origHyst
-		minFFTThresholdFloor = origFFTFloor
-		minParallelThresholdFloor = origParallelFloor
-	}()
+// Tuning is per-manager, carried by value (audit TYP-02). Two managers built
+// from different tunings must behave differently, and one built from the zero
+// value must behave like DefaultTuning.
+//
+// What this replaces was a test that called SetTuning and then read package
+// variables — an assertion about process state that only held as long as no
+// other test wrote the same variables, which is exactly the fragility the
+// "single-writer-before-use" protocol was documenting rather than fixing.
+func TestTuningIsPerManagerNotGlobal(t *testing.T) {
+	t.Parallel()
 
-	SetTuning(Tuning{
-		FFTSpeedupThreshold:      2.5,
-		ParallelSpeedupThreshold: 1.9,
-		HysteresisMargin:         0.42,
-		MinFFTThreshold:          200_000,
-		MinParallelThreshold:     2048,
-	})
-
-	if FFTSpeedupThreshold != 2.5 {
-		t.Errorf("FFTSpeedupThreshold = %v, want 2.5", FFTSpeedupThreshold)
-	}
-	if ParallelSpeedupThreshold != 1.9 {
-		t.Errorf("ParallelSpeedupThreshold = %v, want 1.9", ParallelSpeedupThreshold)
-	}
-	if HysteresisMargin != 0.42 {
-		t.Errorf("HysteresisMargin = %v, want 0.42", HysteresisMargin)
-	}
-	if minFFTThresholdFloor != 200_000 {
-		t.Errorf("minFFTThresholdFloor = %d, want 200000", minFFTThresholdFloor)
-	}
-	if minParallelThresholdFloor != 2048 {
-		t.Errorf("minParallelThresholdFloor = %d, want 2048", minParallelThresholdFloor)
+	base := DynamicThresholdConfig{
+		InitialFFTThreshold:      500_000,
+		InitialParallelThreshold: 4096,
+		Enabled:                  true,
 	}
 
-	// Zero-valued fields must NOT overwrite existing values (the guard clauses).
-	SetTuning(Tuning{})
-	if FFTSpeedupThreshold != 2.5 {
-		t.Errorf("zero-field SetTuning overwrote FFTSpeedupThreshold: got %v, want 2.5", FFTSpeedupThreshold)
+	tight := base
+	tight.Tuning = Tuning{HysteresisMargin: 0.0001}
+
+	loose := base
+	loose.Tuning = Tuning{HysteresisMargin: 0.9}
+
+	zeroValue := NewDynamicThresholdManagerFromConfig(base)
+	sensitive := NewDynamicThresholdManagerFromConfig(tight)
+	insensitive := NewDynamicThresholdManagerFromConfig(loose)
+
+	// A 20% move: above the default 0.15 margin, far above 0.0001, far below 0.9.
+	const from, to = 100_000, 120_000
+
+	if !zeroValue.analyzer.SignificantChange(from, to) {
+		t.Error("zero-value tuning did not fall back to the default margin")
 	}
-	if minParallelThresholdFloor != 2048 {
-		t.Errorf("zero-field SetTuning overwrote minParallelThresholdFloor: got %d, want 2048", minParallelThresholdFloor)
+	if !sensitive.analyzer.SignificantChange(from, to) {
+		t.Error("a 0.0001 margin should treat a 20% move as significant")
+	}
+	if insensitive.analyzer.SignificantChange(from, to) {
+		t.Error("a 0.9 margin should treat a 20% move as insignificant")
+	}
+
+	// The managers must not have disturbed each other: re-check after all three
+	// exist, which is what a package-global knob could not survive.
+	if !sensitive.analyzer.SignificantChange(from, to) {
+		t.Error("the sensitive manager's margin was overwritten by a later one")
+	}
+}
+
+// withDefaults fills only what the caller left unset.
+func TestTuningWithDefaults(t *testing.T) {
+	t.Parallel()
+
+	if got := (Tuning{}).withDefaults(); got != DefaultTuning {
+		t.Errorf("zero value = %+v, want %+v", got, DefaultTuning)
+	}
+
+	partial := Tuning{HysteresisMargin: 0.42}.withDefaults()
+	if partial.HysteresisMargin != 0.42 {
+		t.Errorf("HysteresisMargin = %v, want the caller's 0.42", partial.HysteresisMargin)
+	}
+	if partial.FFTSpeedupThreshold != DefaultTuning.FFTSpeedupThreshold {
+		t.Errorf("FFTSpeedupThreshold = %v, want the default %v",
+			partial.FFTSpeedupThreshold, DefaultTuning.FFTSpeedupThreshold)
+	}
+	if partial.MinParallelThreshold != DefaultTuning.MinParallelThreshold {
+		t.Errorf("MinParallelThreshold = %v, want the default %v",
+			partial.MinParallelThreshold, DefaultTuning.MinParallelThreshold)
+	}
+
+	// A negative value is treated as unset, not honored.
+	if got := (Tuning{HysteresisMargin: -1}).withDefaults(); got.HysteresisMargin != DefaultTuning.HysteresisMargin {
+		t.Errorf("negative margin = %v, want the default", got.HysteresisMargin)
 	}
 }

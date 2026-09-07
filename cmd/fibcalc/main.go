@@ -8,7 +8,7 @@ import (
 	"os"
 
 	"github.com/agbruneau/FibGo/internal/app"
-	apperrors "github.com/agbruneau/FibGo/internal/errors"
+	"github.com/agbruneau/FibGo/internal/apperrors"
 )
 
 func main() {
@@ -16,7 +16,7 @@ func main() {
 }
 
 // run contains the core logic extracted from main for testability and returns
-// the POSIX exit code (internal/errors.Exit*).
+// the POSIX exit code (internal/apperrors.Exit*).
 func run(args []string, stdout, stderr io.Writer) int {
 	if app.HasVersionFlag(args[1:]) {
 		app.PrintVersion(stdout)
