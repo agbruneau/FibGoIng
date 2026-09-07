@@ -1,4 +1,10 @@
-# FibCalc reproducible build image.
+# FibCalc container build image.
+#
+# Not "reproducible": the base images are pinned by digest (see each FROM), but
+# `apt-get install make` in the builder takes whatever the Debian archive serves
+# that day, and BUILD_DATE is compiled into the binary. Fixed base, not
+# reproducible artifact — the header claimed the stronger property until
+# 2026-09-07.
 #
 # Two-stage build:
 #  1. builder — CGO-disabled static build of the default binary (no `gmp`
@@ -22,17 +28,35 @@
 #     --build-arg BUILD_DATE="$(date -u +%Y-%m-%dT%H:%M:%SZ)" \
 #     -t fibcalc:local .
 
-ARG GO_VERSION=1.26
-
-# TODO(SEC-04): pin by digest — golang:${GO_VERSION}-bookworm@sha256:<...>
-# Still open after the 2026-09-07 audit, for the same reason and no other: every
-# environment this repository has been edited from lacks both a docker CLI and
-# outbound registry access, so no digest can be resolved. A guessed digest is
-# worse than a tag, so none is written here. Resolve on any machine with
-# registry access and paste the result:
+# Base pinned by digest (SEC-04, closed 2026-09-07). When a reference carries
+# both a tag and a digest it is fetched by digest and the tag is never checked
+# against it: the tag is a label for humans, the digest is the identity. Bump
+# both together.
+#
+# Provenance of the value, which is the whole point of it being here: resolved
+# by the CI `docker` job, run 34135480664, step "base image digests", which ran
 #     docker buildx imagetools inspect golang:1.26-bookworm --format '{{.Manifest.Digest}}'
-#     crane digest golang:1.26-bookworm
-FROM golang:${GO_VERSION}-bookworm AS builder
+# on a GitHub runner. This is the multi-arch INDEX digest — the same run printed
+# MediaType `application/vnd.oci.image.index.v1+json` and listed linux/amd64,
+# arm/v7, arm64/v8, 386, ppc64le and s390x under it. A single platform's manifest
+# digest would still build green on the amd64 runner, so nothing in CI would
+# catch that mistake; the MediaType line next to the digest is the check.
+#
+# The pin stayed open through four audits for one reason: no environment this
+# repository had been edited from had a docker CLI or outbound registry access,
+# and a guessed digest is worse than a tag. The CI job added by the 2026-09-07
+# audit is the first environment with both.
+#
+# What the pin buys: an upstream re-push of golang:1.26-bookworm can no longer
+# change the toolchain under an unchanged source tree, and a version bump becomes
+# a readable commit instead of silent drift.
+# What it does not buy: a reproducible build. The `apt-get install make` below
+# still takes whatever the Debian archive serves that day, and BUILD_DATE is
+# compiled into the binary. This is a fixed base, not a reproducible artifact.
+#
+# ARG GO_VERSION is gone with the tag: sitting next to a digest it would select
+# nothing, so it could only mislead.
+FROM golang:1.26-bookworm@sha256:9fdc884aacc3bec89b20ffc69f4bb369c78210e3e4f600387b5128b12c199f81 AS builder
 
 ENV CGO_ENABLED=0 \
     GOFLAGS=-trimpath
@@ -65,10 +89,25 @@ RUN make build VERSION="${VERSION}" COMMIT="${COMMIT}" BUILD_DATE="${BUILD_DATE}
     && /out/fibcalc --version
 
 
-# TODO(SEC-04): pin by digest — gcr.io/distroless/base-debian12@sha256:<...>
-# Same reason as the builder stage above. Resolve with:
-#     crane digest gcr.io/distroless/base-debian12
-FROM gcr.io/distroless/base-debian12 AS runtime
+# Same rule as the builder stage: index digest, tag decorative. Same provenance —
+# run 34135480664 printed MediaType `application/vnd.oci.image.index.v1+json`
+# with linux/amd64, arm64/v8, arm/v7, s390x and ppc64le beneath it.
+#
+# A wrong pin here would NOT fail the build. BuildKit resolves the metadata of
+# every stage before running anything, and it applies a platform matcher only
+# when the descriptor is an index; pointed at a single manifest it takes it as
+# given. The failure would be an arm64 rootfs holding an amd64 binary, surfacing
+# at `docker run` on someone else's machine — which is why the MediaType check
+# above is done by eye at paste time and not by a CI gate.
+#
+# This is the plain tag's digest, not the `:nonroot` variant's: that variant only
+# changes the default USER, and the explicit USER line below already does that.
+#
+# Nothing in this repository will refresh this line. There is no Dependabot or
+# Renovate configuration, and govulncheck reads the Go module graph, not this
+# layer. The pin trades silent update for silent staleness; the only signal is
+# comparing this value against what the CI job prints.
+FROM gcr.io/distroless/base-debian12@sha256:fabbf1c0c357a3d42550111351daed089b20a2c954df13ee2fcff60602515e84 AS runtime
 
 COPY --from=builder /out/fibcalc /usr/local/bin/fibcalc
 

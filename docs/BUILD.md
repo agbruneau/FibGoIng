@@ -174,12 +174,28 @@ docker build -t fibcalc:local .
 docker run --rm fibcalc:local --help
 ```
 
-- Stage 1 (`golang:1.26-bookworm` builder) — `CGO_ENABLED=0`, no `apt`
-  packages installed; builds the static default binary (no `gmp` tag).
-  Consumes `cmd/fibcalc/default.pgo` if present.
+- Stage 1 (`golang:1.26-bookworm` builder) — `CGO_ENABLED=0`; installs `make`
+  from apt (the Dockerfile delegates the build to the Makefile, and the
+  `golang:*-bookworm` image ships git but not make); builds the static default
+  binary (no `gmp` tag). Consumes `cmd/fibcalc/default.pgo` if present.
+  *This line said "no `apt` packages installed" until 2026-09-07, which stopped
+  being true when the build was delegated to the Makefile.*
 - Stage 2 (`gcr.io/distroless/base-debian12` runtime) — ships only the
   linked binary as `nonroot`. Image size < 50 MB (indicative — measure on
   your own image, e.g. `docker images fibcalc:local`).
+
+**Both bases are pinned by digest** (SEC-04, closed 2026-09-07). Each `FROM`
+carries its tag *and* the multi-arch index digest; when a reference has both,
+the digest is the identity and the tag is a label. The values were resolved on a
+CI runner — the only environment with a docker CLI and registry access — and the
+`docker` job reprints what each tag points to today, so a difference from the
+pinned value is visible in the log. That difference is a report, not a failure:
+a pin that no longer matches its tag is the pin working.
+
+Bumping a base image therefore means editing the tag **and** the digest on the
+same line. Nothing refreshes them automatically: there is no Dependabot or
+Renovate configuration, and `govulncheck` reads the Go module graph, not the
+base layer.
 
 The GMP backend needs CGO + `libgmp-dev` and is intentionally out of
 scope for this image — the default binary is the intended artifact here,
@@ -189,10 +205,15 @@ GMP locally instead — see [Build Tags § GMP](#gmp) above.
 ### `.devcontainer/devcontainer.json` (VS Code)
 
 Opening the repo in a VS Code Dev Container loads
-`mcr.microsoft.com/devcontainers/go:1.26-bookworm` with `libgmp-dev`,
-`build-essential`, `staticcheck`, and `benchstat` pre-installed via
-`postCreateCommand`. `CGO_ENABLED=1` is set in the container env so
-`go test -race` works out of the box.
+`mcr.microsoft.com/devcontainers/go:1.26-bookworm` with `libgmp-dev` and
+`build-essential` installed via `postCreateCommand`. `CGO_ENABLED=1` is set in
+the container env so `go test -race` works out of the box.
+
+No Go tool is installed there any more (audit PRO-02): `golangci-lint`,
+`govulncheck`, `gosec` and `benchstat` are pinned in
+[`scripts/tools.env`](../scripts/tools.env) and run via `go run <pkg>@<version>`,
+so they are rebuilt with the current toolchain instead of going stale against
+it. `staticcheck` was installed and called by nothing; it is gone.
 
 See also [`docs/PORTABILITY.md`](PORTABILITY.md) §4 for per-target build
 commands and [`docs/PERFORMANCE.md`](PERFORMANCE.md) for the benchmark

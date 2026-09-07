@@ -172,25 +172,37 @@ jobs:
         with:
           fetch-depth: 0  # git describe needs tags
 
-      # Resolve what the base-image tags point to right now.
+      # Drift report for the two base-image digest pins (SEC-04).
       #
       # This runner is the only environment with a docker CLI and outbound
       # registry access — the maintainer's host has neither, which is why the
-      # two TODO(SEC-04) digest pins in the Dockerfile stayed open through four
-      # audits. Rather than guess a digest, the values are read here.
+      # pins stayed open through four audits. The values were read here first
+      # (run 34135480664) and pasted into the Dockerfile; from now on this step
+      # answers a different question: what does each TAG point to today, versus
+      # the digest the Dockerfile pins?
       #
-      # Deliberately non-fatal (`|| true` on the whole block): a registry hiccup
-      # must not fail an image build that does not depend on this step.
-      - name: base image digests
+      # A difference is not a failure. A pin that stops matching its tag is the
+      # pin doing its job — upstream republished and this build did not follow.
+      # The step reports; a human decides when to bump. Hence non-fatal, and
+      # hence no gate: a fatal registry read before `build image` would turn a
+      # Docker Hub rate-limit into a red main AND skip the version assertion and
+      # smoke test that are this job's actual purpose.
+      #
+      # The refs are read out of the Dockerfile rather than typed here, so
+      # bumping the Go minor cannot leave this step resolving the old tag and
+      # handing the maintainer the wrong digest. The sed drops the @sha256 part
+      # on purpose: resolving the tag is what makes the comparison meaningful.
+      - name: base image digests (drift report)
         run: |
           set -x
-          for ref in golang:1.26-bookworm gcr.io/distroless/base-debian12; do
+          for ref in $(sed -n 's/^FROM \([^ @]*\).*/\1/p' Dockerfile); do
             echo "===================================================== $ref"
             docker buildx imagetools inspect "$ref" --format '{{.Manifest.Digest}}' || echo "MANIFEST-DIGEST-FAILED"
             docker buildx imagetools inspect "$ref" --format '{{.Manifest.MediaType}}' || true
-            docker buildx imagetools inspect "$ref" || true
           done
           set +x
+          echo "Pinned in the Dockerfile:"
+          grep -n '^FROM' Dockerfile
         continue-on-error: true
 
       - name: build image
