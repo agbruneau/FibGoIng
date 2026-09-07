@@ -21,6 +21,7 @@ package fibonacci
 
 import (
 	"context"
+	"fmt"
 	"math/big"
 	"math/bits"
 
@@ -36,8 +37,15 @@ import (
 var globalFactory = NewDefaultFactory()
 
 // RegisterGMPCalculator registers the GMP calculator in the given factory.
+//
+// Register validates its input since audit API-02 and can now fail — on a
+// duplicate name, in practice. Calling this twice on the same factory is a
+// programmer error, and it runs from init() where there is no caller to return
+// to, so it panics rather than registering nothing in silence.
 func RegisterGMPCalculator(f *DefaultFactory) {
-	f.Register("gmp", func() CoreCalculator { return &GMPCalculator{} })
+	if err := f.Register("gmp", func() CoreCalculator { return &GMPCalculator{} }); err != nil {
+		panic(fmt.Sprintf("fibonacci: registering gmp calculator: %v", err))
+	}
 }
 
 func init() {

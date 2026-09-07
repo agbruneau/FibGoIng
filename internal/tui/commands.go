@@ -70,6 +70,9 @@ func startCalculationCmd(ctx context.Context, ref *programRef, calculators []orc
 			StrassenThreshold:       cfg.StrassenThreshold,
 			GCMode:                  cfg.GCControl,
 			EnableDynamicThresholds: cfg.DynamicThresholds,
+			// Resolved by app.validateMemoryBudget, which runTUI calls before
+			// handing cfg over (audit MEM-01).
+			MemoryLimitBytes: cfg.MemoryLimitBytes,
 		}
 		results := orchestration.ExecuteCalculations(ctx, orchestration.ExecutionConfig{
 			Calculators:      calculators,

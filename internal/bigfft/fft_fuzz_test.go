@@ -2,8 +2,34 @@ package bigfft
 
 import (
 	"math/big"
+	"math/bits"
 	"testing"
 )
+
+// The FFT path is the reason these fuzzers exist, and until 2026-09-07 no seed
+// reached it (audit TST-04). Mul takes it only when BOTH operands exceed
+// getFFTThreshold() words; the largest seed was 4096 bytes = 512 words against
+// a 1800-word threshold, so every replay of the seed corpus — which is what
+// `go test` does, mutation fuzzing having never been scheduled — compared
+// math/big against math/big.
+//
+// fftSeed sizes its operands in WORDS, relative to the real threshold, so the
+// seeds stay on the FFT side of the branch on a 32-bit target too (where a word
+// is 4 bytes) and follow the constant if it is ever retuned.
+func fftSeed(extraWords int, fill byte) []byte {
+	const bytesPerWord = bits.UintSize / 8
+	n := (defaultFFTThresholdWords + extraWords) * bytesPerWord
+	b := make([]byte, n)
+	for i := range b {
+		// Vary the bytes: a constant fill produces uniform limbs, which is the
+		// easiest possible carry pattern for both implementations.
+		b[i] = fill ^ byte(i*31)
+	}
+	// Guarantee a set top bit, so SetBytes yields exactly the intended word
+	// count instead of one fewer when the leading byte happens to xor to zero.
+	b[0] |= 0x80
+	return b
+}
 
 // FuzzMul exercises the bigfft.Mul entry point directly with adversarial
 // operand pairs. The reference is math/big.Int.Mul which is exhaustively
@@ -15,11 +41,20 @@ func FuzzMul(f *testing.F) {
 		{{0xff}, {0xff}},
 		{{0x80, 0x00, 0x00, 0x00}, {0x80, 0x00, 0x00, 0x00}},
 		{makeRepeated(0xa5, 256), makeRepeated(0x5a, 256)},
-		// 4096 bytes = 512 words, still well under defaultFFTThresholdWords
-		// (1800): this seed exercises the large-operand math/big path, not
-		// the FFT one. Only fuzzer-grown inputs above ~14 400 bytes on both
-		// operands reach mulFFT.
+		// 512 words: the largest operand pair that still takes the math/big
+		// path, which is worth keeping — it pins the branch just below the
+		// crossover.
 		{makeRepeated(0xff, 4096), makeRepeated(0xff, 4096)},
+		// Both operands one word past the threshold: the FFT branch at its
+		// boundary, the case most likely to expose an off-by-one in sizing.
+		{fftSeed(1, 0xa5), fftSeed(1, 0x5a)},
+		// Comfortably inside the FFT regime, with different fills so the two
+		// operands are not near-identical.
+		{fftSeed(1200, 0x3c), fftSeed(1200, 0xc3)},
+		// Asymmetric: one operand over the threshold, one under. Mul requires
+		// BOTH to be over, so this must still agree with math/big through the
+		// non-FFT branch.
+		{fftSeed(64, 0x11), makeRepeated(0x22, 256)},
 	}
 	for _, s := range seeds {
 		f.Add(s[0], s[1])
@@ -64,6 +99,10 @@ func FuzzSqr(f *testing.F) {
 		{0x80, 0x00, 0x00, 0x00},
 		makeRepeated(0xa5, 256),
 		makeRepeated(0xff, 4096),
+		// Past the threshold, so the seed replay actually reaches sqrFFT
+		// (audit TST-04): boundary first, then well inside.
+		fftSeed(1, 0xa5),
+		fftSeed(1200, 0x3c),
 	}
 	for _, s := range seeds {
 		f.Add(s)

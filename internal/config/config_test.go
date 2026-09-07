@@ -3,7 +3,6 @@ package config
 import (
 	"errors"
 	"io"
-	"os"
 	"testing"
 	"time"
 
@@ -93,14 +92,12 @@ func TestParseConfig(t *testing.T) {
 			"FIBCALC_CALIBRATION_PROFILE": "prof.json",
 		}
 
+		// t.Setenv, not os.Setenv (audit TST-02): it restores the previous
+		// state automatically and refuses to run under t.Parallel, which is
+		// the guarantee an environment-mutating test needs.
 		for k, v := range env {
-			os.Setenv(k, v)
+			t.Setenv(k, v)
 		}
-		defer func() {
-			for k := range env {
-				os.Unsetenv(k)
-			}
-		}()
 
 		// No flags set, should take from env
 		cfg, err := ParseConfig("fibcalc", []string{}, io.Discard, availableAlgos)
@@ -153,8 +150,7 @@ func TestParseConfig(t *testing.T) {
 	})
 
 	t.Run("FlagPrecedenceOverEnv", func(t *testing.T) {
-		os.Setenv("FIBCALC_N", "200")
-		defer os.Unsetenv("FIBCALC_N")
+		t.Setenv("FIBCALC_N", "200")
 
 		// Flag set explicitly
 		cfg, err := ParseConfig("fibcalc", []string{"-n", "300"}, io.Discard, availableAlgos)
@@ -502,8 +498,11 @@ func TestVerboseFlagAlias(t *testing.T) {
 	}
 }
 
+// Not parallel at the top level: the "FIBCALC_TUI env override" subtest calls
+// t.Setenv, which panics if this test or any parent is parallel (audit TST-02).
+// The pure subtests below keep their own t.Parallel; Go resumes those only
+// after the sequential ones finish, so they never overlap the mutation.
 func TestTUIFlag(t *testing.T) {
-	t.Parallel()
 	availableAlgos := []string{"fast", "matrix", "fft"}
 
 	t.Run("--tui flag", func(t *testing.T) {
@@ -529,8 +528,7 @@ func TestTUIFlag(t *testing.T) {
 	})
 
 	t.Run("FIBCALC_TUI env override", func(t *testing.T) {
-		os.Setenv("FIBCALC_TUI", "true")
-		defer os.Unsetenv("FIBCALC_TUI")
+		t.Setenv("FIBCALC_TUI", "true")
 
 		cfg, err := ParseConfig("test", []string{}, io.Discard, availableAlgos)
 		if err != nil {

@@ -6,6 +6,8 @@ import (
 	"math"
 	"math/big"
 	"testing"
+
+	"github.com/agbruneau/FibGo/internal/fibonacci/memory"
 )
 
 func TestShouldParallelizeMultiplication(t *testing.T) {
@@ -104,9 +106,9 @@ func TestAcquireStateForN_HugeN_NoPanic(t *testing.T) {
 
 	// MaxUint64: must clamp, not produce a garbage/overflowed value.
 	w, total := acquireSizingForN(math.MaxUint64)
-	if total != maxReasonableWords || w != maxReasonableWords/10 {
+	if total != memory.MaxReasonableWords || w != memory.MaxReasonableWords/10 {
 		t.Errorf("acquireSizingForN(MaxUint64) = (%d,%d), want (%d,%d)",
-			w, total, maxReasonableWords/10, maxReasonableWords)
+			w, total, memory.MaxReasonableWords/10, memory.MaxReasonableWords)
 	}
 
 	// Release path stays intact for a normal acquisition.

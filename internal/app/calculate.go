@@ -5,8 +5,6 @@ import (
 	"errors"
 	"fmt"
 	"io"
-	"os/signal"
-	"syscall"
 	"time"
 
 	"github.com/agbruneau/FibGo/internal/cli"
@@ -19,8 +17,8 @@ import (
 )
 
 // runCalculate is a thin orchestrator: it dispatches to the partial-digits
-// path, validates the memory budget, sets up the lifecycle (timeout +
-// signals), runs the calculators and presents the results.
+// path, validates the memory budget, applies the timeout, runs the calculators
+// and presents the results. Signals are handled by the one root Run installs.
 func (a *Application) runCalculate(ctx context.Context, out io.Writer) int {
 	// Partial computation mode: last K digits only
 	if a.Config.LastDigits > 0 {
@@ -32,11 +30,8 @@ func (a *Application) runCalculate(ctx context.Context, out io.Writer) int {
 		return code
 	}
 
-	// Setup lifecycle (timeout + signals)
 	ctx, cancelTimeout := context.WithTimeout(ctx, a.Config.Timeout)
 	defer cancelTimeout()
-	ctx, stopSignals := signal.NotifyContext(ctx, syscall.SIGINT, syscall.SIGTERM)
-	defer stopSignals()
 
 	// Execute calculations
 	results := a.executeCalculations(ctx, out)
@@ -81,6 +76,7 @@ func (a *Application) executeCalculations(ctx context.Context, out io.Writer) []
 		StrassenThreshold:       a.Config.StrassenThreshold,
 		GCMode:                  a.Config.GCControl,
 		EnableDynamicThresholds: a.Config.DynamicThresholds,
+		MemoryLimitBytes:        a.Config.MemoryLimitBytes,
 	}
 	return orchestration.ExecuteCalculations(ctx, orchestration.ExecutionConfig{
 		Calculators:      calculatorsToRun,
@@ -95,9 +91,15 @@ func (a *Application) executeCalculations(ctx context.Context, out io.Writer) []
 // configured limit. It delegates the pure validation logic to
 // config.ValidateMemoryBudget and only handles presentation and exit-code
 // mapping here.
+//
+// On success it also records the parsed limit on a.Config so the calculators
+// receive it (audit MEM-01). This is the single place --memory-limit is turned
+// into a number, and it runs before both the CLI and the TUI build their
+// Options, so it is the natural place to publish the result.
 func (a *Application) validateMemoryBudget(out io.Writer) int {
 	report, err := config.ValidateMemoryBudget(a.Config)
 	if err == nil {
+		a.Config.MemoryLimitBytes = report.LimitBytes
 		if a.Config.MemoryLimit != "" && !a.Config.Quiet {
 			fmt.Fprintf(out, "Memory estimate: %s (limit: %s)\n",
 				memory.FormatMemoryEstimate(report.Estimate), report.LimitRaw)
@@ -130,14 +132,12 @@ func (a *Application) validateMemoryBudget(out io.Writer) int {
 }
 
 // runLastDigits computes only the last K decimal digits of F(N) using modular
-// arithmetic, requiring O(K) memory regardless of N. It owns the lifecycle
-// (timeout + signals) and presentation; the math itself lives in
-// orchestration.ComputeLastDigits.
+// arithmetic, requiring O(K) memory regardless of N. It owns the timeout and
+// the presentation; signals come from the root Run installs, and the math
+// itself lives in orchestration.ComputeLastDigits.
 func (a *Application) runLastDigits(ctx context.Context, out io.Writer) int {
 	ctx, cancelTimeout := context.WithTimeout(ctx, a.Config.Timeout)
 	defer cancelTimeout()
-	ctx, stopSignals := signal.NotifyContext(ctx, syscall.SIGINT, syscall.SIGTERM)
-	defer stopSignals()
 
 	k := a.Config.LastDigits
 	n := a.Config.N

@@ -3,9 +3,10 @@ package config
 import (
 	"bytes"
 	"flag"
-	"os"
 	"strings"
 	"testing"
+
+	"github.com/agbruneau/FibGo/internal/testutil"
 )
 
 // TestSetCustomUsage_NoColor pins the NO_COLOR contract: the usage text must
@@ -55,8 +56,7 @@ func TestSetCustomUsage_NoColor(t *testing.T) {
 // block carried ANSI escapes into a stream the caller asked to keep clean.
 func TestUsageHonorsMachineAndQuiet(t *testing.T) {
 	// Not parallel: mutates NO_COLOR, which the usage closure reads.
-	t.Setenv("NO_COLOR", "")
-	os.Unsetenv("NO_COLOR")
+	testutil.Unsetenv(t, "NO_COLOR")
 
 	for _, args := range [][]string{
 		{"--machine"},

@@ -289,28 +289,27 @@ var statePool = sync.Pool{
 	},
 }
 
-// maxReasonableWords caps arena sizing well above any computable F(n)
-// (≈1.15e18 words ≈ 9 EB). It exists only to keep the float->int conversion
-// and the ×10 multiplication in acquireSizingForN from invoking impl-defined
-// behavior / integer overflow on a physically impossible n — defense-in-depth.
-const maxReasonableWords = 1 << 60
-
 // acquireSizingForN computes (wordsNeeded, totalWords) for F(n): one big.Int of
 // ~n*FibonacciGrowthFactor bits, with totalWords sized for 10 temporaries to
 // match NewCalculationArena (over-sizing factor swept from 15 to 10, ADR-0009
 // R4, 2026-07-07). The clamp only changes the result for n far beyond the
 // computable range; for realistic n it is bit-identical to the naive
 // estimatedBits/64+1 then ×10 computation.
+//
+// The cap comes from memory.MaxReasonableWords rather than a second local copy
+// of the same literal (audit TYP-01), and the overflow guard compares against
+// math.MaxInt, not math.MaxInt64: on a 32-bit target the int conversion below
+// overflows at 2^31, long before 2^63.
 func acquireSizingForN(n uint64) (wordsNeeded, totalWords int) {
 	estimatedFloat := float64(n) * FibonacciGrowthFactor
 	// A float64 outside the int range yields an impl-defined value on
 	// conversion; clamp before converting.
-	if estimatedFloat >= float64(math.MaxInt64) {
-		return maxReasonableWords / 10, maxReasonableWords
+	if estimatedFloat >= float64(math.MaxInt) {
+		return memory.MaxReasonableWords / 10, memory.MaxReasonableWords
 	}
 	wordsNeeded = int(estimatedFloat)/64 + 1
-	if wordsNeeded > maxReasonableWords/10 {
-		return wordsNeeded, maxReasonableWords
+	if wordsNeeded > memory.MaxReasonableWords/10 {
+		return wordsNeeded, memory.MaxReasonableWords
 	}
 	return wordsNeeded, wordsNeeded * 10
 }

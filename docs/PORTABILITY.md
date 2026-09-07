@@ -16,20 +16,25 @@ E10-R5 / Sprint S4-T5.
 | macOS | arm64 (Apple Silicon) | ❌ désactivé en cross-compile | ❌ (cross-compile only) | `make build-all` (build only) |
 | WASI / js | — | — | — | non supporté — `go build ./...` échoue sur la pile TUI tierce (voir §6) |
 
-**64 bits uniquement.** Aucune cible 32 bits n'est supportée et aucune n'est
-construite par `make build-all`. La compilation **échoue sur toute cible où
-`int` fait 32 bits** — `386`, `arm`, `mips`, `mipsle` — et l'échec est le même
-dans tous les cas : `maxReasonableWords = 1 << 60` (déclaré
-`internal/fibonacci/memory/arena.go:maxReasonableWords`, utilisé trois fois dans
-`arenaTotalWords`) déborde un `int` 32 bits. Vérifié le 2026-08-07, revérifié
-le 2026-09-04 sous `go1.27.0` (sortie identique) :
-`GOOS=linux GOARCH=386 go build ./...` et `GOOS=linux GOARCH=arm go build ./...`
-produisent tous deux, mot pour mot, `cannot use maxReasonableWords … (overflows)`
-en `arena.go:26,30` et `maxReasonableWords / 10 … overflows int` en
-`arena.go:29`. Ces trois numéros sont la **sortie citée du compilateur**, pas un
-renvoi de lecture : ils doivent rester exacts et être revérifiés en relançant les
-deux commandes ci-dessus, pas corrigés par recherche de symbole. La mention `386` en
-§2.2 décrit uniquement la branche
+**32 bits : compile, mais n'est ni testé ni distribué.** Depuis le 2026-09-07
+(audit TYP-01), `GOOS=linux GOARCH=386 go build ./...`, `GOARCH=arm` et
+`GOARCH=arm64` sortent tous en 0, et la CI garde ces trois cibles
+(`.github/workflows/ci.yml`, job `cross-build`).
+
+Ce qui bloquait n'était pas une limite de conception mais une **erreur de
+compilation** : `maxReasonableWords = 1 << 60`, déclaré deux fois
+(`internal/fibonacci/memory/arena.go` et `internal/fibonacci/fastdoubling.go`),
+ne tient pas dans un `int` 32 bits. La constante est maintenant unique et
+relative à la taille du mot :
+`memory.MaxReasonableWords = 1 << (bits.UintSize - 4)`, soit la même valeur
+`1 << 60` en 64 bits. Le garde-fou de conversion `float64 → int` de
+`acquireSizingForN` compare désormais à `math.MaxInt` et non à `math.MaxInt64`,
+qui déborde à 2³¹ sur ces cibles.
+
+**Ce que « compile » ne veut pas dire.** Aucune cible 32 bits n'est construite
+par `make build-all`, aucune n'est testée, et la portée utile y est bornée par
+`int` : l'arène plafonne à `1 << 28` mots. Le job CI vérifie la compilation, pas
+le comportement. La mention `386` en §2.2 décrit uniquement la branche
 `runtime.GOARCH` de `DetectHardwareHeuristic()` ; elle ne constitue pas une
 déclaration de support.
 
@@ -208,4 +213,4 @@ les six cibles sortent 0.
   l'import muet requis par `go:linkname` (bloc `import` de `internal/bigfft/arith_decl.go`) ;
   l'unique `unsafe.Pointer` du dépôt est dans un test
   (`internal/fibonacci/memory/arena_test.go`, `TestCalculationArena_MultipleAllocs_NoAliasing`).
-- **32 bits** : non supporté, voir §1.
+- **32 bits** : compile depuis 2026-09-07, non testé et non distribué ; voir §1.

@@ -814,14 +814,14 @@ T00.
 | 1 | T03 `-shuffle=on -count=1` dans les gates | ☑ |  | gate PowerShell vert avec ordre aléatoire ; ajouté aussi à `make test`/`test-win` et à la CI |
 | 1 | T04 `govulncheck` dans les gates | ☑ |  | étape 6 dure dans les deux gates ; `v1.7.0` tourne sous go1.27 et sort 0 (1 vuln non appelée dans `x/text` indirect) |
 | 1 | T05 `.dockerignore`, version et digests | ☑ |  | `.dockerignore` ajouté ; le `Dockerfile` délègue à `make build` avec `VERSION/COMMIT/BUILD_DATE`. Digests SEC-04 toujours ouverts : aucun accès registre ici. Job CI `docker` ajouté pour vérifier |
-| 2 | T06 Signaux et délai pour tous les modes | ☐ | | |
-| 2 | T07 Propagation de `MemoryLimitBytes` | ☐ | | |
-| 2 | T08 `maxReasonableWords` unique, build 386 | ☐ | | |
-| 2 | T09 Test *flaky* isolé | ☐ | | |
-| 2 | T10 `t.Setenv` au lieu d'`os.Setenv` | ☐ | | |
-| 2 | T11 Graines fuzz au-delà du seuil FFT | ☐ | | |
-| 2 | T12 Contrats du registre | ☐ | | |
-| 2 | T13 Renvois périmés | ☐ | | |
+| 2 | T06 Signaux et délai pour tous les modes | ☑ |  | `signal.NotifyContext` unique dans `Run` (test de garde) ; `--timeout` appliqué à `--calibrate` et à `--auto-calibrate` ; `findBest` consulte son contexte |
+| 2 | T07 Propagation de `MemoryLimitBytes` | ☑ |  | `AppConfig.MemoryLimitBytes` résolu par `validateMemoryBudget`, lu par le CLI et la TUI ; 4 tests dont un espion d'options |
+| 2 | T08 `maxReasonableWords` unique, build 386 | ☑ |  | constante unique `memory.MaxReasonableWords = 1 << (bits.UintSize-4)` ; `GOARCH=386`, `arm` et `arm64` compilent (exit 0) ; garde `math.MaxInt` |
+| 2 | T09 Test *flaky* isolé | ☑ |  | `resetStatePoolForTest` + test séquentiel ; 50 passes isolées et 10 passes `-race -shuffle=on` du paquet, toutes vertes |
+| 2 | T10 `t.Setenv` au lieu d'`os.Setenv` | ☑ |  | 0 `os.Setenv` restant dans les tests ; `TestTUIFlag` n'est plus parallèle ; `testutil.Unsetenv` ajouté (pas de `t.Unsetenv` en stdlib) |
+| 2 | T11 Graines fuzz au-delà du seuil FFT | ☑ |  | graines dimensionnées en mots relatifs au seuil ; le rejeu couvre `fftmul` et `fftsqr` à 100 % ; `make fuzz-smoke` + job CI ; 5,8 M exécutions sans échec |
+| 2 | T12 Contrats du registre | ☑ |  | `Register` refuse nom vide, créateur nil et doublon ; `NewDefaultFactory` panique sur son propre bogue ; `TestFactory.List` trié ; 6 tests |
+| 2 | T13 Renvois périmés | ☑ |  | exemple `app/doc.go` aligné sur `main.go` ; URL de clonage vers `Fibonacci.git` ; écart de chemin de module documenté et vérifié |
 | 3 | T14 Journalisation `slog` | ☐ | | |
 | 3 | T15 Scission erreurs / présentation | ☐ | | |
 | 3 | T16 Port `calibration.Reporter` | ☐ | | |

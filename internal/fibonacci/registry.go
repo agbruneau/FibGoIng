@@ -1,6 +1,7 @@
 package fibonacci
 
 import (
+	"errors"
 	"fmt"
 	"sort"
 	"sync"
@@ -21,7 +22,8 @@ type CalculatorFactory interface {
 	// List returns a sorted list of registered calculator names.
 	List() []string
 
-	// Register adds a new calculator type to the factory.
+	// Register adds a new calculator type to the factory. It rejects an empty
+	// name, a nil creator, and a name that is already registered.
 	Register(name string, creator func() CoreCalculator) error
 
 	// GetAll returns a map of all registered calculators.
@@ -53,28 +55,64 @@ func NewDefaultFactory() *DefaultFactory {
 		calculators: make(map[string]Calculator),
 	}
 
-	// Register the default calculators
-	_ = f.Register("fast", func() CoreCalculator { return &FastDoublingCalculator{} })
-	_ = f.Register("matrix", func() CoreCalculator { return &MatrixExponentiationCalculator{} })
-	_ = f.Register("fft", func() CoreCalculator { return &FFTBasedCalculator{} })
+	// Register the built-in calculators. Discarding these errors used to be
+	// safe only because Register could not fail; now that it validates, a
+	// failure here means this very function is wrong — a duplicate name or a
+	// nil creator literal — which is a programmer bug, not a runtime
+	// condition. Same contract as MustNewCalculator.
+	builtins := []struct {
+		name    string
+		creator func() CoreCalculator
+	}{
+		{"fast", func() CoreCalculator { return &FastDoublingCalculator{} }},
+		{"matrix", func() CoreCalculator { return &MatrixExponentiationCalculator{} }},
+		{"fft", func() CoreCalculator { return &FFTBasedCalculator{} }},
+	}
+	for _, b := range builtins {
+		if err := f.Register(b.name, b.creator); err != nil {
+			panic(fmt.Sprintf("fibonacci: registering built-in calculator %q: %v", b.name, err))
+		}
+	}
 
 	return f
 }
 
-// Register adds a new calculator type to the factory.
-// The creator function is called lazily when the calculator is first requested.
-// If a calculator with the same name already exists, it will be replaced.
+// Register adds a new calculator type to the factory. The creator function is
+// called lazily, when the calculator is first requested.
+//
+// It returns an error for an empty name, a nil creator, or a name that is
+// already registered.
+//
+// Until audit API-02 this method could not fail: it returned nil
+// unconditionally, accepted a nil creator (deferring the panic to the first
+// Get), and REPLACED an existing registration in silence — so a typo'd or
+// duplicated name quietly swapped out a built-in calculator. Callers were
+// nonetheless obliged to check the error by errcheck, which made the check pure
+// ceremony. The signature now means something.
+//
+// Refusing a duplicate rather than replacing is the deliberate half of this: a
+// factory has three built-ins registered by NewDefaultFactory, and nothing in
+// the code base re-registers a name on purpose. A caller that genuinely wants a
+// different implementation should build its own factory.
 //
 // Parameters:
 //   - name: The unique identifier for the calculator type.
 //   - creator: A function that creates a new CoreCalculator instance.
 func (f *DefaultFactory) Register(name string, creator func() CoreCalculator) error {
+	if name == "" {
+		return errors.New("fibonacci: calculator name must not be empty")
+	}
+	if creator == nil {
+		return fmt.Errorf("fibonacci: calculator %q: creator must not be nil", name)
+	}
+
 	f.mu.Lock()
 	defer f.mu.Unlock()
 
+	if _, exists := f.creators[name]; exists {
+		return fmt.Errorf("fibonacci: calculator %q is already registered", name)
+	}
 	f.creators[name] = creator
-	// Clear cached calculator if it exists, so it will be recreated with the new creator
-	delete(f.calculators, name)
 	return nil
 }
 
@@ -163,6 +201,14 @@ func (f *DefaultFactory) List() []string {
 // GetAll returns a map of all registered calculators.
 // This method lazily initializes all calculators that haven't been
 // created yet.
+//
+// It has no error return, so an entry whose creator misbehaves is omitted from
+// the result rather than failing the call. Since Register rejects a nil creator
+// (audit API-02), the only way to land here is a registered creator that
+// returns a nil CoreCalculator — a bug in that creator. The omission is
+// visible: the caller (auto-calibration) reports "no usable profile" when the
+// calculator it needs is missing, instead of the map silently under-reporting
+// as it did when Register accepted anything.
 //
 // Returns:
 //   - map[string]Calculator: A map of calculator names to Calculator instances.

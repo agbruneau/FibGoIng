@@ -30,13 +30,19 @@ This project adheres to a code of conduct. By participating, you are expected to
 1. **Fork the repository** on GitHub
 2. **Clone your fork** locally:
    ```bash
-   git clone https://github.com/YOUR-USERNAME/FibGo.git
-   cd FibGo
+   git clone https://github.com/YOUR-USERNAME/Fibonacci.git
+   cd Fibonacci
    ```
 3. **Add the upstream remote**:
    ```bash
-   git remote add upstream https://github.com/agbruneau/FibGo.git
+   git remote add upstream https://github.com/agbruneau/Fibonacci.git
    ```
+
+   The repository is `agbruneau/Fibonacci`; the Go module path is still
+   `github.com/agbruneau/FibGo`, the repository's original name. That is
+   deliberate — changing a module path breaks every existing import — and
+   GitHub's redirect keeps both working, for `git clone` and for the module
+   proxy alike.
 
 ## Development Setup
 

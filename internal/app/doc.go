@@ -21,14 +21,23 @@
 //
 // # Example
 //
+// This mirrors cmd/fibcalc/main.go. Run returns the POSIX exit code directly
+// (internal/errors.Exit*); the ExitAction type this example used to show was
+// removed by ADR-0011 D1, and the example outlived it by four days
+// (audit API-08).
+//
 //	func main() {
-//	    a, err := app.New(os.Args, os.Stderr)
+//	    os.Exit(run(os.Args, os.Stdout, os.Stderr))
+//	}
+//
+//	func run(args []string, stdout, stderr io.Writer) int {
+//	    application, err := app.New(args, stderr)
 //	    if err != nil {
-//	        // handle wiring error
+//	        if app.IsHelpError(err) {
+//	            return apperrors.ExitSuccess
+//	        }
+//	        return apperrors.ExitErrorConfig
 //	    }
-//	    action := a.Run(context.Background(), os.Stdout)
-//	    if action.ShouldExit() {
-//	        os.Exit(action.Code())
-//	    }
+//	    return application.Run(context.Background(), stdout)
 //	}
 package app

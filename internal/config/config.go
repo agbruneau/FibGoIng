@@ -115,6 +115,17 @@ type AppConfig struct {
 	// Accepts human-readable formats like "8G", "512M", "1024K".
 	// The application warns and exits if the estimated memory exceeds this limit.
 	MemoryLimit string
+	// MemoryLimitBytes is MemoryLimit resolved to bytes, or 0 when no limit was
+	// requested. It is not a flag: the parser never fills it, because parsing
+	// belongs to ValidateMemoryBudget, which is also where a malformed value is
+	// reported. app.validateMemoryBudget writes it once, before either the CLI
+	// or the TUI path builds fibonacci.Options.
+	//
+	// It exists because fibonacci.Options.MemoryLimitBytes and CanCalculate —
+	// documented as defense in depth behind this validator — were dead from the
+	// binary: no production caller ever set the field, so the calculator-level
+	// guard could only fire for programmatic callers and tests (audit MEM-01).
+	MemoryLimitBytes uint64
 	// GCControl sets the GC control mode ("auto", "aggressive", "disabled").
 	GCControl string
 	// DynamicThresholds enables the dynamic threshold manager

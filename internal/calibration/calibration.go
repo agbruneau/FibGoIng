@@ -224,8 +224,15 @@ func runPassSequence(ctx context.Context, out io.Writer, calculator fibonacci.Ca
 	}
 
 	for _, threshold := range thresholdsToTest {
-		if ctx.Err() != nil {
+		// Reachable from the binary since audit CON-01: --calibrate now runs
+		// under the signal root and the --timeout budget. Distinguish the two
+		// so the exit code matches the cause, as HandleCalculationError does
+		// for a failure raised inside a pass.
+		if err := ctx.Err(); err != nil {
 			fmt.Fprintf(out, "\n%sCalibration interrupted.%s\n", ui.ColorYellow(), ui.ColorReset())
+			if errors.Is(err, context.DeadlineExceeded) {
+				return 0, results, apperrors.ExitErrorTimeout
+			}
 			return 0, results, apperrors.ExitErrorCanceled
 		}
 

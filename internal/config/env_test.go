@@ -5,7 +5,6 @@ import (
 	"flag"
 	"fmt"
 	"io"
-	"os"
 	"strings"
 	"testing"
 
@@ -49,15 +48,9 @@ func TestEnvOverride_MalformedReturnsError(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			old, had := os.LookupEnv(tt.envKey)
-			os.Setenv(tt.envKey, tt.envVal)
-			defer func() {
-				if had {
-					os.Setenv(tt.envKey, old)
-				} else {
-					os.Unsetenv(tt.envKey)
-				}
-			}()
+			// t.Setenv restores the previous state — set or unset — on its own
+			// (audit TST-02), and bars t.Parallel here.
+			t.Setenv(tt.envKey, tt.envVal)
 
 			_, err := ParseConfig("test", []string{}, io.Discard, algos)
 			if err == nil {

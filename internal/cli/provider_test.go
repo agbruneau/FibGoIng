@@ -1,25 +1,20 @@
 package cli
 
 import (
-	"os"
 	"testing"
 
+	"github.com/agbruneau/FibGo/internal/testutil"
 	"github.com/agbruneau/FibGo/internal/ui"
 )
 
 func TestCLIColorProvider(t *testing.T) {
-	// Save and temporarily unset NO_COLOR to test with colors enabled
-	// This is necessary because InitTheme respects the NO_COLOR environment
-	// variable (per no-color.org spec), which may be set in the test environment
-	noColorVal, hadNoColor := os.LookupEnv("NO_COLOR")
-	if hadNoColor {
-		os.Unsetenv("NO_COLOR")
-		defer func() {
-			if hadNoColor {
-				os.Setenv("NO_COLOR", noColorVal)
-			}
-		}()
-	}
+	// NO_COLOR must be absent for colors to be enabled (InitTheme follows the
+	// no-color.org spec, where presence alone disables them) and it may well be
+	// set in the developer's or CI environment. testutil.Unsetenv removes it and
+	// registers the restore; it also makes this test unavailable to t.Parallel,
+	// which is correct for anything touching the process environment
+	// (audit TST-02).
+	testutil.Unsetenv(t, "NO_COLOR")
 
 	// Initialize theme to ensure we get codes
 	ui.InitTheme(false)

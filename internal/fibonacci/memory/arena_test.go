@@ -129,8 +129,8 @@ func TestArenaTotalWords_ClampNoUB(t *testing.T) {
 		}
 	}
 
-	if got := arenaTotalWords(math.MaxUint64); got != maxReasonableWords {
-		t.Errorf("arenaTotalWords(MaxUint64) = %d, want clamp %d", got, maxReasonableWords)
+	if got := arenaTotalWords(math.MaxUint64); got != MaxReasonableWords {
+		t.Errorf("arenaTotalWords(MaxUint64) = %d, want clamp %d", got, MaxReasonableWords)
 	}
 }
 

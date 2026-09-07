@@ -199,6 +199,20 @@ benchmark:
 	@echo "Running benchmarks..."
 	$(GO) test -bench=. -benchmem ./internal/fibonacci/
 
+# POSIX-only (shell loop). Seeds are replayed by every `go test`; this target is
+# the mutation run, which nothing scheduled before (audit TST-04). CI runs the
+# same targets weekly with a longer budget; 30s each is the local smoke test.
+## fuzz-smoke: Run every fuzz target for 30s (mutation, not just seed replay)
+fuzz-smoke:
+	@for t in FuzzMul FuzzSqr; do \
+		echo "==> internal/bigfft $$t"; \
+		$(GO) test -run='^$$' -fuzz="^$$t$$" -fuzztime=30s ./internal/bigfft/ || exit 1; \
+	done
+	@for t in FuzzFastDoublingConsistency FuzzFastDoublingMod FuzzFFTBasedConsistency FuzzFibonacciIdentities FuzzProgressMonotonicity; do \
+		echo "==> internal/fibonacci $$t"; \
+		$(GO) test -run='^$$' -fuzz="^$$t$$" -fuzztime=30s ./internal/fibonacci/ || exit 1; \
+	done
+
 # POSIX-only (requires find/xargs/wc/awk)
 ## stats: Print package and LOC counts (canonical source for docs/ARCH.md)
 ##

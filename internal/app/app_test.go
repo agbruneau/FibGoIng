@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"math/big"
 	"os"
+	"path/filepath"
 	"runtime"
 	"strings"
 	"testing"
@@ -614,6 +615,13 @@ func TestRunCalibration(t *testing.T) {
 			Config: config.AppConfig{
 				Calibrate: true,
 				Timeout:   5 * time.Second,
+				// Without this the sweep persists its result to
+				// GetDefaultProfilePath(), i.e. ~/.fibcalc_calibration.json —
+				// a real file in the developer's home directory, written by a
+				// test run (book ch. 7 p. 226: never write to fixed locations).
+				// It also poisoned later tests, since AutoCalibrate
+				// short-circuits on a cached profile.
+				CalibrationProfile: filepath.Join(t.TempDir(), "profile.json"),
 			},
 			Factory:   factory,
 			ErrWriter: &bytes.Buffer{},

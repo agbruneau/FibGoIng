@@ -1,17 +1,30 @@
 package memory
 
-import "math/big"
+import (
+	"math/big"
+	"math/bits"
+)
 
 // fibonacciGrowthFactor is log2(phi), where phi ~ 1.618 (golden ratio).
 // Used to estimate bit length of F(n). This is a local copy to avoid
 // importing the parent fibonacci package.
 const fibonacciGrowthFactor = 0.69424
 
-// maxReasonableWords caps the arena sizing well above any computable F(n)
-// (≈1.15e18 words ≈ 9 EB). It exists only to keep the float->int conversion
-// and the ×10 multiplication below from invoking impl-defined behavior /
-// integer overflow on a physically impossible n — defense-in-depth.
-const maxReasonableWords = 1 << 60
+// MaxReasonableWords caps arena sizing well above any computable F(n). It
+// exists only to keep the float->int conversion and the ×10 multiplication in
+// the sizing helpers from invoking impl-defined behavior or integer overflow on
+// a physically impossible n — defense-in-depth.
+//
+// Word-size relative, not a literal 1<<60 (audit TYP-01). The constant was
+// written as `1 << 60` in TWO places, here and in fibonacci/fastdoubling.go,
+// and 1<<60 does not fit in a 32-bit int: `GOOS=linux GOARCH=386 go build ./...`
+// failed to compile this file, which is how a documented "64-bit only" limit
+// turned out to be a constant-overflow error rather than a deliberate guard.
+// bits.UintSize-4 keeps the ×10 headroom (10 < 16) on both widths and leaves
+// the 64-bit value unchanged at 1<<60 (~1.15e18 words, ~9 EB).
+//
+// Exported so fastdoubling.go shares this definition instead of repeating it.
+const MaxReasonableWords = 1 << (bits.UintSize - 4)
 
 // arenaTotalWords computes the arena size (in big.Word) for F(n): one int of
 // ~n*fibonacciGrowthFactor bits, times 10 temporaries (over-sizing factor swept
@@ -22,12 +35,12 @@ func arenaTotalWords(n uint64) int {
 	estimatedBits := float64(n) * fibonacciGrowthFactor
 	// A float64 outside the int range yields an impl-defined value on
 	// conversion; clamp before converting.
-	if estimatedBits/64 >= float64(maxReasonableWords) {
-		return maxReasonableWords
+	if estimatedBits/64 >= float64(MaxReasonableWords) {
+		return MaxReasonableWords
 	}
 	wordsPerInt := int(estimatedBits/64) + 1
-	if wordsPerInt > maxReasonableWords/10 {
-		return maxReasonableWords
+	if wordsPerInt > MaxReasonableWords/10 {
+		return MaxReasonableWords
 	}
 	return wordsPerInt * 10
 }

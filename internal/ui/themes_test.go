@@ -1,26 +1,24 @@
 package ui
 
 import (
-	"os"
 	"testing"
+
+	"github.com/agbruneau/FibGo/internal/testutil"
 )
+
+// These tests mutate NO_COLOR, so they use t.Setenv / testutil.Unsetenv rather
+// than os.Setenv with a hand-written defer (audit TST-02). The restore is then
+// registered by the framework, it survives a t.Fatal, and — the reason that
+// matters most — t.Setenv refuses to run in a parallel test, which is exactly
+// the guarantee an environment-mutating test needs.
 
 // TestInitThemeWithNoColorFlag verifies that InitTheme respects the noColor flag.
 func TestInitThemeWithNoColorFlag(t *testing.T) {
-	// Save original theme and env to restore after test
 	originalTheme := GetCurrentTheme()
-	originalNoColor := os.Getenv("NO_COLOR")
-	defer func() {
-		setCurrentTheme(originalTheme)
-		if originalNoColor == "" {
-			os.Unsetenv("NO_COLOR")
-		} else {
-			os.Setenv("NO_COLOR", originalNoColor)
-		}
-	}()
+	t.Cleanup(func() { setCurrentTheme(originalTheme) })
 
-	// Ensure NO_COLOR is not set for this test
-	os.Unsetenv("NO_COLOR")
+	// Ensure NO_COLOR is not set for this test.
+	testutil.Unsetenv(t, "NO_COLOR")
 
 	t.Run("noColor flag true disables colors", func(t *testing.T) {
 		InitTheme(true)
@@ -44,20 +42,11 @@ func TestInitThemeWithNoColorFlag(t *testing.T) {
 
 // TestInitThemeWithNO_COLOREnv verifies that InitTheme respects NO_COLOR env var.
 func TestInitThemeWithNO_COLOREnv(t *testing.T) {
-	// Save original theme and env to restore after test
 	originalTheme := GetCurrentTheme()
-	originalNoColor := os.Getenv("NO_COLOR")
-	defer func() {
-		setCurrentTheme(originalTheme)
-		if originalNoColor == "" {
-			os.Unsetenv("NO_COLOR")
-		} else {
-			os.Setenv("NO_COLOR", originalNoColor)
-		}
-	}()
+	t.Cleanup(func() { setCurrentTheme(originalTheme) })
 
 	t.Run("NO_COLOR set disables colors", func(t *testing.T) {
-		os.Setenv("NO_COLOR", "1")
+		t.Setenv("NO_COLOR", "1")
 		InitTheme(false)
 		current := GetCurrentTheme()
 		if current.Name != "none" {
@@ -65,8 +54,11 @@ func TestInitThemeWithNO_COLOREnv(t *testing.T) {
 		}
 	})
 
+	// Presence, not value: InitTheme uses os.LookupEnv, so NO_COLOR= disables
+	// colors too. This is why the "not set" case below needs a real unset and
+	// not t.Setenv(key, "").
 	t.Run("NO_COLOR empty value still disables colors", func(t *testing.T) {
-		os.Setenv("NO_COLOR", "")
+		t.Setenv("NO_COLOR", "")
 		InitTheme(false)
 		current := GetCurrentTheme()
 		if current.Name != "none" {
@@ -75,7 +67,7 @@ func TestInitThemeWithNO_COLOREnv(t *testing.T) {
 	})
 
 	t.Run("NO_COLOR not set uses dark theme", func(t *testing.T) {
-		os.Unsetenv("NO_COLOR")
+		testutil.Unsetenv(t, "NO_COLOR")
 		InitTheme(false)
 		current := GetCurrentTheme()
 		if current.Name != "dark" {

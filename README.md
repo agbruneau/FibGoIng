@@ -65,9 +65,15 @@ Prérequis : **Go 1.26.0+** (`go.mod` déclare `go 1.26.0`, sans directive `tool
 `-o fibcalc` produit un fichier **sans extension** que le shell refuse d'exécuter : écrire
 `go build -o fibcalc.exe ./cmd/fibcalc` puis `.\fibcalc.exe`.
 
+Le dépôt s'appelle **`agbruneau/Fibonacci`** ; le chemin de module est resté
+`github.com/agbruneau/FibGo`, nom d'origine du dépôt. L'écart est délibéré :
+changer un chemin de module casse tous les imports existants, et la redirection
+GitHub couvre les deux usages — vérifié le 2026-09-07, `git ls-remote` et
+`go list -m github.com/agbruneau/FibGo@latest` réussissent tous les deux.
+
 ```bash
-git clone https://github.com/agbruneau/FibGo.git
-cd FibGo
+git clone https://github.com/agbruneau/Fibonacci.git
+cd Fibonacci
 go build -o fibcalc ./cmd/fibcalc
 ./fibcalc -n 1000000 -algo fast        # 694 241 bits (la durée dépend de l'hôte, cf. Performance)
 ./fibcalc -n 100 -c                    # → 354224848179261915075

@@ -3,6 +3,7 @@ package fibonacci
 import (
 	"context"
 	"math/big"
+	"sort"
 
 	"github.com/agbruneau/FibGo/internal/progress"
 )
@@ -66,12 +67,19 @@ func (f *TestFactory) Get(name string) (Calculator, error) {
 	return calc, nil
 }
 
-// List returns all registered calculator names.
+// List returns a sorted list of all registered calculator names.
+//
+// Sorted, like DefaultFactory.List and as the CalculatorFactory contract states
+// (audit API-01). It used to return Go's randomized map-iteration order while
+// claiming to be interchangeable with the real factory, so any test asserting
+// on ordered output — shell completion, the execution-mode banner — was passing
+// or failing on map iteration order rather than on behavior.
 func (f *TestFactory) List() []string {
 	names := make([]string, 0, len(f.calculators))
 	for name := range f.calculators {
 		names = append(names, name)
 	}
+	sort.Strings(names)
 	return names
 }
 

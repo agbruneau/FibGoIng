@@ -123,8 +123,26 @@ func TestCalculatorStateCache_SequentialResultsIndependent(t *testing.T) {
 // TestStateBump_PinnedAcrossCachedCalls guards F-012: once a calculation has
 // taken the FFT path, the bump scratch allocator must travel with the cached
 // state and be reused (same pointer) by the next call on the same calculator.
+//
+// Deliberately NOT parallel, and it starts from a clean statePool (audit
+// TST-01). This test was the repository's one known flaky test, documented as
+// such in the README and left in place. The mechanism:
+//
+//	acquireStateForN falls through to the shared statePool. If any earlier test
+//	had returned a state whose arena exceeds maxCachedArenaWords (4M words),
+//	prepareStateForN happily REUSES that oversized arena — it only allocates
+//	when the pooled one is too small. After the calculation, cacheOrPool then
+//	refuses to pin it (arenaCapWords > maxCachedArenaWords) and hands it back to
+//	the pool, so fd.cachedState is nil and the test fails on "state not cached
+//	after first call" — an assertion about a bump allocator, failing because of
+//	an arena left behind by an unrelated test.
+//
+// Both halves matter. resetStatePoolForTest removes the leftover; dropping
+// t.Parallel keeps a concurrently running test from putting a new one back
+// mid-test (Go resumes parallel tests only after the sequential pass ends, so a
+// non-parallel test never overlaps them).
 func TestStateBump_PinnedAcrossCachedCalls(t *testing.T) {
-	t.Parallel()
+	resetStatePoolForTest(t)
 	fd := &FastDoublingCalculator{}
 	ctx := context.Background()
 	noop := func(float64) {}

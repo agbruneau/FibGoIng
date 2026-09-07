@@ -103,6 +103,17 @@ func New(args []string, errWriter io.Writer, opts ...AppOption) (*Application, e
 
 // Run executes the application based on the configured mode and returns the
 // POSIX exit code (internal/errors.Exit*), which main hands to os.Exit.
+//
+// Signal handling is installed HERE, once, for every mode that computes (audit
+// CON-01). It used to be duplicated in runCalculate, runLastDigits and runTUI,
+// which left two modes uncovered: `--calibrate` and the `--auto-calibrate`
+// phase ran on main's raw context, so Ctrl-C hit the runtime's default handler
+// and killed the process outright. The "Calibration interrupted" branch in
+// internal/calibration was unreachable from the binary, and so was the timeout
+// path — those modes ignored --timeout entirely.
+//
+// Completion generation is deliberately above the signal root: it writes a
+// script and returns, with nothing to interrupt.
 func (a *Application) Run(ctx context.Context, out io.Writer) int {
 	if a.Config.Completion != "" {
 		return a.runCompletion(out)
@@ -110,6 +121,9 @@ func (a *Application) Run(ctx context.Context, out io.Writer) int {
 
 	zerolog.SetGlobalLevel(zerolog.InfoLevel)
 	ui.InitTheme(a.Config.Quiet || a.Config.MachineOutput)
+
+	ctx, stopSignals := signal.NotifyContext(ctx, syscall.SIGINT, syscall.SIGTERM)
+	defer stopSignals()
 
 	if a.Config.Calibrate {
 		return a.runCalibration(ctx, out)
@@ -134,16 +148,36 @@ func (a *Application) runCompletion(out io.Writer) int {
 }
 
 // runCalibration runs the full calibration mode.
+//
+// --timeout bounds the whole sweep (audit CON-01). It used to bound nothing
+// here: the mode received main's raw context, so a sweep that stalled ran until
+// the user killed it. Each pass computes F(CalibrationN) at one threshold, so
+// the sweep is a sequence of calculations and the documented "maximum execution
+// time for the calculation" is the honest budget for it.
 func (a *Application) runCalibration(ctx context.Context, out io.Writer) int {
+	ctx, cancelTimeout := context.WithTimeout(ctx, a.Config.Timeout)
+	defer cancelTimeout()
+
 	return calibration.RunCalibration(ctx, out, a.Factory.GetAll(), a.Config.CalibrationProfile, cli.DisplayProgress, cli.CLIColorProvider{})
 }
 
 // runAutoCalibrationIfEnabled runs auto-calibration if enabled.
+//
+// The micro-benchmark phase gets its own timeout budget rather than eating into
+// the calculation's: it runs BEFORE runCalculate installs its deadline, and a
+// slow probe must not silently consume the time the user asked for the actual
+// computation. AutoCalibrate degrades to the unchanged config on failure, so an
+// expired budget here costs defaults, not an aborted run.
 func (a *Application) runAutoCalibrationIfEnabled(ctx context.Context, out io.Writer) config.AppConfig {
-	if a.Config.AutoCalibrate {
-		if updated, ok := calibration.AutoCalibrate(ctx, a.Config, out, a.Factory.GetAll()); ok {
-			return updated
-		}
+	if !a.Config.AutoCalibrate {
+		return a.Config
+	}
+
+	ctx, cancelTimeout := context.WithTimeout(ctx, a.Config.Timeout)
+	defer cancelTimeout()
+
+	if updated, ok := calibration.AutoCalibrate(ctx, a.Config, out, a.Factory.GetAll()); ok {
+		return updated
 	}
 	return a.Config
 }
@@ -159,15 +193,12 @@ func (a *Application) runAutoCalibrationIfEnabled(ctx context.Context, out io.Wr
 // The timeout budget is applied per generation inside the TUI itself (in
 // NewModel/handleReset, APP-05) rather than once here: a restart must get a
 // fresh full budget instead of inheriting a single absolute deadline set at
-// session start. signal.NotifyContext still wraps the parent context so
-// SIGINT/SIGTERM cancel every generation uniformly.
+// session start. The signal root installed in Run wraps the context passed in,
+// so SIGINT/SIGTERM cancel every generation uniformly.
 func (a *Application) runTUI(ctx context.Context, out io.Writer) int {
 	if code := a.validateMemoryBudget(out); code != apperrors.ExitSuccess {
 		return code
 	}
-
-	ctx, stopSignals := signal.NotifyContext(ctx, syscall.SIGINT, syscall.SIGTERM)
-	defer stopSignals()
 
 	calculatorsToRun := orchestration.GetCalculatorsToRun(a.Config.Algo, a.Factory)
 	return tui.Run(ctx, calculatorsToRun, a.Config, Version, a.ErrWriter)
