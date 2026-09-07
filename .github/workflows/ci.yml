@@ -20,6 +20,11 @@
 #
 # Tool versions come from scripts/tools.env, the same file the local gates and
 # the Makefile read. Nothing here installs a tool at @latest.
+#
+# The actions themselves are pinned to a major tag, refreshed 2026-09-07: v4/v5
+# still target Node 20, which GitHub deprecated and now force-runs on Node 24,
+# annotating every job. Leaving a known-stale tool in place is the habit this
+# whole workflow exists to break.
 
 name: CI
 
@@ -58,9 +63,9 @@ jobs:
       matrix:
         os: [ubuntu-latest, windows-latest]
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
-      - uses: actions/setup-go@v5
+      - uses: actions/setup-go@v7
         with:
           # Read the version from go.mod so the toolchain never drifts from
           # what the module declares.
@@ -126,8 +131,8 @@ jobs:
     name: gmp build tag
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-go@v5
+      - uses: actions/checkout@v7
+      - uses: actions/setup-go@v7
         with:
           go-version-file: go.mod
           cache: true
@@ -144,8 +149,8 @@ jobs:
     name: cross build (386, arm64)
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-go@v5
+      - uses: actions/checkout@v7
+      - uses: actions/setup-go@v7
         with:
           go-version-file: go.mod
           cache: true
@@ -163,7 +168,7 @@ jobs:
     name: docker image
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
         with:
           fetch-depth: 0  # git describe needs tags
       - name: build image
@@ -214,8 +219,8 @@ jobs:
           - pkg: ./internal/fibonacci
             target: FuzzProgressMonotonicity
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-go@v5
+      - uses: actions/checkout@v7
+      - uses: actions/setup-go@v7
         with:
           go-version-file: go.mod
           cache: true
@@ -223,7 +228,7 @@ jobs:
         run: go test -run='^$' -fuzz='^${{ matrix.target }}$' -fuzztime=120s ${{ matrix.pkg }}
       - name: upload crashers
         if: failure()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: fuzz-corpus-${{ matrix.target }}
           path: |
