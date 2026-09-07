@@ -25,14 +25,11 @@ classDiagram
         +Name() string
     }
 
-    class CalculatorFactory {
+    class CalculatorSource {
         <<interface>>
-        registry.go
-        +Create(name) Calculator, error
-        +Get(name) Calculator, error
+        orchestration/interfaces.go
         +List() []string
-        +Register(name, creator) error
-        +GetAll() map
+        +Get(name) Calculator, error
     }
 
     class Multiplier {
@@ -137,7 +134,7 @@ classDiagram
 
     Calculator <|.. FibCalculator
     FibCalculator o-- CoreCalculator : wraps (Decorator)
-    CalculatorFactory <|.. DefaultFactory
+    CalculatorSource <|.. DefaultFactory
     DoublingStepExecutor <|.. AdaptiveStrategy
     DoublingStepExecutor <|.. FFTOnlyStrategy
     ProgressObserver <|.. ChannelObserver

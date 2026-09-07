@@ -495,7 +495,7 @@ For most users, running `fibcalc --auto-calibrate` once is sufficient. The saved
 | `FIBCALC_CALIBRATION_PROFILE` | Path to calibration profile file | `~/.fibcalc_calibration.json` |
 | `FIBCALC_PROFILE_MAX_AGE` | Freshness window; a profile older than this is `IsStale` and triggers re-calibration via `CompleteStrategy` | `168h` (7 d) |
 
-These environment variables follow the `FIBCALC_*` convention and have lower priority than their corresponding CLI flags. See `internal/config/env.go` for the full list — except `FIBCALC_PROFILE_MAX_AGE`, which is defined and consumed by `internal/calibration/calibration.go` (`ProfileMaxAgeEnv` / `profileMaxAgeFromEnv`).
+These environment variables follow the `FIBCALC_*` convention and have lower priority than their corresponding CLI flags. See `internal/config/env.go` for the full list ; `FIBCALC_PROFILE_MAX_AGE` has been part of it since 2026-09-07 (audit CFG-02), with `--profile-max-age` as its flag — `internal/calibration` receives the value through `AppConfig` and reads no environment variable itself.
 
 ## Cross-References
 

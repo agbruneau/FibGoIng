@@ -618,9 +618,9 @@ type TransformCache struct {
     lru       *list.List
     currBytes int // sum of len(entry.backing)*wordSize, guarded by mu (M-08)
     hits, misses, evictions, accesses atomic.Uint64
-    // atomic.Pointer so setCacheLogger does not race with the hot-path read
-    // in logPeriodicStats (A2-02).
-    logger    atomic.Pointer[zerolog.Logger]
+    // atomic.Pointer so SetTransformCacheLogger does not race with the
+    // hot-path read in logPeriodicStats (A2-02).
+    logger    atomic.Pointer[slog.Logger]
 }
 ```
 

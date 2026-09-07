@@ -7,12 +7,14 @@
 // kernel and imports no internal package at all.
 //
 // The test inspects the go list -deps graph at runtime and fails if a
-// forbidden upward import is introduced. It carries five rules, the last of
-// which forbids two targets:
+// forbidden upward import is introduced. It carries seven rules, the last
+// two of which forbid two targets each:
 //   - internal/fibonacci/threshold → internal/config
 //   - internal/apperrors → internal/format
 //   - internal/tui → internal/fibonacci (production code only)
 //   - internal/orchestration → internal/format
+//   - internal/cli → internal/fibonacci (production code only)
+//   - internal/calibration → internal/ui, internal/format
 //   - internal/config → internal/fibonacci, internal/bigfft
 package internal_test
 

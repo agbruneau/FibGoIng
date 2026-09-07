@@ -825,7 +825,7 @@ trois minutes.
 | 1 | T02 Épinglage des outils (`go run pkg@version`) | ☑ |  | `scripts/tools.env` lu par les 2 gates, le Makefile et la CI ; `go run pkg@version`. Directive `tool` mesurée puis rejetée (montait `gopsutil` v4.26.3→v4.26.7, graphe 201→450) |
 | 1 | T03 `-shuffle=on -count=1` dans les gates | ☑ |  | gate PowerShell vert avec ordre aléatoire ; ajouté aussi à `make test`/`test-win` et à la CI |
 | 1 | T04 `govulncheck` dans les gates | ☑ |  | étape 6 dure dans les deux gates ; `v1.7.0` tourne sous go1.27 et sort 0 (1 vuln non appelée dans `x/text` indirect) |
-| 1 | T05 `.dockerignore`, version et digests | ☑ |  | `.dockerignore` ajouté ; le `Dockerfile` délègue à `make build` avec `VERSION/COMMIT/BUILD_DATE`. Digests SEC-04 toujours ouverts : aucun accès registre ici. Job CI `docker` ajouté pour vérifier |
+| 1 | T05 `.dockerignore`, version et digests | ☑ |  | `.dockerignore` ajouté ; le `Dockerfile` délègue à `make build` avec `VERSION/COMMIT/BUILD_DATE`. Digests SEC-04 fermés après l'étiquette : résolus par le job CI `docker` (run 34135480664, digests d'index OCI multi-arch), épinglés au commit `24cfd38` ; le job rapporte la dérive tag/digest à chaque exécution |
 | 2 | T06 Signaux et délai pour tous les modes | ☑ |  | `signal.NotifyContext` unique dans `Run` (test de garde) ; `--timeout` appliqué à `--calibrate` et à `--auto-calibrate` ; `findBest` consulte son contexte |
 | 2 | T07 Propagation de `MemoryLimitBytes` | ☑ |  | `AppConfig.MemoryLimitBytes` résolu par `validateMemoryBudget`, lu par le CLI et la TUI ; 4 tests dont un espion d'options |
 | 2 | T08 `maxReasonableWords` unique, build 386 | ☑ |  | constante unique `memory.MaxReasonableWords = 1 << (bits.UintSize-4)` ; `GOARCH=386`, `arm` et `arm64` compilent (exit 0) ; garde `math.MaxInt` |
@@ -852,7 +852,22 @@ trois minutes.
 | 4 | T29 Règles d'architecture complétées | ☑ |  | règles `cli → fibonacci` et `calibration → ui|format` ajoutées ; alias `orchestration.ThresholdTuning` pour que la TUI ne perce pas la façade ; 7 règles vertes |
 | 4 | T30 *(opt.)* Drapeaux de profilage | ☑ |  | `--cpuprofile` / `--memprofile` ; profils produits et relus par `go tool pprof` (29 nœuds) |
 | 4 | T31 Répertoire temporaire e2e | ☑ |  | `TestMain` crée un répertoire `os.MkdirTemp` propre et le supprime ; plus de chemin fixe partagé entre deux exécutions |
-| 4 | T32 Clôture, ADR-0012 *Accepted*, `v4.1.0` | ☑ |  | ADR-0012 accepté avec la section « Exécution » et les mesures ; entrée `[4.1.0]` au CHANGELOG ; documents resynchronisés (CI, `-shuffle=on`, 386, `slog`, épinglage) ; ce rapport archivé ici même |
+| 4 | T32 Clôture, ADR-0012 *Accepted*, `v4.1.0` | ☑ |  | ADR-0012 accepté avec la section « Exécution » et les mesures ; entrée `[4.1.0]` au CHANGELOG ; documents resynchronisés (CI, `-shuffle=on`, 386, `slog`, épinglage) ; ce rapport archivé ici même. La ligne MEM-03 (`-gcflags=-m` dans `PERFORMANCE.md`) avait été oubliée : ajoutée en 7.9 |
+
+### 7.9 Après le plan (commits postérieurs à `v4.1.0`, étiquette non déplacée)
+
+| Objet | Commits | Vérification |
+|---|---|---|
+| SEC-04 : digests des deux images de base lus sur le runner CI (index OCI multi-arch, `MediaType` vérifié à l'œil), épinglés ; rapport de dérive non bloquant dans le job `docker` | `26f5e3c`, `24cfd38` | run 34136872359 vert, dérive nulle au premier passage |
+| Actions GitHub v4/v5 → v7 (dépréciation de Node 20) | `cc87692` | plus d'annotation sur les jobs |
+| Clôture : documentation resynchronisée avec l'état final (48 arêtes vérifiées par `go list`, 7 règles, symboles renommés, 5 drapeaux dans le README, profilage du binaire et MEM-03 dans `PERFORMANCE.md`, ligne 2026-09-07 dans `HISTORY.md`) ; `progressLine` sans allocation `[]rune` | — | 22 paquets `-race` verts, couverture 96,1 %, gate `check.ps1` vert |
+
+Une évaluation externe reçue après `v4.1.0` attribuait à Cgo et à GMP les échecs
+initiaux des jobs `cross-build` et `docker`. Les journaux disent autre chose :
+`cross-build` échouait sur TYP-01 (`1 << 60` en 32 bits), `docker` sur la
+collision `GOFLAGS` du `Makefile` ; `CGO_ENABLED=0` est le réglage voulu de
+l'image, et le backend GMP est un *build tag* optionnel que le job `gmp` couvre.
+Aucun changement de code n'a été fait sur la base de cette évaluation.
 
 ---
 

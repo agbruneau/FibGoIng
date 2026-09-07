@@ -5,6 +5,7 @@ import (
 	"io"
 	"strings"
 	"time"
+	"unicode/utf8"
 )
 
 const (
@@ -62,10 +63,10 @@ func (p *progressLine) Draw(text string) {
 	line := frame + text
 	// Pad to the previous width so a shrinking line does not leave a tail
 	// behind — the ETA field in particular goes from "ETA: 1m20s" to "ETA: < 1s".
-	if pad := p.width - len([]rune(line)); pad > 0 {
+	if pad := p.width - utf8.RuneCountInString(line); pad > 0 {
 		line += strings.Repeat(" ", pad)
 	}
-	p.width = len([]rune(line))
+	p.width = utf8.RuneCountInString(line)
 
 	fmt.Fprintf(p.out, "\r%s", line)
 }

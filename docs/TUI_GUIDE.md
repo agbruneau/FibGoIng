@@ -306,7 +306,7 @@ positions of `AnalyzeComparisonResults`.
 |--------|-------------|-------------|
 | `PresentComparisonTable()` | `ResultPresenter` | `ComparisonResultsMsg` |
 | `PresentResult()` | `ResultPresenter` | `FinalResultMsg` |
-| `HandleError()` | `ErrorHandler` | `ErrorMsg`, then returns `apperrors.HandleCalculationError`'s exit code |
+| `HandleError()` | `ErrorHandler` | `ErrorMsg`, then returns `apperrors.ExitCodeFor(err)` |
 
 Those three are the whole surface: the `FormatDuration()` method this table used
 to list was deleted along with its `cli.CLIResultPresenter` twin (commit
@@ -391,7 +391,8 @@ case CalculationCompleteMsg:
 
 The TUI no longer holds standalone `color*` variables. `initTUIStyles()` (called at package
 load and again from `Run()` once the active theme is resolved) reads the current palette via
-`ui.GetCurrentTUITheme()`, which returns a [`ui.TUITheme`](../internal/ui/themes.go) struct and
+`ui.TUIThemeFor(name)` — the name comes from `--tui-theme` / `FIBCALC_TUI_THEME`, parsed by
+`internal/config` like every other setting — which returns a [`ui.TUITheme`](../internal/ui/themes.go) struct and
 populates every `lipgloss.Style` from its fields. The concrete hex values therefore **vary by
 theme** — `DarkTUITheme` (default, orange-dominant), `HighContrastTUITheme`
 (black/white/yellow, via `FIBCALC_TUI_THEME=high-contrast`), and `NoColorTUITheme` (terminal
@@ -424,7 +425,7 @@ defaults, via the `NO_COLOR` environment variable).
 
 ### High contrast and non-color cues
 
-- Set **`FIBCALC_TUI_THEME=high-contrast`** before launch (in addition to `--tui` / `FIBCALC_TUI=true`) to use [`HighContrastTUITheme`](../internal/ui/themes.go) (black/white/yellow palette via `ui.GetCurrentTUITheme`). Ignored when the CLI theme is `none` (`NO_COLOR`).
+- Pass **`--tui-theme high-contrast`** (or set `FIBCALC_TUI_THEME=high-contrast`) together with `--tui` / `FIBCALC_TUI=true` to use [`HighContrastTUITheme`](../internal/ui/themes.go) (black/white/yellow palette via `ui.TUIThemeFor`). Ignored when the CLI theme is `none` (`NO_COLOR`).
 - Footer status lines include **ASCII prefixes** (`[>]`, `[||]`, `[OK]`, `[!]`) so state is not conveyed by color alone.
 
 ---

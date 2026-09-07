@@ -7,13 +7,13 @@ combines unit tests, golden file validation, fuzz targets replayed as seed
 regression tests (mutation fuzzing itself runs on **no** gate — see
 [Fuzz Testing](#fuzz-testing)), property-based
 testing, panic-contract testing, an architecture-layering gate, benchmark
-testing, and end-to-end testing. The test suite spans 134 test files across the
-21 packages (2026-09-04; recount with `git ls-files '*_test.go' | wc -l` rather
+testing, and end-to-end testing. The test suite spans 142 test files across the
+22 packages (2026-09-07; recount with `git ls-files '*_test.go' | wc -l` rather
 than trusting the figure — `git ls-files` is used deliberately, so untracked
-scratch checkouts are not counted twice) and covered **96.6 % of statements**
-when last measured (2026-09-04, `go1.27.0 windows/amd64`). Only the **80 %**
+scratch checkouts are not counted twice) and covered **96.1 % of statements**
+when last measured (2026-09-07, `go1.27.0 windows/amd64`). Only the **80 %**
 floor is enforced, by `make coverage-check` alone — `make coverage` renders
-`coverage.html` and asserts nothing. The 16.6-point margin between the reading
+`coverage.html` and asserts nothing. The 16.1-point margin between the reading
 and the floor is unenforced slack, not a guarantee; see [Coverage](#coverage)
 for the command that re-dates the figure.
 
@@ -253,14 +253,16 @@ build: the `internal` package has no non-test Go file
 (`go list -f '{{.GoFiles}}' ./internal/` → `[]`), so `go build ./...` never
 compiles it and stays green even with a violation in place. It inspects each importer
 package via `go list -f '{{range .Imports}}{{.}}\n{{end}}'` (production code only — `_test.go`
-files are excluded). Currently five rules :
+files are excluded). Currently seven rules :
 
 | Importer | Forbidden direct import | Rationale |
 |---|---|---|
-| `internal/fibonacci/threshold` | `internal/config` | Would close a cycle through `config → fibonacci/memory`. The threshold package consumes `Tuning` via `SetTuning`. |
+| `internal/fibonacci/threshold` | `internal/config` | Would close a cycle through `config → fibonacci/memory`. The threshold package receives `Tuning` by value through `fibonacci.Options` (`SetTuning` was removed on 2026-09-07, T18). |
 | `internal/apperrors` | `internal/format` | Leaf utility ; uses local `formatBytesLocal` instead. |
 | `internal/tui` (production) | `internal/fibonacci` | UI must reach domain types through `orchestration.Calculator`/`Options` aliases. |
 | `internal/orchestration` | `internal/format` | APP-10 : progress aggregation (`ProgressAggregator`, formerly `ProgressState`) moved from `format` to `orchestration` ; the arrow must not come back. |
+| `internal/cli` (production) | `internal/fibonacci` | Same rule as `tui` : `cli/doc.go` stated it and nothing enforced it (audit STR-04, 2026-09-07). |
+| `internal/calibration` | `internal/ui`, `internal/format` | An application-layer package decides *what* to say ; `internal/cli` decides how it looks, through the `calibration.Reporter` port (audit ARC-01, 2026-09-07). |
 | `internal/config` | `internal/fibonacci`, `internal/bigfft` | ARCH-02 : freezes the two documented lateral imports (`fibonacci/memory`, `ui`) where they stand ; reaching the computation core would close a cycle. |
 
 Adding a new rule is a one-line append to `architectureRules`.
@@ -412,10 +414,10 @@ Two numbers live here and they are not interchangeable.
 | | Value | Status |
 |---|---|---|
 | **Enforced floor** | 80.0 % of statements, module total | Asserted by `make coverage-check`, which delegates to `scripts/check.sh --coverage-only` (`COVERAGE_FLOOR=80.0`). Below it, the gate fails. |
-| **Last measured** | **96.6 %** of statements, module total | A dated reading: 2026-09-04, `go1.27.0 windows/amd64`, `go test -coverprofile=… ./...` exit 0, 21 packages. Nothing enforces it — coverage can fall 16.6 points before any gate reacts. |
+| **Last measured** | **96.1 %** of statements, module total | A dated reading: 2026-09-07, `go1.27.0 windows/amd64`, `go test -race -count=1 -coverprofile … ./...` exit 0, 22 packages. Nothing enforces it — coverage can fall 16.1 points before any gate reacts. |
 
-Read the 96.6 % against [Coverage blind spots](#coverage-blind-spots-a5-08)
-below: it counts no e2e subprocess path and no GMP backend, so it is 96.6 % of
+Read the 96.1 % against [Coverage blind spots](#coverage-blind-spots-a5-08)
+below: it counts no e2e subprocess path and no GMP backend, so it is 96.1 % of
 what the instrumentation can see, not of the shipped code.
 
 That reading came from the same two commands `check.sh --coverage-only` runs
@@ -461,8 +463,8 @@ Two categories of code are intentionally not reflected in the standard `coverage
 `cmd/generate-golden` is the **dev-time** oracle that regenerates the golden
 corpus; it is outside the production execution path. Its `main` is deliberately
 left uncovered, which costs the package **8.7 points** against the module total:
-**87.9 %** vs 96.6 % (`go test -count=1 -cover ./cmd/generate-golden/`,
-2026-09-04). The whole gap is `main` at 0.0 % — `run` measures 90.5 % and
+**87.9 %** vs 96.1 % (`go test -count=1 -cover ./cmd/generate-golden/`,
+re-read 2026-09-07). The whole gap is `main` at 0.0 % — `run` measures 90.5 % and
 `fibBig` 100.0 % (`go tool cover -func`). So the package sits *below* the module
 total, not far below, and clears the 80 % floor on its own.
 **Exclude it from any per-package coverage floor** regardless — the floor
@@ -543,7 +545,7 @@ The table lists key test files per package; it is **not exhaustive** (`internal/
 |---------|---------------|-----------------|
 | `internal/fibonacci` | `fibonacci_test.go`, `fibonacci_golden_test.go`, `fibonacci_fuzz_test.go`, `fibonacci_property_test.go`, `fibonacci_strassen_test.go`, `fibonacci_edge_test.go`, `modular_test.go`, `fastdoubling_test.go`, `state_cache_test.go`, `registry_test.go`, `strategy_test.go` | Unit, golden, fuzz, property-based, Strassen correctness, modular arithmetic, Fast Doubling state pooling, state/arena/bump cache guardians (8 tests, commits fa13bfd + 7999c39), calculator registry, strategy selection. The `TestMain` that pinned the zerolog level was removed with zerolog itself (audit OBS-01): logging is injected through `fibonacci.Options.Logger` and defaults to a discarding handler, so `-bench` output stays benchstat-parseable without a package-wide hook |
 | `internal/fibonacci/memory` | `arena_test.go`, `arena_fallback_test.go`, `budget_test.go`, `gc_control_test.go` | Bump arena allocation, heap-fallback pre-sizing, memory-budget pre-flight estimation, GC controller |
-| `internal/fibonacci/threshold` | `manager_test.go`, `tuning_test.go` | Threshold manager (parallelism / FFT / Strassen decisions), `SetTuning` propagation |
+| `internal/fibonacci/threshold` | `manager_test.go`, `tuning_test.go` | Threshold manager (parallelism / FFT / Strassen decisions), `Tuning` held per manager rather than globally (`TestTuningIsPerManagerNotGlobal`), `withDefaults` |
 | `internal/bigfft` | `fft_precision_test.go`, `fft_parallel_test.go`, `pool_test.go`, `fermat_test.go`, `bump_test.go`, `fft_cache_test.go` | Unit, precision, parallel correctness, pool recycling, Fermat arithmetic, bump allocator, FFT cache |
 | `internal/cli` | `output_test.go`, `ui_test.go`, `goldens_test.go`, `presenter_test.go` | Unit, golden output, result presentation |
 | `internal/tui` | `model_test.go`, `bridge_test.go`, `header_test.go`, `chart_test.go`, `metrics_test.go`, `sparkline_test.go`, `footer_test.go`, `logs_test.go`, `keymap_test.go`, `cli_flags_test.go` | Unit, sub-model testing, message handling |

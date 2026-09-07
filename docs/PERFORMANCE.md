@@ -483,6 +483,32 @@ go test -trace=trace.out -bench='BenchmarkFibonacci/FastDoubling' -run='^$' ./in
 go tool trace trace.out
 ```
 
+### Profiling the binary itself
+
+Since 2026-09-07 (audit OBS-02) the binary writes its own pprof profiles, so a
+real run — GC controller, arena and progress channel in place — can be profiled
+without going through a benchmark:
+
+```bash
+fibcalc -n 50000000 -algo fast -cpuprofile cpu.prof -memprofile mem.prof
+go tool pprof -top cpu.prof
+go tool pprof -sample_index=alloc_space -top mem.prof
+```
+
+`-cpuprofile` covers the whole run. `-memprofile` is a heap profile written when
+the run ends, after a forced `runtime.GC()`, so it shows what survives the
+calculation rather than the peak.
+
+### Escape analysis
+
+```bash
+go build -gcflags=-m ./internal/fibonacci/ 2>&1 | grep -E 'moved to heap|escapes to heap'
+```
+
+Lists every value the compiler moves to the heap. This is the check audit
+MEM-03 asked to be written down: a new `escapes to heap` line inside a hot loop
+is a regression `benchstat` will show as B/op before it shows as sec/op.
+
 ## Algorithm Comparison
 
 ### Fast Doubling

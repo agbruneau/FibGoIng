@@ -162,8 +162,9 @@ jobs:
   # The image had never been built anywhere: no environment the repository was
   # edited from had a docker CLI. This job is what makes the Dockerfile's
   # delegation to `make build` and its version injection verifiable at all
-  # (audit STR-02). It also gives a machine with registry access, which is what
-  # the two open TODO(SEC-04) digest pins are waiting on.
+  # (audit STR-02). It is also the only machine with registry access, which is
+  # how the two SEC-04 digest pins were finally resolved (closed 2026-09-07) and
+  # where their drift is reported, below.
   docker:
     name: docker image
     runs-on: ubuntu-latest

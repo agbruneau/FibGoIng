@@ -368,10 +368,11 @@ and tests under `-tags gmp` when the libgmp headers are present
 
 The race detector is **no longer** one of the differences (audit D4, 2026-09-03):
 `check.ps1` probes for `CGO_ENABLED` and a C compiler and adds `-race` when both
-are present — verified green on all 21 packages of a Windows host. Without a C
-toolchain it runs the same suite without `-race`. Re-run 2026-09-04 on this
+are present — verified green on the 21 packages of the time (2026-09-03) on a Windows host. Without a C
+toolchain it runs the same suite without `-race`. Re-run 2026-09-07 on this
 host (`go1.27.0 windows/amd64`, `CGO_ENABLED=1`, MinGW-W64 gcc 16.1.0):
-`go test -race -count=1 ./...` exits 0 with `ok` on all 21 packages.
+`go test -race -count=1 ./...` exits 0 with `ok` on all 22 packages (the 22nd,
+`internal/fibonacci/fibmath`, dates from the 2026-09-07 audit).
 
 ```bash
 # CGO / Linux / macOS hosts (tests run WITH the race detector)
@@ -495,11 +496,12 @@ for a measurement, so the measurement is what gets stored and applied.
 | `FIBCALC_CALIBRATE` | Run full calibration mode | `false` |
 | `FIBCALC_AUTO_CALIBRATE` | Run quick startup calibration | `false` |
 | `FIBCALC_CALIBRATION_PROFILE` | Path to calibration profile file | (none) |
-| `FIBCALC_PROFILE_MAX_AGE` | Freshness window for a cached profile; beyond it, re-calibration runs (`calibration.ProfileMaxAgeEnv`) | `168h` (7 d) |
+| `FIBCALC_PROFILE_MAX_AGE` | Freshness window for a cached profile; beyond it, re-calibration runs (flag `--profile-max-age`) | `168h` (7 d) |
 
 See `.env.example` for a complete reference. The `FIBCALC_*` table above mirrors
-`envOverrides` in `internal/config/env.go`, plus `FIBCALC_TUI_THEME` (read by
-`internal/ui`) and `FIBCALC_PROFILE_MAX_AGE` (read by `internal/calibration`).
+`envOverrides` in `internal/config/env.go`, which since 2026-09-07 (audit CFG-02)
+is the only reader: `FIBCALC_TUI_THEME` and `FIBCALC_PROFILE_MAX_AGE` used to be
+read by `internal/ui` and `internal/calibration` outside the flag precedence chain.
 
 ## Related Documentation
 

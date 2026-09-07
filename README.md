@@ -169,7 +169,7 @@ Détails mathématiques : [`docs/algorithms/`](docs/algorithms/) — [FAST_DOUBL
 Clean Architecture — `cmd → app → orchestration → fibonacci → bigfft`, `internal/config` étant un *frère* de
 `orchestration` et non une couche sous `fibonacci` (commentaire de paquet de `internal/arch_test.go`) ; `internal/bigfft` est le noyau
 et n'importe aucun package interne. Étanchéité gardée par `internal/arch_test.go`
-(cinq règles d'import montant interdit — six arêtes, la dernière en couvrant deux).
+(sept règles d'import montant interdit — neuf arêtes, les deux dernières en couvrant deux chacune).
 Vue d'ensemble : [`docs/ARCH.md`](docs/ARCH.md) ; référence détaillée :
 [`docs/architecture/`](docs/architecture/) (diagrammes C4,
 [graphe de dépendances](docs/architecture/dependency-graph.md)).
@@ -253,15 +253,19 @@ fibcalc [flags]
 | `-quiet` | `-q` | `false` | Sortie minimale (scripts) |
 | `-machine` | | `false` | Sortie machine (sans ANSI) |
 | `-tui` | | `false` | Dashboard TUI interactif |
+| `-tui-theme` | | `dark` | Palette TUI : `dark` ou `high-contrast` |
 | `-last-digits` | | `0` | Derniers K chiffres décimaux (mémoire O(K)) |
 | `-memory-limit` | | | Budget mémoire (ex. `8G`) ; l'estimation préalable est une **borne haute** (re-modélisée en 2026-09 : elle sous-estimait d'un facteur 5 à 12) |
 | `-gc-control` | | `auto` | GC pendant le calcul : `auto`, `aggressive`, `disabled` |
 | `-dynamic-thresholds` | | `false` | Ajuste les seuils FFT/parallélisme pendant le calcul (mesuré neutre, [ADR-0001](docs/adr/0001-dtm-decision.md)) |
 | `-timeout` | | `5m` | Durée maximale du calcul |
+| `-log-level` | | `off` | Diagnostics sur stderr : `off`, `error`, `warn`, `info`, `debug` |
 | `-threshold` / `-fft-threshold` | | `0` (auto) | Seuils en bits (0 = valeur lue dans une table selon le matériel détecté — nombre de CPU, SIMD, taille de mot —, **pas une mesure** ; `-1` = désactive) |
 | `-strassen-threshold` | | `0` (auto) | Seuil en bits (0 = même table matérielle ; `-1` invalide, voir ci-dessous) |
 | `-calibrate` / `-auto-calibrate` | | `false` | Calibration des seuils pour cet hôte |
 | `-calibration-profile` | | | Chemin du profil de calibration |
+| `-profile-max-age` | | `168h` | Âge maximal d'un profil de calibration en cache avant recalibration |
+| `-cpuprofile` / `-memprofile` | | | Profils pprof (CPU pendant le calcul, tas après) écrits dans le fichier donné |
 | `-completion` | | | Script de complétion (`bash`, `zsh`, `fish`, `powershell`) |
 | `-version` | `-V` | | Informations de version |
 
@@ -328,14 +332,14 @@ Liste complète : [`.env.example`](.env.example). Principales : `FIBCALC_N`, `FI
   contre la chaîne Go (c'est ce qui avait cassé le lint, puis `govulncheck`, `gosec` et
   `staticcheck` d'un coup).
 - **Couverture** : plancher garanti **80 %** via `make coverage-check` ; dernière mesure
-  **96,6 %** des instructions (2026-09-04, `go1.27.0 windows/amd64`, 21 paquets). Le chiffre est
-  daté, pas figé : rien ne l'applique, la marge de 16,6 points est du mou non gardé, et seul le
+  **96,1 %** des instructions (2026-09-07, `go1.27.0 windows/amd64`, 22 paquets). Le chiffre est
+  daté, pas figé : rien ne l'applique, la marge de 16,1 points est du mou non gardé, et seul le
   plancher fait échouer le gate. Détail, commande de re-datation et angles morts :
   [`docs/TESTING.md` § Coverage](docs/TESTING.md#coverage) (directive A5-04, amendée le 2026-09-04).
 - **Golden tests immuables** : `internal/fibonacci/testdata/fibonacci_golden.json` est l'oracle de
   non-régression (étendu à F(50k/100k/200k) sous ADR-0004 §B5) — aucune mise à jour sans ADR.
 - **Race detector** : exige CGO et un compilateur C. `scripts/check.ps1` sonde les deux et active `-race`
-  quand ils sont présents — relevé du 2026-09-03 : 21 paquets verts sur cet hôte Windows. Sans compilateur
+  quand ils sont présents — relevé du 2026-09-07 : 22 paquets verts sur cet hôte Windows. Sans compilateur
   C, la passe complète se fait via **WSL** (`wsl go test -race ./...`). Les scripts shell sont épinglés en
   LF (`.gitattributes`) pour rester exécutables côté WSL.
 - **Lint bloquant** : depuis l'audit 2026-09 (GATE-01), `golangci-lint` **v2** fait échouer

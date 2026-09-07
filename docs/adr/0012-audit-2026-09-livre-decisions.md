@@ -212,6 +212,10 @@ Le job `gmp` a par ailleurs exécuté la suite `-tags gmp` pour la première foi
 depuis que l'étape existe : elle était en SKIP sur l'hôte de développement,
 faute d'en-têtes libgmp.
 
+Le job `docker` a fourni, après `v4.1.0`, ce qu'aucun autre environnement du
+projet n'avait eu : les digests des deux images de base (SEC-04, ouvert depuis
+quatre audits), épinglés au commit `24cfd38`.
+
 ### Mesures
 
 `benchstat`, 10 séries de 3 itérations, protocole ADR-0009 R4 : geomean sec/op

@@ -35,7 +35,7 @@ Nous utilisons le modèle C4 pour documenter l'architecture à différents nivea
 
 Le projet suit rigoureusement les principes de la **Clean Architecture**. Le graphe suivant illustre les relations entre les packages :
 
-- **[Dependency Graph](dependency-graph.md)** — les 46 imports internes directs du module, un par arête. Reproductible avec la commande `go list` donnée dans le [relevé de validation](./validation/validation-report.md#layer-tightness--dependency-direction). — *légende : [`ARCH.md` §2](../ARCH.md#2-high-level-architecture-clean-architecture) (la règle de superposition) et [§3](../ARCH.md#3-directory-structure) (les répertoires derrière les nœuds)*
+- **[Dependency Graph](dependency-graph.md)** — les 48 imports internes directs du module, un par arête. Reproductible avec la commande `go list` donnée dans le [relevé de validation](./validation/validation-report.md#layer-tightness--dependency-direction). — *légende : [`ARCH.md` §2](../ARCH.md#2-high-level-architecture-clean-architecture) (la règle de superposition) et [§3](../ARCH.md#3-directory-structure) (les répertoires derrière les nœuds)*
 
 ## 3) Flux de Données et Chemins d'Exécution
 

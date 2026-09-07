@@ -25,13 +25,11 @@ classDiagram
         +Name() string
     }
 
-    class CalculatorFactory {
+    class CalculatorSource {
         <<interface>>
-        +Create(name) Calculator, error
-        +Get(name) Calculator, error
+        orchestration/interfaces.go
         +List() []string
-        +Register(name, creator) error
-        +GetAll() map
+        +Get(name) Calculator, error
     }
 
     class DefaultFactory {
@@ -107,7 +105,7 @@ classDiagram
     }
 
     class LoggingObserver {
-        -logger zerolog.Logger
+        -logger *slog.Logger
         -threshold float64
         -lastLog map
     }
@@ -198,7 +196,7 @@ classDiagram
 
     Calculator <|.. FibCalculator
     FibCalculator o-- CoreCalculator : wraps (Decorator)
-    CalculatorFactory <|.. DefaultFactory
+    CalculatorSource <|.. DefaultFactory
     Multiplier <|.. AdaptiveStrategy
     Multiplier <|.. FFTOnlyStrategy
     DoublingStepExecutor <|.. AdaptiveStrategy

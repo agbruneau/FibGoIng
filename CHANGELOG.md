@@ -7,6 +7,33 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Clôture de l'audit 2026-09-07 (après `v4.1.0`)
+
+#### Modifié
+
+- **SEC-04 fermé** : les deux images de base du `Dockerfile` (`golang:1.26-bookworm`,
+  `gcr.io/distroless/base-debian12`) sont épinglées par le digest de leur index
+  multi-architecture, résolu par le job CI `docker` (run 34135480664) — le seul
+  environnement du projet avec un client Docker et un accès au registre. Le job
+  imprime désormais, à chaque exécution, ce vers quoi chaque tag pointe face au
+  digest épinglé : rapport de dérive, non bloquant — une dérive est l'épingle
+  qui fait son travail, pas une régression.
+- **Actions GitHub** passées à la majeure v7 (`checkout`, `setup-go`,
+  `upload-artifact`) : v4/v5 visaient Node 20, déprécié et exécuté de force sous
+  Node 24 avec une annotation sur chaque job.
+- **Documentation resynchronisée** avec l'état final du code : graphe de
+  dépendances à 48 arêtes (nœud `fibonacci/fibmath`, `calibration` sans `ui` ni
+  `format`, vérifié par le pipeline `go list` du relevé de validation), sept
+  règles d'architecture, `ExitCodeFor` / `WriteCalculationStatus` et
+  `CalculatorSource` à la place des symboles supprimés, cinq drapeaux
+  (`--log-level`, `--tui-theme`, `--profile-max-age`, `--cpuprofile`,
+  `--memprofile`) dans la table du README, profilage du binaire et analyse
+  d'échappement (`-gcflags=-m`, MEM-03) dans `PERFORMANCE.md`, ligne 2026-09-07
+  dans `docs/audits/HISTORY.md`. Relevé du jour : 22 paquets verts sous `-race`,
+  couverture 96,1 %.
+- `cli.progressLine` compte les runes avec `utf8.RuneCountInString` au lieu
+  d'allouer un `[]rune` à chaque redessin.
+
 ## [4.1.0] - 2026-09-07
 
 ### Audit 2026-09-07 « livre » — exécution complète du plan

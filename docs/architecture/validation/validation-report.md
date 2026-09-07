@@ -22,9 +22,11 @@ fibonacci or bigfft. The reverse arrow (config → fibonacci, config →
 bigfft) is what internal/arch_test.go forbids; it tolerates the two
 documented lateral imports config → fibonacci/memory and config → ui.
 
-leaves (zero internal imports): bigfft, errors, format, metrics, progress,
-                                ui, testutil, fibonacci/memory,
+leaves (zero internal imports): bigfft, apperrors, format, metrics, progress,
+                                ui, testutil, fibonacci/fibmath,
                                 fibonacci/threshold, cli/completion
+                                (fibonacci/memory stopped being one on
+                                2026-09-07: it imports fibonacci/fibmath)
 ```
 
 The `internal_test` package doc comment in `internal/arch_test.go` states the same chain.
@@ -40,6 +42,7 @@ go list -deps=false -f '{{$p := .ImportPath}}{{range .Imports}}{{$p}} -> {{.}}
  | grep -E '^github\.com/agbruneau/FibGo/\S+ -> github\.com/agbruneau/FibGo/internal/' \
  | sed 's|github.com/agbruneau/FibGo/||g' \
  | sed -E 's|internal/fibonacci/memory|fibmem|g; s|internal/fibonacci/threshold|fibthr|g;
+           s|internal/fibonacci/fibmath|fibmath|g;
            s|internal/cli/completion|completion|g; s|cmd/fibcalc|main|g;
            s|internal/fibonacci|fib|g; s|internal/orchestration|orch|g;
            s|internal/calibration|calib|g; s|internal/||g' \
@@ -49,10 +52,10 @@ grep -oE '^ +[a-z]+ --> [a-z]+$' docs/architecture/dependency-graph.md \
 diff /tmp/real.txt /tmp/drawn.txt
 ```
 
-Exécuté le **2026-09-04** : `46` lignes de chaque côté, `diff` vide — le
+Exécuté le **2026-09-07** : `48` lignes de chaque côté, `diff` vide — le
 diagramme est l'ensemble exact des imports internes directs, pas un
 sur-ensemble ni un sous-ensemble. Sur ce relevé, `internal/fibonacci` importe
-`bigfft`, `errors`, `fibonacci/memory`, `fibonacci/threshold`, `progress` — pas
+`apperrors`, `bigfft`, `fibonacci/fibmath`, `fibonacci/memory`, `fibonacci/threshold`, `progress` — pas
 `config` ; et `internal/bigfft` n'importe aucun package interne.
 
 Verified properties (against Go `import` declarations in source):
@@ -63,16 +66,21 @@ Verified properties (against Go `import` declarations in source):
 | `orchestration` does not import `tui` | Holds | No `internal/tui` import in `internal/orchestration/*.go` |
 | `cli` depends on `orchestration` (not the reverse) | Holds | `internal/cli` imports `internal/orchestration` |
 | `tui` depends on `orchestration` (not the reverse) | Holds | `internal/tui` calls orchestration entry points |
-| `app` is the composition root | Holds | `internal/app` imports `cli`, `tui`, `orchestration`, `fibonacci`, `config`, `errors` |
+| `app` is the composition root | Holds | `internal/app` imports `cli`, `tui`, `orchestration`, `fibonacci`, `config`, `apperrors` |
 | `internal/**` does not leak into `cmd/**` | Holds | `cmd/fibcalc` imports `internal/app` and `internal/apperrors` (the `Exit*` codes it hands to `os.Exit`) and nothing else |
 
 Only two of the diagrams carry package-import edges, and both were
 re-verified arrow-by-arrow against the `go list` command above:
 
-- `dependency-graph.md` — exact and complete. Its 46 arrows match, one for
-  one, the 46 direct internal imports `go list` reports across the module
-  (`cmd/fibcalc` 2, `app` 11, `calibration` 7, `cli` 7, `config` 3,
-  `fibonacci` 5, `orchestration` 4, `tui` 7; every other package is a leaf).
+- `dependency-graph.md` — exact and complete. Its 48 arrows match, one for
+  one, the 48 direct internal imports `go list` reports across the module
+  (`cmd/fibcalc` 2, `app` 11, `calibration` 5, `cli` 8, `config` 3,
+  `fibonacci` 6, `fibonacci/memory` 1, `orchestration` 5, `tui` 7; every
+  other package is a leaf). **Re-verified 2026-09-07** after the « livre »
+  audit: `calibration → format` and `calibration → ui` are gone (T16) ;
+  `cli → calibration`, `orchestration → fibonacci/threshold` and the two arrows
+  into the new `fibonacci/fibmath` leaf (from `fibonacci` and
+  `fibonacci/memory`, T20) are new.
   **Corrected 2026-09-04.** The earlier reading claimed 45 edges and was wrong
   on three of them, all three around `cli/completion` and `cmd`:
   `cmd/fibcalc → errors` was missing; `cli → cli/completion` was drawn but
@@ -89,8 +97,8 @@ re-verified arrow-by-arrow against the `go list` command above:
   real import. The one exception is `Rel(user, entry, "Invokes")`, a
   `Person` → `Container` relation that is not an import at all. The
   `orch → config` edge the diagram used to draw was **false**:
-  `internal/orchestration` imports only `errors`, `fibonacci`,
-  `fibonacci/memory`, `progress`. It was removed on 2026-08-07, and the real
+  `internal/orchestration` imports only `apperrors`, `fibonacci`,
+  `fibonacci/memory`, `fibonacci/threshold`, `progress`. It was removed on 2026-08-07, and the real
   `cli → config`, `tui → config`, `calib → config`, `calib → bigfft` edges plus
   the edges into the leaf-package container were added. On 2026-08-07 the
   leaf container was also widened from six packages to nine: it previously
@@ -167,7 +175,7 @@ to match source. Notable narrow/wide interface contracts:
 - `Calculator` (decorated façade) / `CoreCalculator` (algorithm kernel wrapped by `FibCalculator`) — both exported, `internal/fibonacci/calculator.go`
 - `Multiplier` (narrow) extended by `DoublingStepExecutor` (wide)
 - `ProgressObserver` — `internal/progress/` / `ProgressReporter` — `internal/orchestration/`
-- `CalculatorFactory` — `internal/fibonacci/registry.go`
+- `CalculatorSource` — `internal/orchestration/interfaces.go`, consumer-defined ; `app.CalculatorRegistry` (`internal/app/app.go`) embeds it and adds `GetAll`. `fibonacci.DefaultFactory` satisfies both ; the producer-side `CalculatorFactory` was removed on 2026-09-07 (T17)
 
 ## Execution flows
 

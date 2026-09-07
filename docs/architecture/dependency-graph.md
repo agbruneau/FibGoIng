@@ -1,9 +1,9 @@
 # Graphe des dépendances internes
 
-Les 46 imports internes directs du module, un par arête — ni plus, ni moins. Le pipeline
+Les 48 imports internes directs du module, un par arête — ni plus, ni moins. Le pipeline
 `go list` qui établit cette égalité d'ensembles est dans le
 [relevé de validation](./validation/validation-report.md#layer-tightness--dependency-direction)
-(exécuté le 2026-09-04, `diff` vide).
+(exécuté le 2026-09-07, `diff` vide).
 
 ```mermaid
 flowchart LR
@@ -30,6 +30,7 @@ flowchart LR
         calib["internal/calibration<br/>Benchmarking & Tuning"]
         fibmem["internal/fibonacci/memory<br/>Arena, GC, Budget"]
         fibthr["internal/fibonacci/threshold<br/>Parallel/FFT Thresholds"]
+        fibmath["internal/fibonacci/fibmath<br/>Size of F(n): log₂ φ, 93, BitsFor"]
     end
 
     subgraph Presentation["Presentation Layer"]
@@ -39,7 +40,7 @@ flowchart LR
     end
 
     subgraph Support["Support Packages (Leaf Nodes)"]
-        errors["internal/apperrors"]
+        apperrors["internal/apperrors"]
         format["internal/format"]
         metrics["internal/metrics"]
         progress["internal/progress"]
@@ -48,51 +49,53 @@ flowchart LR
     end
 
     main --> app
-    main --> errors
+    main --> apperrors
     app --> config
     app --> orch
     app --> cli
     app --> tui
     app --> calib
     app --> fib
-    app --> errors
+    app --> apperrors
     app --> ui
 
     orch --> fib
-    orch --> errors
+    orch --> apperrors
     orch --> progress
     orch --> fibmem
+    orch --> fibthr
 
-    config --> errors
+    config --> apperrors
     config --> fibmem
     config --> ui
 
     calib --> fib
     calib --> bigfft
     calib --> config
-    calib --> errors
-    calib --> format
-    calib --> ui
+    calib --> apperrors
     calib --> progress
 
     fib --> bigfft
-    fib --> errors
+    fib --> apperrors
     fib --> progress
     fib --> fibmem
     fib --> fibthr
+    fib --> fibmath
+    fibmem --> fibmath
 
     cli --> format
-    cli --> errors
+    cli --> apperrors
     cli --> metrics
     cli --> ui
     cli --> orch
     cli --> config
     cli --> progress
+    cli --> calib
 
     tui --> format
     tui --> metrics
     tui --> ui
-    tui --> errors
+    tui --> apperrors
     tui --> config
     tui --> orch
     tui --> progress

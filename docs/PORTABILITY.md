@@ -103,8 +103,8 @@ Le race detector Go nécessite CGO. La cible canonique `make test` lance
 - **`scripts/check.ps1` n'est plus un repli sans `-race`** (2026-09-03,
   [ADR-0010 D4](adr/0010-audit-2026-09-decisions.md)) : il sonde `CGO_ENABLED`
   et la présence d'un compilateur C, et active `-race` quand les deux sont
-  réunis — relevé sur cet hôte Windows : **21 paquets verts**, réexécuté le
-  2026-09-04 (`go1.27.0 windows/amd64`, `CGO_ENABLED=1`, gcc MinGW-W64 16.1.0 ;
+  réunis — relevé sur cet hôte Windows : **22 paquets verts**, réexécuté le
+  2026-09-07 (`go1.27.0 windows/amd64`, `CGO_ENABLED=1`, gcc MinGW-W64 16.1.0 ;
   `go test -race -count=1 ./...` sort 0, aucun *data race*). Sans chaîne C,
   il retombe sur la même suite sans `-race`. L'ancienne formulation décrivait
   une installation, pas une limite de plate-forme.

@@ -26,7 +26,7 @@ ce document commente quelle figure ; suivre le lien depuis la section, ou entrer
 |---|---|---|
 | [`system-context.md`](architecture/system-context.md) | C4-1 : l'utilisateur et les trois systèmes externes touchés (OS, système de fichiers, GMP optionnel) | [§1](#1-project-overview) |
 | [`container-diagram.md`](architecture/container-diagram.md) | C4-2 : les conteneurs logiques ; chaque `Rel` entre deux `Container` est un import Go réel | [§2](#2-high-level-architecture-clean-architecture) |
-| [`dependency-graph.md`](architecture/dependency-graph.md) | les 46 imports internes directs du module, un par arête (ni sur-ensemble ni sous-ensemble) | [§2](#2-high-level-architecture-clean-architecture), [§3](#3-directory-structure) |
+| [`dependency-graph.md`](architecture/dependency-graph.md) | les 48 imports internes directs du module, un par arête (ni sur-ensemble ni sous-ensemble) | [§2](#2-high-level-architecture-clean-architecture), [§3](#3-directory-structure) |
 | [`component-diagram.md`](architecture/component-diagram.md) | `classDiagram` : interfaces, champs, collaborations de classes — **pas** des imports | [§4](#4-core-packages-responsibilities-key-types-interfaces) |
 | [`patterns/interface-hierarchy.md`](architecture/patterns/interface-hierarchy.md) | les interfaces clés et leurs implémentations, groupées par domaine | [§5](#5-design-patterns), [§8](#presentation-layer-integration) |
 | **inline en [§6](#6-data-flow-cli-input-to-final-result)** (flux CLI) | `main.go` → code de sortie : configuration, dispatch, exécution, présentation, erreurs | la section elle-même, dix étapes numérotées |
@@ -79,7 +79,7 @@ FibCalc follows **Clean Architecture** principles with strict unidirectional dep
 > [`architecture/container-diagram.md`](architecture/container-diagram.md).** Le schéma
 > ci-dessous énonce la **règle** de superposition (quelle couche a le droit d'importer
 > quoi) ; il ne dessine aucune arête. Les arêtes réelles sont dans les deux figures :
-> `dependency-graph.md` porte les **46 imports internes directs**, un par arête,
+> `dependency-graph.md` porte les **48 imports internes directs**, un par arête,
 > vérifiés égaux à la sortie `go list` (relevé du 2026-09-04, `diff` vide) ;
 > `container-diagram.md` les regroupe en conteneurs C4, avec les neuf paquets-feuilles
 > réunis dans un seul bloc `support`. C'est là qu'on lit si une arête existe — ici, seulement
@@ -147,15 +147,18 @@ edge and neither belongs in this diagram.
   Interfaces layer. `internal/app` is the composition root: it imports
   `internal/cli`, `internal/tui` and `internal/ui` in order to wire them, and
   that downward-looking rule does not apply to it. No other package in this
-  layer does (`internal/config` and `internal/calibration` import `ui` for
-  colored output and nothing else from the Interfaces layer).
+  layer does (`internal/config` imports `ui` for colored usage output and
+  nothing else from the Interfaces layer ; `internal/calibration` stopped
+  importing it on 2026-09-07 — it reports through the `calibration.Reporter`
+  port that `internal/cli` implements).
 - **Use-Case layer** → `internal/orchestration` imports exactly
-  `internal/apperrors`, `internal/fibonacci`, `internal/fibonacci/memory` and
-  `internal/progress` — Domain plus the `errors` leaf, never a presentation
-  package.
+  `internal/apperrors`, `internal/fibonacci`, `internal/fibonacci/memory`,
+  `internal/fibonacci/threshold` and `internal/progress` — Domain plus the
+  `apperrors` leaf, never a presentation package.
 - **Domain layer** → no imports from outer layers (self-contained).
   `internal/fibonacci/threshold` does **not** import `internal/config` ; the
-  application layer wires `threshold.Tuning` via `threshold.SetTuning`.
+  application layer passes `threshold.Tuning` by value inside `fibonacci.Options`
+  (the `SetTuning` global was removed on 2026-09-07).
   `internal/bigfft` imports no internal package at all.
 - **Infrastructure** → utility packages with no upward dependencies.
   `internal/apperrors` ships its own byte-formatter (`formatBytesLocal`) instead
@@ -332,7 +335,8 @@ internal/
 ## `internal/app`
 - **Responsibility:** startup + runtime mode orchestration (completion, calibration, TUI, normal calculation).
 - **Key types/functions:** `Application`, `New`, `Run`, `runCalculate`, `runTUI`, `runCalibration`, `runLastDigits`, `runAutoCalibrationIfEnabled`.
-- **DI support:** `AppOption` functional options, `WithFactory()` for injecting custom `CalculatorFactory`.
+- **DI support:** `AppOption` functional options, `WithFactory()` for injecting a custom `CalculatorRegistry` — consumer-defined (`orchestration.CalculatorSource` plus `GetAll`) ; `fibonacci.DefaultFactory` satisfies it.
+- **Logging:** `--log-level` (or `FIBCALC_LOG_LEVEL`) builds one `*slog.Logger` on stderr (`internal/app/logging.go`, JSON without timestamps under `--machine`) and injects it through `fibonacci.Options.Logger` and `bigfft.SetTransformCacheLogger`. `off`, the default, injects nothing ; the domain falls back to `slog.DiscardHandler`.
 - **Lifecycle flow:** `New()` → parse config → load calibration profile (or apply adaptive thresholds) → `Run()` → mode dispatch.
 
 ## `internal/config`
@@ -343,7 +347,7 @@ internal/
 
 ## `internal/calibration`
 - **Responsibility:** full/quick calibration, adaptive threshold candidate generation, micro-benchmarks, profile file persistence.
-- **Key types:** `CalibrationProfile`, `CalibrationOptions`, `MicroBenchmark`, `ThresholdResults` (per-pass rows use the unexported `calibrationResult`).
+- **Key types:** `CalibrationProfile`, `CalibrationOptions`, `MicroBenchmark`, `ThresholdResults` (per-pass rows use the unexported `calibrationResult`), and the `Reporter` port (`Notice`, `Warning`, `Error`, `Summary` ; `NopReporter` by default) through which the package addresses the user without importing `ui` or `format` — `cli.CalibrationReporter` is the adapter.
 - **Key functions:** `RunCalibration`, `AutoCalibrate`, `AutoCalibrateWithProfile`, `LoadCachedCalibration`, `LoadOrCreateProfile`, `SaveProfile`, `(*MicroBenchmark).RunQuick`, `GenerateParallelThresholds`. (The free function `QuickCalibrate` was removed by the 2026-09-03 over-engineering pass — [ADR-0011](adr/0011-audit-2026-09-ponytail.md); `RunQuick` is the entry point.)
 - **Three-tier calibration:** (1) cached profile → (2) quick micro-benchmarks (`FastStrategy`; `internal/calibration/microbench.go`'s file comment states ~100 ms as the design target and `MicroBenchTimeout` caps a pass at 400 ms — no measurement artifact in the repo) → (3) full benchmark with adaptive threshold search (`CompleteStrategy`). Tier detail: [CALIBRATION.md](CALIBRATION.md#auto-calibration).
 
@@ -351,6 +355,7 @@ internal/
 - **Responsibility:** execute calculators concurrently, collect durations/errors/results, compare consistency, present summary.
 - **Key types:** `CalculationResult`, `PresentationOptions`, `ProgressAggregator`.
 - **Key interfaces:**
+  - `CalculatorSource` — `List` / `Get`, the two lookups `--algo` resolution needs ; defined here, on the consumer side, so `fibonacci` exports no registry interface
   - `ProgressReporter` — displays progress (implemented by `TUIProgressReporter`, `NullProgressReporter`, and the `ProgressReporterFunc` adapter wrapping `cli.DisplayProgress` for the CLI)
   - `ResultPresenter` — formats results (implemented by `CLIResultPresenter`, `TUIResultPresenter`)
   - `ErrorHandler` — maps errors to exit codes
@@ -361,7 +366,7 @@ internal/
 - **Key interfaces (layered by scope):**
   - `Calculator` (public) — full calculation with context, progress channel, options
   - `CoreCalculator` (exported extension point) — pure algorithm computation with callback-based progress
-  - `CalculatorFactory` — Create/Get/Register/List/GetAll for calculator management
+  - no registry interface of its own : `DefaultFactory` is consumed through `orchestration.CalculatorSource` and `app.CalculatorRegistry`, both defined by their consumers
   - `Multiplier` (narrow ISP) — multiply/square only
   - `DoublingStepExecutor` (wide) — extends Multiplier with full doubling-step awareness
 - **Key types:**
@@ -369,7 +374,7 @@ internal/
   - `FastDoublingCalculator` — Fast Doubling O(log n) with parallel multiplication; holds a per-instance GC-immune `cachedState` slot (`atomic.Pointer`, arenas ≤ 4M words) consulted before the shared `sync.Pool`
   - `MatrixExponentiationCalculator` — Matrix exponentiation O(log n) with Strassen dispatch
   - `FFTBasedCalculator` — FFT-only multiplication for benchmark/large-N scenarios
-  - `Options` — comprehensive configuration (thresholds, FFT cache, dynamic thresholds, GC mode)
+  - `Options` — comprehensive configuration (thresholds, FFT cache, dynamic thresholds, GC mode, `Logger`)
   - `CalculationState` — pooled 5-variable state (FK, FK1, T1-T3) for doubling algorithms
   - `DefaultFactory` — thread-safe factory with lazy creation, double-check locking, caching
 
@@ -384,6 +389,10 @@ internal/
 - **Responsibility:** dynamic runtime threshold adjustment based on observed iteration performance.
 - **Key types:** `DynamicThresholdManager`, `DynamicThresholdConfig`, `IterationMetric`, `ThresholdAnalyzer`.
 - **Mechanism:** records per-iteration timing data, detects if FFT/parallel thresholds should be adjusted, returns new thresholds mid-computation.
+
+### `internal/fibonacci/fibmath`
+- **Responsibility:** the three facts about the size of F(n) that used to be duplicated across `fibonacci`, `fibonacci/memory` and `config` : `GrowthFactor` (log₂ φ), `MaxUint64Index` (93) and `BitsFor(n)`.
+- **Imports:** no internal package ; imported by `fibonacci` and `fibonacci/memory`. `bigfft` keeps its own literal on purpose — the kernel imports nothing internal.
 
 ## `internal/progress`
 - **Responsibility:** Observer pattern for progress updates, decoupled from fibonacci package.
@@ -407,7 +416,7 @@ internal/
 
 ## `internal/cli`
 - **Responsibility:** terminal UX for non-TUI mode (progress, table/result output).
-- **Key components:** `CLIResultPresenter` (also satisfies `orchestration.ErrorHandler`), `CLIColorProvider`, `DisplayProgress` (wrapped by `orchestration.ProgressReporterFunc`), `DisplayResult`, `DisplayQuietResult`, `WriteResultToFile`, `PrintExecutionConfig`, `PrintExecutionMode`.
+- **Key components:** `CLIResultPresenter` (also satisfies `orchestration.ErrorHandler`), `WriteCalculationStatus` (the presentation half of error handling, paired with `apperrors.ExitCodeFor`), `CalibrationReporter` (adapter for `calibration.Reporter`), `progressLine` (single-line progress redrawn on the existing ticker ; replaced `briandowns/spinner` on 2026-09-07), `DisplayProgress` (wrapped by `orchestration.ProgressReporterFunc`), `DisplayResult`, `DisplayQuietResult`, `WriteResultToFile`, `PrintExecutionConfig`, `PrintExecutionMode`.
 - **Not here:** shell completion. It lives in the leaf subpackage `internal/cli/completion` (`Generate`), and `internal/cli` does **not** import it — `internal/app` does, from `runCompletion` (`internal/app/app.go`). The dependency graph draws that arrow from `app`, not from `cli`.
 
 ## `internal/tui`
@@ -417,9 +426,9 @@ internal/
 - **Theme:** Orange-dominant dark palette with lipgloss rounded borders.
 
 ## `internal/apperrors`
-- **Responsibility:** typed errors, wrappers, exit code mapping, standardized calculation-error handling.
+- **Responsibility:** typed errors, wrappers, exit code mapping — and nothing user-facing.
 - **Key types:** `ConfigError`, `CalculationError`, `MemoryError` (timeout/cancellation are classified via `errors.Is` on context sentinels, not dedicated types — OVR-07).
-- **Key helpers:** `NewConfigError`, `WrapCalculationError`, `HandleCalculationError`, `ColorProvider` interface.
+- **Key helpers:** `NewConfigError`, `WrapCalculationError`, `ExitCodeFor` (pure `error → int` ; the message lives in `cli.WriteCalculationStatus`). The former `HandleCalculationError` / `ColorProvider` pair, which mixed both, was removed on 2026-09-07 (audit ARC-02).
 
 ## `internal/metrics`, `internal/format`, `internal/ui`, `internal/testutil`
 - **Responsibility:** telemetry formatting, performance indicators (throughput, O(1) properties), theming/color controls (`NO_COLOR` support), test helpers. Host CPU/memory sampling is inlined in `internal/tui` (its only consumer — audit Fable5 DEAD-05).
@@ -520,7 +529,7 @@ flowchart LR
     end
 
     subgraph ErrorHandling["Error Handling (exit codes by origin)"]
-        G1{"HandleCalculationError<br/>(first non-Canceled error)"}
+        G1{"ExitCodeFor<br/>(first non-Canceled error)"}
         G1 -->|DeadlineExceeded| G2[Exit 2]
         G1 -->|context.Canceled| G5[Exit 130]
         G1 -->|other| G6[Exit 1]
@@ -661,7 +670,7 @@ valeurs entre elles (`big.Int.Cmp`) — un écart donne `ExitErrorMismatch` (cod
 
 **10. OUTPUT & EXIT** — *figure : « Result Presentation », `Formatted Output to stdout` →
 `-o set AND exit 0?` → `WriteResultToFile` ; « Error Handling », le losange
-`HandleCalculationError` et les codes qui en sortent.* Écriture optionnelle dans un fichier
+`ExitCodeFor` et les codes qui en sortent.* Écriture optionnelle dans un fichier
 (`WriteResultToFile`, seulement si `-o` est posé **et** que le code de sortie est 0) ;
 `DisplayQuietResult` en mode discret ; sinon correspondance erreur → code de sortie
 (0, 1, 2, 3, 4, 130), détaillée en [§10](#exit-codes).
@@ -1013,10 +1022,13 @@ Supported keys include:
 - `FIBCALC_CALIBRATE`, `FIBCALC_AUTO_CALIBRATE`, `FIBCALC_CALIBRATION_PROFILE`
 - `FIBCALC_OUTPUT`, `FIBCALC_MEMORY_LIMIT`, `FIBCALC_GC_CONTROL`, `FIBCALC_LAST_DIGITS`
 - `FIBCALC_MACHINE_OUTPUT`, `FIBCALC_TUI`, `FIBCALC_TUI_THEME`, `FIBCALC_DYNAMIC_THRESHOLDS`
+- `FIBCALC_LOG_LEVEL`, `FIBCALC_PROFILE_MAX_AGE`
 
-The list above is `envOverrides` (`internal/config/env.go`) plus `FIBCALC_TUI_THEME`
-(read by `internal/ui`). `FIBCALC_PROFILE_MAX_AGE` is read separately by
-`internal/calibration` (`ProfileMaxAgeEnv`), outside this override table.
+The list above is `envOverrides` (`internal/config/env.go`), the single reader
+since 2026-09-07 (audit CFG-02) : `FIBCALC_TUI_THEME` and `FIBCALC_PROFILE_MAX_AGE`
+used to be read by `internal/ui` and `internal/calibration` respectively, outside
+the flag precedence chain. `--cpuprofile` and `--memprofile` have no environment
+form.
 
 Also honors standard `NO_COLOR` behavior.
 
@@ -1058,7 +1070,7 @@ Timeouts and cancellations carry no dedicated type: they are classified with
 `errors.Is` against `context.DeadlineExceeded`/`context.Canceled` (OVR-07
 removed the former `TimeoutError`/`ValidationError`).
 
-Additional helpers: `WrapCalculationError` (contextual wrapping with `%w` around a `CalculationContext`). Context classification is done inline in `HandleCalculationError` via `errors.Is` against `context.DeadlineExceeded`/`context.Canceled` — there is no `IsContextError` helper.
+Additional helpers: `WrapCalculationError` (contextual wrapping with `%w` around a `CalculationContext`). Context classification is done inline in `ExitCodeFor` via `errors.Is` against `context.DeadlineExceeded`/`context.Canceled` — there is no `IsContextError` helper.
 
 ### Exit codes
 
@@ -1071,7 +1083,7 @@ Additional helpers: `WrapCalculationError` (contextual wrapping with `%w` around
 | `4` | `ExitErrorConfig` | Configuration error |
 | `130` | `ExitErrorCanceled` | Canceled (signal/context) |
 
-`HandleCalculationError` maps timeout/cancel/generic failures into standardized user-facing messaging + exit status. The `ColorProvider` interface allows color-agnostic error formatting.
+`apperrors.ExitCodeFor` maps timeout/cancel/generic failures to an exit status and nothing else ; `cli.WriteCalculationStatus` writes the matching user-facing line. The split (audit ARC-02, 2026-09-07) is what lets `internal/apperrors` import no presentation package.
 
 ---
 
@@ -1167,7 +1179,6 @@ From `go.mod`, direct dependencies are:
 | Module | Purpose in FibCalc |
 |---|---|
 | `golang.org/x/sync` | `errgroup` for structured concurrent execution |
-| `github.com/briandowns/spinner` | CLI spinner UX |
 | `github.com/charmbracelet/bubbles` | Bubble Tea UI components (TUI) |
 | `github.com/charmbracelet/bubbletea` | TUI framework (Elm architecture runtime) |
 | `github.com/charmbracelet/lipgloss` | Terminal styling/theme for TUI |
